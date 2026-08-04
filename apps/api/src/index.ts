@@ -170,6 +170,104 @@ router.all(["/tasks", "/tasks/*"], (req: Request, res: Response) => {
 });
 
 /**
+ * Canonical Project Routes (P0-03 & Wave 1)
+ */
+router.get("/projects", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const principal = (req as Request & { authPrincipal: ApiAuthPrincipal }).authPrincipal;
+    if (!principal) {
+      return res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "Authentication required." } });
+    }
+
+    const pool = db.getPool();
+    let query = "SELECT p.* FROM projects p";
+    const params: unknown[] = [];
+
+    if (principal.organizationId) {
+      params.push(principal.organizationId);
+      query += " WHERE p.organization_id = $1";
+    }
+
+    const result = await pool.query(query, params);
+    const projects = result.rows.filter(p => principalCanAccessProject(principal, p.id));
+
+    res.json({ ok: true, projects });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/projects/:projectId/tasks", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const principal = (req as Request & { authPrincipal: ApiAuthPrincipal }).authPrincipal;
+    const { projectId } = req.params;
+
+    if (!principalCanAccessProject(principal, projectId)) {
+      return res.status(403).json({ error: { code: "FORBIDDEN", message: "Access denied to target project." } });
+    }
+
+    const pool = db.getPool();
+    const result = await pool.query("SELECT * FROM tasks WHERE project_id = $1 ORDER BY created_at DESC", [projectId]);
+
+    res.json({ ok: true, projectId, tasks: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch("/projects/:projectId/tasks/:taskId", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const principal = (req as Request & { authPrincipal: ApiAuthPrincipal }).authPrincipal;
+    const { projectId, taskId } = req.params;
+    const updates = req.body || {};
+
+    if (!principalCanAccessProject(principal, projectId)) {
+      return res.status(403).json({ error: { code: "FORBIDDEN", message: "Access denied to target project." } });
+    }
+
+    const pool = db.getPool();
+    const checkTask = await pool.query("SELECT * FROM tasks WHERE id = $1 AND project_id = $2", [taskId, projectId]);
+    if (checkTask.rows.length === 0) {
+      return res.status(404).json({ error: { code: "TASK_NOT_FOUND", message: "Task not found in specified project scope." } });
+    }
+
+    const allowedFields = ["status", "title", "description", "assigned_to"];
+    const setClauses: string[] = [];
+    const params: unknown[] = [taskId, projectId];
+    let idx = 3;
+
+    for (const field of allowedFields) {
+      if (updates[field] !== undefined) {
+        setClauses.push(`${field} = $${idx}`);
+        params.push(updates[field]);
+        idx++;
+      }
+    }
+
+    if (setClauses.length > 0) {
+      const updateQuery = `UPDATE tasks SET ${setClauses.join(", ")}, updated_at = NOW() WHERE id = $1 AND project_id = $2 RETURNING *`;
+      const updateRes = await pool.query(updateQuery, params);
+
+      await auditHelper.logAction(
+        projectId,
+        principal.actorId,
+        "TASK",
+        "TASK_UPDATED" as AuditActionType,
+        "authorized",
+        { taskId, updates },
+        `Task ${taskId} updated by ${principal.actorId}`
+      );
+
+      return res.json({ ok: true, task: updateRes.rows[0] });
+    }
+
+    res.json({ ok: true, task: checkTask.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * Helper to execute raw queries safely
  */
 async function queryDb(sql: string, params: unknown[] = []): Promise<any> {
