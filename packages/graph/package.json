@@ -1,0 +1,11 @@
+{
+  "name": "@y/graph",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@y/shared": "workspace:*",
+    "@y/security": "workspace:*"
+  }
+}

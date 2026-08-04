@@ -1,0 +1,8 @@
+{
+  "name": "@y/providers",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

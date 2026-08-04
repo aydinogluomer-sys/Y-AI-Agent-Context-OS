@@ -1,0 +1,16 @@
+{
+  "name": "@y/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "express": "^4.21.2",
+    "dotenv": "^17.2.3",
+    "@y/shared": "workspace:*",
+    "@y/security": "workspace:*",
+    "@y/context": "workspace:*",
+    "@y/graph": "workspace:*",
+    "@y/agents": "workspace:*"
+  }
+}

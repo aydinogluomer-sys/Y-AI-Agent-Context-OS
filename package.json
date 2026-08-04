@@ -1,0 +1,60 @@
+{
+  "name": "react-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server.ts",
+    "build": "vite build --configLoader runner && vite build --ssr server.ts --configLoader runner --outDir dist/server --emptyOutDir",
+    "start": "node dist/server/server.js",
+    "clean": "rm -rf dist",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx scripts/validate-vault.ts",
+    "test:phase1": "tsx scripts/validate-phase-1-auth.ts",
+    "test:phase2": "tsx scripts/validate-phase-2-runner.ts",
+    "test:phase3": "tsx scripts/validate-phase-3-startup.ts",
+    "test:phase4": "tsx scripts/validate-phase-4-canonical-read-paths.ts",
+    "test:phase5": "tsx scripts/validate-phase-5-evidence-integrity.ts",
+    "test:phase6": "tsx scripts/validate-phase-6-functional-navigation.ts",
+    "test:phase7": "tsx scripts/validate-phase-7-runtime-contracts.ts",
+    "test:phase8": "tsx scripts/validate-phase-8-documentation.ts",
+    "test:ai-cockpit": "tsx scripts/validate-ai-cockpit.ts",
+    "worker:index": "tsx workers/index-worker.ts",
+    "test:deterministic": "tsx scripts/run-validation-suite.ts deterministic",
+    "test:db": "tsx scripts/run-validation-suite.ts db",
+    "test:all": "npm run test:deterministic && npm run test:db",
+    "secret-scan": "tsx scripts/secret-scan.ts",
+    "db:migrate": "tsx apps/api/src/scripts/migrate.ts",
+    "db:status": "tsx apps/api/src/scripts/status.ts",
+    "db:reset:dev": "tsx scripts/db-reset-dev.ts",
+    "qa:debug-tags": "tsx scripts/qa-debug-tags.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^1.29.0",
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
+    "pg": "^8.21.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "vite": "^6.2.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.0",
+    "@types/pg": "^8.20.0",
+    "autoprefixer": "^10.4.21",
+    "esbuild": "^0.25.0",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.3"
+  },
+  "overrides": {
+    "node-domexception": "file:./packages/node-domexception"
+  }
+}

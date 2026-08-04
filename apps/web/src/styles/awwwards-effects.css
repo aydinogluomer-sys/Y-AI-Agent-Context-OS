@@ -1,0 +1,152 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* 1. Analog Noise Grain Texture overlay */
+.noise-grain, .noise-grain-animated {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.noise-grain {
+  opacity: 0.022;
+}
+
+/* Subtle animation to make grain feel organic */
+@keyframes noise-jitter {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-1%, -1%); }
+  20% { transform: translate(-2%, 1%); }
+  30% { transform: translate(1%, -2%); }
+  40% { transform: translate(-1%, 3%); }
+  50% { transform: translate(-2%, 1%); }
+  60% { transform: translate(1%, 2%); }
+  70% { transform: translate(2%, 1%); }
+  80% { transform: translate(-2%, -1%); }
+  90% { transform: translate(1%, 3%); }
+}
+
+.noise-grain-animated {
+  animation: noise-jitter 0.4s steps(4) infinite;
+  opacity: 0.028;
+}
+
+/* 2. Page Guidelines (Swiss Broadsheet Hairlines) */
+.vertical-hairline {
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.035) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  pointer-events: none;
+}
+
+/* 3. Awwwards Premium Glassmorphism Overrides */
+.glass-card {
+  background: rgba(11, 12, 16, 0.45);
+  backdrop-filter: blur(14px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  transition: border-color 0.3s var(--ease-precision), box-shadow 0.3s var(--ease-precision), background-color 0.3s var(--ease-precision);
+}
+
+.glass-card:hover {
+  background: rgba(11, 12, 16, 0.55);
+  border-color: rgba(0, 213, 255, 0.15);
+  box-shadow: 0 12px 30px -10px rgba(0, 213, 255, 0.04);
+}
+
+/* 4. Smooth Lift micro-animations */
+.hover-lift {
+  transition: transform 0.4s var(--ease-precision), border-color 0.4s var(--ease-precision), box-shadow 0.4s var(--ease-precision);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0, 213, 255, 0.25);
+  box-shadow: 0 16px 40px -12px rgba(0, 213, 255, 0.08);
+}
+
+/* 5. Shimmer effect on hover buttons */
+.shimmer-hover {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-25deg);
+  transition: 0.75s var(--ease-precision);
+}
+
+.shimmer-hover:hover::before {
+  left: 150%;
+}
+
+/* 6. Text Masks for revealing animated headers */
+.text-mask-reveal {
+  overflow: hidden;
+  display: inline-block;
+}
+
+.text-mask-reveal-inner {
+  display: inline-block;
+  transform: translateY(105%);
+  transition: transform 0.85s var(--ease-precision);
+}
+
+.text-mask-reveal-inner.revealed {
+  transform: translateY(0);
+}
+
+/* 7. Slide line for navigations */
+.underline-slide {
+  position: relative;
+}
+
+.underline-slide::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  transform: scaleX(0);
+  height: 1px;
+  bottom: -4px;
+  left: 0;
+  background-color: var(--color-optic-cyan);
+  transform-origin: bottom right;
+  transition: transform 0.4s var(--ease-precision);
+}
+
+.underline-slide:hover::after {
+  transform: scaleX(1);
+  transform-origin: bottom left;
+}
+
+/* 8. Pulsing Cybernetic guide dots */
+@keyframes ambient-glow {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.35; }
+}
+
+.glow-ambient {
+  animation: ambient-glow 4s infinite ease-in-out;
+}

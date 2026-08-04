@@ -1,0 +1,59 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@y/shared": [
+        "./packages/shared/src/index.ts"
+      ],
+      "@y/core": [
+        "./packages/core/src/index.ts"
+      ],
+      "@y/context": [
+        "./packages/context/src/index.ts"
+      ],
+      "@y/graph": [
+        "./packages/graph/src/index.ts"
+      ],
+      "@y/agents": [
+        "./packages/agents/src/index.ts"
+      ],
+      "@y/connectors": [
+        "./packages/connectors/src/index.ts"
+      ],
+      "@y/providers": [
+        "./packages/providers/src/index.ts"
+      ],
+      "@y/security": [
+        "./packages/security/src/index.ts"
+      ],
+      "@y/ui": [
+        "./packages/ui/src/index.ts"
+      ],
+      "@y/web/*": [
+        "./apps/web/src/*"
+      ],
+      "@y/api/*": [
+        "./apps/api/src/*"
+      ]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  }
+}

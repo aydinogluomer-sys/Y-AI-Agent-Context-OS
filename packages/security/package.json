@@ -1,0 +1,10 @@
+{
+  "name": "@y/security",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@y/shared": "workspace:*"
+  }
+}

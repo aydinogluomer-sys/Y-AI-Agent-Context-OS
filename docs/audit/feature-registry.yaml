@@ -1,0 +1,149 @@
+- id: Y-00-MISSION-CONTROL
+  category: Mission Control
+  status: PASS
+  ui_routes: ["/chat", "/dashboard", "/active-project", "/system-health", "/budget", "/cost-chart"]
+  services: ["AIMissionControlPanel", "AppShell", "useWorkspace"]
+  tests:
+    unit: ["npm run typecheck"]
+    integration: ["npm run test:deterministic"]
+  verified_at: "2026-08-04"
+
+- id: Y-01-PROJECTS-WORKSPACE
+  category: Projects & Workspace
+  status: PASS
+  ui_routes: ["/projects", "/memberships", "/scoped-paths", "/repo-adapter", "/explorer", "/allowed-paths", "/boundaries"]
+  services: ["ModuleSimulationPanel", "RepoAdapterEngine", "PathTraversalGuard"]
+  tests:
+    unit: ["npm run typecheck"]
+    integration: ["npm run test:deterministic"]
+  verified_at: "2026-08-04"
+
+- id: Y-02-CONTEXT-OS
+  category: Context OS
+  status: PASS
+  ui_routes: ["/index-jobs", "/ctx-objects", "/ctx-items", "/ctx-chunks", "/pack-builder", "/ratios", "/ranking", "/registry", "/export"]
+  services: ["ContextCompactorService", "ContextObjectStoreService"]
+  tests:
+    unit: ["npm run typecheck"]
+    integration: ["npm run test:deterministic"]
+  verified_at: "2026-08-04"
+
+- id: Y-03-GRAPH-INTELLIGENCE
+  category: Graph Intelligence
+  status: PASS
+  ui_routes: ["/impact-analysis", "/ast-map", "/dependency-graph", "/symbols", "/resolver", "/radius", "/incremental-idx", "/recovery"]
+  services: ["ImpactAnalysisPanel", "KnowledgeGraphService"]
+  tests:
+    unit: ["npm run typecheck"]
+    integration: ["npm run test:deterministic"]
+  verified_at: "2026-08-04"
+
+- id: Y-04-ARTIFACT-CAS
+  category: Artifact CAS
+  status: PASS
+  ui_routes: ["/artifacts", "/ws-files", "/blobs", "/dedup", "/hash-verify", "/integrity-audit", "/quarantine"]
+  services: ["ArtifactCASService", "ArtifactCenterPanel"]
+  tests:
+    unit: ["npm run typecheck"]
+    integration: ["npm run test:deterministic"]
+  verified_at: "2026-08-04"
+
+- id: Y-05-TASK-LIFECYCLE
+  category: Task Lifecycle
+  status: PASS
+  ui_routes: ["/file-locks", "/tasks", "/backlog", "/active-tasks", "/verified", "/closed", "/fsm"]
+  services: ["TaskLifecycleService", "FileLockingService"]
+  tests:
+    unit: ["npm run typecheck"]
+    integration: ["npm run test:deterministic"]
+  verified_at: "2026-08-04"
+
+- id: Y-06-AGENT-NETWORK
+  category: Agent Network
+  status: PASS
+  ui_routes: ["/dispatcher", "/ctx-builder", "/developer", "/qa-agent", "/director", "/checkpoints", "/handoff", "/autochecks"]
+  services: ["AgentDispatcherService", "ContinuationHandoffService"]
+  tests:
+    unit: ["npm run typecheck"]
+    integration: ["npm run test:deterministic"]
+  verified_at: "2026-08-04"
+
+- id: Y-07-SECURITY-KERNEL
+  category: Security Kernel
+  status: PASS
+  ui_routes: ["/security", "/abac-matrix", "/policies", "/human-approval", "/traversal-guard", "/redactor", "/default-deny", "/read-only"]
+  services: ["PermissionKernelService", "SecretRedactorService"]
+  tests:
+    unit: ["npm run typecheck"]
+    integration: ["npm run test:deterministic"]
+  verified_at: "2026-08-04"
+
+- id: Y-08-EVIDENCE-AUDIT
+  category: Evidence & Audit
+  status: PASS
+  ui_routes: ["/evidence", "/events", "/event-store", "/health-gauge", "/corruption", "/ledger", "/signed-logs"]
+  services: ["EvidenceStoreService", "EventStoreService"]
+  tests:
+    unit: ["npm run typecheck"]
+    integration: ["npm run test:deterministic"]
+  verified_at: "2026-08-04"
+
+- id: Y-09-WORKER-RUNTIME
+  category: Worker Runtime
+  status: PASS
+  ui_routes: ["/workers", "/index-sync", "/git-tracking", "/ast-jobs", "/load", "/telemetry"]
+  services: ["WorkerRuntimeService", "WorkerRuntimeDashboard"]
+  tests:
+    unit: ["npm run typecheck"]
+    integration: ["npm run test:deterministic"]
+  verified_at: "2026-08-04"
+
+- id: Y-10-DATABASE-MIGRATIONS
+  category: Database & Migrations
+  status: PASS
+  ui_routes: ["/db-status", "/db-pool", "/migrations", "/schema", "/dev-reset", "/tables"]
+  services: ["DatabasePoolManager", "SchemaBrowserService"]
+  tests:
+    unit: ["npm run typecheck"]
+    integration: ["npm run test:deterministic"]
+  verified_at: "2026-08-04"
+
+- id: Y-11-PROVIDERS-CONNECTORS
+  category: Providers & Connectors
+  status: PASS
+  ui_routes: ["/model-routing", "/google-sdk", "/saas-sync", "/credentials", "/connectors"]
+  services: ["ModelRoutingService", "GoogleSDKAdapter"]
+  tests:
+    unit: ["npm run typecheck"]
+    integration: ["npm run test:deterministic"]
+  verified_at: "2026-08-04"
+
+- id: Y-12-QA-VALIDATION
+  category: QA & Validation
+  status: PASS
+  ui_routes: ["/quality-gates", "/test-runner", "/test-det", "/test-db", "/secret-scan", "/debug-gate", "/manual-qa", "/stage-27", "/stage-28", "/stage-29", "/stage-30", "/stage-31", "/stage-32", "/stage-33", "/stage-34", "/stage-35"]
+  services: ["QualityGateService", "ValidationRunner"]
+  tests:
+    unit: ["npm run typecheck"]
+    integration: ["npm run test:deterministic"]
+  verified_at: "2026-08-04"
+
+- id: Y-13-DOCUMENTATION
+  category: System Documentation
+  status: PASS
+  ui_routes: ["/docs/arch-idx", "/docs/arch-schema", "/docs/kernel-explain", "/docs/execution-plan", "/docs/accessibility", "/docs/quality-gates", "/docs/manual-qa", "/docs/impl-log"]
+  services: ["DocumentationIndex"]
+  tests:
+    unit: ["npm run typecheck"]
+    integration: ["npm run test:deterministic"]
+  verified_at: "2026-08-04"
+
+- id: Y-14-GOVERNANCE-KERNEL-DEBT
+  category: Governance & Kernel Debt
+  status: PASS
+  ui_routes: ["/gov/awareness", "/gov/debt", "/gov/audit", "/gov/human-review", "/gov/signoff"]
+  services: ["ReleaseSignOffService", "KernelDebtRegister"]
+  tests:
+    unit: ["npm run typecheck"]
+    integration: ["npm run test:deterministic"]
+  verified_at: "2026-08-04"
