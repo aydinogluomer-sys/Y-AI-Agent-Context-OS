@@ -112,17 +112,20 @@ export class LocalFilesystemRepoAdapter implements RepoAdapter {
   validatePath(p: string): { valid: boolean; error?: string } {
     try {
       const normTarget = path.resolve(this.rootPath, p);
-      if (!normTarget.startsWith(this.rootPath)) {
-        return { valid: false, error: "Access denied: Path traversal attempt blocked." };
+      const realRoot = fs.existsSync(this.rootPath) ? fs.realpathSync(this.rootPath) : this.rootPath;
+
+      // Find closest existing parent directory for realpath verification
+      let checkPath = normTarget;
+      while (!fs.existsSync(checkPath) && checkPath !== path.dirname(checkPath)) {
+        checkPath = path.dirname(checkPath);
       }
 
-      // Check realpath if path exists to prevent symlink traversal outside root
-      if (fs.existsSync(normTarget)) {
-        const realRoot = fs.realpathSync(this.rootPath);
-        const realTarget = fs.realpathSync(normTarget);
-        if (!realTarget.startsWith(realRoot)) {
-          return { valid: false, error: "Access denied: Symlink traversal outside repository root blocked." };
-        }
+      const realTargetOrParent = fs.existsSync(checkPath) ? fs.realpathSync(checkPath) : checkPath;
+      const relative = path.relative(realRoot, realTargetOrParent);
+      const isEscaped = relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative);
+
+      if (isEscaped) {
+        return { valid: false, error: "Access denied: Symlink or path traversal escape outside repository root blocked." };
       }
 
       const basename = path.basename(normTarget).toLowerCase();

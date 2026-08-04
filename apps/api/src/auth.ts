@@ -132,32 +132,98 @@ export function authenticateBearerHeader(
     };
   }
 
-  // Support structured JWT token payload parsing if token is 3-part base64
+  // Cryptographic JWT Verification (P0-01)
   if (token.startsWith("ey") && token.includes(".")) {
     try {
       const parts = token.split(".");
-      if (parts.length === 3 && parts[1]) {
-        const payloadJson = Buffer.from(parts[1], "base64url").toString("utf-8");
-        const claims = JSON.parse(payloadJson);
-        if (claims && claims.sub) {
-          const jwtPrincipal: ApiAuthPrincipal = {
-            actorId: String(claims.sub),
-            role: parseRole(claims.role),
-            projectIds: Array.isArray(claims.project_ids) ? claims.project_ids : parseProjectIds(claims.project_ids),
-            organizationId: claims.org_id ? String(claims.org_id) : undefined,
-            authenticationType: "jwt_token",
-          };
+      if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+        const headerJson = Buffer.from(parts[0], "base64url").toString("utf-8");
+        const header = JSON.parse(headerJson);
+
+        // P0-01: Hard reject 'alg: none' or unsupported algorithms
+        if (!header.alg || header.alg.toLowerCase() === "none" || (header.alg !== "HS256" && header.alg !== "RS256")) {
           return {
-            ok: true,
-            status: 200,
-            code: "AUTHENTICATED",
-            message: "JWT user principal token authenticated.",
-            principal: jwtPrincipal,
+            ok: false,
+            status: 401,
+            code: "UNSUPPORTED_JWT_ALGORITHM",
+            message: "JWT tokens with 'alg: none' or unsupported algorithms are strictly rejected.",
           };
         }
+
+        const jwtSecret = (process.env.JWT_SECRET || process.env.Y_API_AUTH_TOKEN || "").trim();
+        if (header.alg === "HS256") {
+          if (!jwtSecret) {
+            return {
+              ok: false,
+              status: 503,
+              code: "JWT_SECRET_NOT_CONFIGURED",
+              message: "JWT signature validation secret is not configured on the server.",
+            };
+          }
+          const expectedSig = crypto
+            .createHmac("sha256", jwtSecret)
+            .update(`${parts[0]}.${parts[1]}`)
+            .digest("base64url");
+
+          if (!crypto.timingSafeEqual(Buffer.from(parts[2]), Buffer.from(expectedSig))) {
+            return {
+              ok: false,
+              status: 401,
+              code: "INVALID_JWT_SIGNATURE",
+              message: "JWT cryptographic signature verification failed.",
+            };
+          }
+        }
+
+        const payloadJson = Buffer.from(parts[1], "base64url").toString("utf-8");
+        const claims = JSON.parse(payloadJson);
+
+        // P0-01: Expiration check (exp)
+        if (claims.exp && typeof claims.exp === "number") {
+          const nowSeconds = Math.floor(Date.now() / 1000);
+          if (claims.exp < nowSeconds) {
+            return {
+              ok: false,
+              status: 401,
+              code: "EXPIRED_AUTHENTICATION_TOKEN",
+              message: "The supplied JWT authentication token has expired.",
+            };
+          }
+        }
+
+        // P0-01: Subject presence check (sub)
+        if (!claims.sub) {
+          return {
+            ok: false,
+            status: 401,
+            code: "MISSING_JWT_SUBJECT",
+            message: "JWT authentication token must contain a valid 'sub' claim.",
+          };
+        }
+
+        const jwtPrincipal: ApiAuthPrincipal = {
+          actorId: String(claims.sub),
+          role: parseRole(claims.role),
+          projectIds: Array.isArray(claims.project_ids) ? claims.project_ids : parseProjectIds(claims.project_ids),
+          organizationId: claims.org_id ? String(claims.org_id) : undefined,
+          authenticationType: "jwt_token",
+        };
+
+        return {
+          ok: true,
+          status: 200,
+          code: "AUTHENTICATED",
+          message: "Cryptographically verified JWT principal token authenticated.",
+          principal: jwtPrincipal,
+        };
       }
     } catch {
-      // Invalid JWT format, fallback to standard token check
+      return {
+        ok: false,
+        status: 401,
+        code: "INVALID_JWT_FORMAT",
+        message: "The supplied Bearer token is not a valid JWT format.",
+      };
     }
   }
 

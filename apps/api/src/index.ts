@@ -148,13 +148,25 @@ router.use((req: Request, res: Response, next: NextFunction) => {
     if (dbStatus.database_mode === "unavailable") {
       return res.status(503).json({
         error: {
-          code: "DATABASE_UNAVAILABLE",
-          message: "The backend database is offline or unconfigured. Please connect a valid database."
+          code: "SERVICE_UNAVAILABLE",
+          message: "Database connection is offline/unavailable. Please configure DB connection first."
         }
       });
     }
   }
-  next();
+  return next();
+});
+
+/**
+ * P0-02 Legacy Unscoped Task Route Handler
+ */
+router.all(["/tasks", "/tasks/:id"], (req: Request, res: Response) => {
+  return res.status(410).json({
+    error: {
+      code: "LEGACY_ROUTE_DEPRECATED",
+      message: "Unscoped task route /tasks is deprecated and blocked for security. Please use canonical route /projects/:projectId/tasks instead."
+    }
+  });
 });
 
 /**
