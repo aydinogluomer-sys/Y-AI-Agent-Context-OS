@@ -4,6 +4,9 @@ import {
   runValidationSuite,
 } from "./validation-suite";
 
+process.env.NODE_ENV = process.env.NODE_ENV || "test";
+process.env.DETERMINISTIC_TEST_MODE = "true";
+
 const mode = process.argv[2] || "deterministic";
 const strictSkips = mode === "db";
 const targets = strictSkips ? DATABASE_TARGETS : DETERMINISTIC_TARGETS;

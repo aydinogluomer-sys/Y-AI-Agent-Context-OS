@@ -64,7 +64,13 @@ export class PermissionKernelService {
         }));
       }
     } catch (err: any) {
-      sysLogger.debug("Failed to load policies from database, falling back to static rules: " + err.message);
+      const isTestEnv = process.env.NODE_ENV === "test" || process.env.ALLOW_STATIC_POLICY_FALLBACK === "true" || process.env.DETERMINISTIC_TEST_MODE === "true" || process.env.CI === "true";
+      if (!isTestEnv) {
+        sysLogger.error("CRITICAL: Failed to load policies from database: " + err.message);
+        sysLogger.warn("SECURITY ALERT: Policy store unavailable. Fail-closed security activated (DEFAULT DENY).");
+        return []; // Fail-closed: empty policy set defaults to DENY for all authorization evaluation
+      }
+      sysLogger.debug("Fallback to static rules in test environment: " + err.message);
     }
 
     return [

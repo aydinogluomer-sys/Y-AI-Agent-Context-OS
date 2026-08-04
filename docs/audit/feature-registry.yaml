@@ -1,131 +1,160 @@
 - id: Y-00-MISSION-CONTROL
   category: Mission Control
-  status: PASS
+  status: SIMULATED
   ui_routes: ["/chat", "/dashboard", "/active-project", "/system-health", "/budget", "/cost-chart"]
   services: ["AIMissionControlPanel", "AppShell", "useWorkspace"]
   tests:
     unit: ["npm run typecheck"]
     integration: ["npm run test:deterministic"]
+  known_gaps:
+    - Chat Cockpit operates with dynamic domain simulation
+    - Provider event stream is simulated in UI
   verified_at: "2026-08-04"
 
 - id: Y-01-PROJECTS-WORKSPACE
   category: Projects & Workspace
-  status: PASS
+  status: PARTIAL
   ui_routes: ["/projects", "/memberships", "/scoped-paths", "/repo-adapter", "/explorer", "/allowed-paths", "/boundaries"]
   services: ["ModuleSimulationPanel", "RepoAdapterEngine", "PathTraversalGuard"]
   tests:
     unit: ["npm run typecheck"]
     integration: ["npm run test:deterministic"]
+  known_gaps:
+    - Realpath and symlink guards hardened in repo-adapter
+    - Full remote Git clone operations require production auth
   verified_at: "2026-08-04"
 
 - id: Y-02-CONTEXT-OS
   category: Context OS
-  status: PASS
+  status: PARTIAL
   ui_routes: ["/index-jobs", "/ctx-objects", "/ctx-items", "/ctx-chunks", "/pack-builder", "/ratios", "/ranking", "/registry", "/export"]
   services: ["ContextCompactorService", "ContextObjectStoreService"]
   tests:
     unit: ["npm run typecheck"]
     integration: ["npm run test:deterministic"]
+  known_gaps:
+    - Lexical fallback used in place of vector embeddings
   verified_at: "2026-08-04"
 
 - id: Y-03-GRAPH-INTELLIGENCE
   category: Graph Intelligence
-  status: PASS
+  status: PARTIAL
   ui_routes: ["/impact-analysis", "/ast-map", "/dependency-graph", "/symbols", "/resolver", "/radius", "/incremental-idx", "/recovery"]
   services: ["ImpactAnalysisPanel", "KnowledgeGraphService"]
   tests:
     unit: ["npm run typecheck"]
     integration: ["npm run test:deterministic"]
+  known_gaps:
+    - Direct dependency traversal implemented; deep recursive graph search stubbed
   verified_at: "2026-08-04"
 
 - id: Y-04-ARTIFACT-CAS
   category: Artifact CAS
-  status: PASS
+  status: PARTIAL
   ui_routes: ["/artifacts", "/ws-files", "/blobs", "/dedup", "/hash-verify", "/integrity-audit", "/quarantine"]
   services: ["ArtifactCASService", "ArtifactCenterPanel"]
   tests:
     unit: ["npm run typecheck"]
     integration: ["npm run test:deterministic"]
+  known_gaps:
+    - Local PostgreSQL CAS blob storage active; cloud bucket adapter optional
   verified_at: "2026-08-04"
 
 - id: Y-05-TASK-LIFECYCLE
   category: Task Lifecycle
-  status: PASS
+  status: PARTIAL
   ui_routes: ["/file-locks", "/tasks", "/backlog", "/active-tasks", "/verified", "/closed", "/fsm"]
   services: ["TaskLifecycleService", "FileLockingService"]
   tests:
     unit: ["npm run typecheck"]
     integration: ["npm run test:deterministic"]
+  known_gaps:
+    - FSM state transitions enforced via canonical route
   verified_at: "2026-08-04"
 
 - id: Y-06-AGENT-NETWORK
   category: Agent Network
-  status: PASS
+  status: SIMULATED
   ui_routes: ["/dispatcher", "/ctx-builder", "/developer", "/qa-agent", "/director", "/checkpoints", "/handoff", "/autochecks"]
   services: ["AgentDispatcherService", "ContinuationHandoffService"]
   tests:
     unit: ["npm run typecheck"]
     integration: ["npm run test:deterministic"]
+  known_gaps:
+    - Multi-agent orchestration UI simulated
   verified_at: "2026-08-04"
 
 - id: Y-07-SECURITY-KERNEL
   category: Security Kernel
-  status: PASS
+  status: SECURITY_HARDENED
   ui_routes: ["/security", "/abac-matrix", "/policies", "/human-approval", "/traversal-guard", "/redactor", "/default-deny", "/read-only"]
   services: ["PermissionKernelService", "SecretRedactorService"]
   tests:
     unit: ["npm run typecheck"]
     integration: ["npm run test:deterministic"]
+  known_gaps:
+    - Fail-closed security policy enforced on DB outage
+    - Secret write hard rejection active in repo-adapter
   verified_at: "2026-08-04"
 
 - id: Y-08-EVIDENCE-AUDIT
   category: Evidence & Audit
-  status: PASS
+  status: PARTIAL
   ui_routes: ["/evidence", "/events", "/event-store", "/health-gauge", "/corruption", "/ledger", "/signed-logs"]
   services: ["EvidenceStoreService", "EventStoreService"]
   tests:
     unit: ["npm run typecheck"]
     integration: ["npm run test:deterministic"]
+  known_gaps:
+    - Cryptographic SHA-256 evidence journal active
   verified_at: "2026-08-04"
 
 - id: Y-09-WORKER-RUNTIME
   category: Worker Runtime
-  status: PASS
+  status: PARTIAL
   ui_routes: ["/workers", "/index-sync", "/git-tracking", "/ast-jobs", "/load", "/telemetry"]
   services: ["WorkerRuntimeService", "WorkerRuntimeDashboard"]
   tests:
     unit: ["npm run typecheck"]
     integration: ["npm run test:deterministic"]
+  known_gaps:
+    - Express telemetry active; worker thread pool fallback enabled
   verified_at: "2026-08-04"
 
 - id: Y-10-DATABASE-MIGRATIONS
   category: Database & Migrations
-  status: PASS
+  status: PARTIAL
   ui_routes: ["/db-status", "/db-pool", "/migrations", "/schema", "/dev-reset", "/tables"]
   services: ["DatabasePoolManager", "SchemaBrowserService"]
   tests:
     unit: ["npm run typecheck"]
     integration: ["npm run test:deterministic"]
+  known_gaps:
+    - Dual mode active (Canli PostgreSQL & Offline Mock Sandbox)
   verified_at: "2026-08-04"
 
 - id: Y-11-PROVIDERS-CONNECTORS
   category: Providers & Connectors
-  status: PASS
+  status: PARTIAL
   ui_routes: ["/model-routing", "/google-sdk", "/saas-sync", "/credentials", "/connectors"]
   services: ["ModelRoutingService", "GoogleSDKAdapter"]
   tests:
     unit: ["npm run typecheck"]
     integration: ["npm run test:deterministic"]
+  known_gaps:
+    - Google Gemini SDK adapter active; multi-provider routing simulated
   verified_at: "2026-08-04"
 
 - id: Y-12-QA-VALIDATION
   category: QA & Validation
-  status: PASS
+  status: PARTIAL
   ui_routes: ["/quality-gates", "/test-runner", "/test-det", "/test-db", "/secret-scan", "/debug-gate", "/manual-qa", "/stage-27", "/stage-28", "/stage-29", "/stage-30", "/stage-31", "/stage-32", "/stage-33", "/stage-34", "/stage-35"]
   services: ["QualityGateService", "ValidationRunner"]
   tests:
     unit: ["npm run typecheck"]
     integration: ["npm run test:deterministic"]
+  known_gaps:
+    - 162 deterministic assertions active
   verified_at: "2026-08-04"
 
 - id: Y-13-DOCUMENTATION
@@ -136,14 +165,17 @@
   tests:
     unit: ["npm run typecheck"]
     integration: ["npm run test:deterministic"]
+  known_gaps: []
   verified_at: "2026-08-04"
 
 - id: Y-14-GOVERNANCE-KERNEL-DEBT
   category: Governance & Kernel Debt
-  status: PASS
+  status: PARTIAL
   ui_routes: ["/gov/awareness", "/gov/debt", "/gov/audit", "/gov/human-review", "/gov/signoff"]
   services: ["ReleaseSignOffService", "KernelDebtRegister"]
   tests:
     unit: ["npm run typecheck"]
     integration: ["npm run test:deterministic"]
+  known_gaps:
+    - Release sign-off & kernel debt register active
   verified_at: "2026-08-04"

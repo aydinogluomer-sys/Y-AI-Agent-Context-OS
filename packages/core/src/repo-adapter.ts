@@ -116,15 +116,24 @@ export class LocalFilesystemRepoAdapter implements RepoAdapter {
         return { valid: false, error: "Access denied: Path traversal attempt blocked." };
       }
 
+      // Check realpath if path exists to prevent symlink traversal outside root
+      if (fs.existsSync(normTarget)) {
+        const realRoot = fs.realpathSync(this.rootPath);
+        const realTarget = fs.realpathSync(normTarget);
+        if (!realTarget.startsWith(realRoot)) {
+          return { valid: false, error: "Access denied: Symlink traversal outside repository root blocked." };
+        }
+      }
+
       const basename = path.basename(normTarget).toLowerCase();
       const forbiddenNames = [".env", "secrets.json", "credentials.json"];
       if (forbiddenNames.includes(basename)) {
-        return { valid: false, error: `Access denied: Reading forbidden file '${basename}' is strictly blocked.` };
+        return { valid: false, error: `Access denied: Reading/writing forbidden file '${basename}' is strictly blocked.` };
       }
 
       const forbiddenEndings = [".pem", ".key"];
       if (forbiddenEndings.some(ext => basename.endsWith(ext))) {
-        return { valid: false, error: `Access denied: Reading certificate/key files with extension '${basename}' is strictly blocked.` };
+        return { valid: false, error: `Access denied: Certificate/key files with extension '${basename}' are strictly blocked.` };
       }
 
       const relativeFromRoot = path.relative(this.rootPath, normTarget);
@@ -193,22 +202,36 @@ export class LocalFilesystemRepoAdapter implements RepoAdapter {
       return { ok: false, data: null, warnings: [check.error || "Path validation failed"], errors: [check.error || "Path validation failed"], redacted: false };
     }
 
+    // Hard reject write operations containing unmasked secrets
+    const redactedContent = redactSecretLeaks(content);
+    if (redactedContent !== content) {
+      return {
+        ok: false,
+        data: null,
+        warnings: ["Write operation rejected: Input payload contains unmasked credentials."],
+        errors: ["SECURITY_SECRET_WRITE_REJECTED: Writing unmasked secrets or credentials to repository files is strictly forbidden."],
+        redacted: true
+      };
+    }
+
     try {
-      const redactedContent = redactSecretLeaks(content);
       const fullPath = path.resolve(this.rootPath, p);
+      const dirPath = path.dirname(fullPath);
       
       // Ensure enclosing directories exist
-      fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-      fs.writeFileSync(fullPath, redactedContent, { encoding: (options?.encoding as any) || "utf8" });
+      fs.mkdirSync(dirPath, { recursive: true });
 
-      const isRedacted = redactedContent !== content;
+      // Atomic write using temporary file and atomic rename
+      const tempPath = path.join(dirPath, `.tmp_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`);
+      fs.writeFileSync(tempPath, content, { encoding: (options?.encoding as any) || "utf8" });
+      fs.renameSync(tempPath, fullPath);
 
       return {
         ok: true,
         data: null,
-        warnings: isRedacted ? ["Credential/secret patterns were automatically redacted during write operation."] : [],
+        warnings: [],
         errors: [],
-        redacted: isRedacted
+        redacted: false
       };
     } catch (err: any) {
       return { ok: false, data: null, warnings: [], errors: [err.message], redacted: false };
