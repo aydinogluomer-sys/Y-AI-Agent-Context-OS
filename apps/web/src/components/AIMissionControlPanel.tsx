@@ -118,7 +118,10 @@ export function AIMissionControlPanel({
 
     setError("");
     setStatus("running");
-    setLogs([`[SİSTEM] AI Görev Kontrolü başlatıldı. Ham prompt boyutu: ${trimmedTask.length} karakter.`]);
+    setLogs([
+      `[DEMO MODU] Simülasyon başlatıldı. (Gerçek backend çalıştırması için production agent pipeline gerekir)`,
+      `[SİSTEM] AI Görev Kontrolü başlatıldı. Ham prompt boyutu: ${trimmedTask.length} karakter.`
+    ]);
     setActiveStep(0);
     setStepProgress(0);
 
