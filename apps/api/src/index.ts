@@ -160,11 +160,11 @@ router.use((req: Request, res: Response, next: NextFunction) => {
 /**
  * P0-02 Legacy Unscoped Task Route Handler
  */
-router.all(["/tasks", "/tasks/:id"], (req: Request, res: Response) => {
+router.all(["/tasks", "/tasks/*"], (req: Request, res: Response) => {
   return res.status(410).json({
     error: {
       code: "LEGACY_ROUTE_DEPRECATED",
-      message: "Unscoped task route /tasks is deprecated and blocked for security. Please use canonical route /projects/:projectId/tasks instead."
+      message: "Unscoped task route /tasks is deprecated and blocked for security. Please use canonical project-scoped route /projects/:projectId/tasks instead."
     }
   });
 });
@@ -682,11 +682,12 @@ router.get("/healthz", async (req: Request, res: Response) => {
 });
 
 /**
- * 1c. Readiness Probe Endpoint (/readyz) - Audit P1-10
+ * 1c. Readiness Probe Endpoint (/readyz) - Audit P1-05 & P1-10
  */
 router.get("/readyz", async (req: Request, res: Response) => {
   const dbStatus = db.getStatus();
-  const isReady = dbStatus.connected && dbStatus.database_mode !== "unavailable";
+  const dbHealthy = dbStatus.connected && dbStatus.database_mode !== "unavailable";
+  const isReady = dbHealthy;
 
   res.status(isReady ? 200 : 503).json({
     status: isReady ? "ready" : "degraded",
@@ -694,16 +695,16 @@ router.get("/readyz", async (req: Request, res: Response) => {
     components: {
       api: { status: "healthy" },
       database: { 
-        status: dbStatus.connected ? "healthy" : "offline", 
+        status: dbHealthy ? "healthy" : "offline", 
         mode: dbStatus.database_mode,
         dialect: dbStatus.dialect
       },
-      migrations: { status: dbStatus.migrations_applied ? "healthy" : "pending" },
-      worker_runtime: { status: "healthy" },
-      permission_kernel: { status: "fail_closed_protected" },
-      evidence_store: { status: "healthy" },
-      event_store: { status: "healthy" },
-      cas_storage: { status: "healthy" }
+      migrations: { status: dbStatus.migrations_applied ? "healthy" : (dbHealthy ? "pending" : "offline") },
+      worker_runtime: { status: dbHealthy ? "healthy" : "degraded" },
+      permission_kernel: { status: "fail_closed_protected", active: true },
+      evidence_store: { status: dbHealthy ? "healthy" : "offline" },
+      event_store: { status: dbHealthy ? "healthy" : "offline" },
+      cas_storage: { status: dbHealthy ? "healthy" : "offline" }
     },
     timestamp: new Date().toISOString()
   });

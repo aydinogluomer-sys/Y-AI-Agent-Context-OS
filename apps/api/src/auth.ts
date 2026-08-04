@@ -151,13 +151,15 @@ export function authenticateBearerHeader(
         }
 
         const jwtSecret = (process.env.JWT_SECRET || process.env.Y_API_AUTH_TOKEN || "").trim();
+        const jwtPublicKey = (process.env.JWT_PUBLIC_KEY || process.env.JWT_RS256_PUBLIC_KEY || "").trim();
+
         if (header.alg === "HS256") {
           if (!jwtSecret) {
             return {
               ok: false,
               status: 503,
               code: "JWT_SECRET_NOT_CONFIGURED",
-              message: "JWT signature validation secret is not configured on the server.",
+              message: "JWT HS256 signature validation secret is not configured on the server.",
             };
           }
           const expectedSig = crypto
@@ -170,23 +172,93 @@ export function authenticateBearerHeader(
               ok: false,
               status: 401,
               code: "INVALID_JWT_SIGNATURE",
-              message: "JWT cryptographic signature verification failed.",
+              message: "JWT HMAC-SHA256 signature verification failed.",
+            };
+          }
+        } else if (header.alg === "RS256") {
+          if (!jwtPublicKey) {
+            return {
+              ok: false,
+              status: 503,
+              code: "RS256_PUBLIC_KEY_NOT_CONFIGURED",
+              message: "JWT RS256 public key is not configured on the server. Unverified RS256 tokens are strictly rejected.",
+            };
+          }
+          try {
+            const verifier = crypto.createVerify("SHA256");
+            verifier.update(`${parts[0]}.${parts[1]}`);
+            const isValidSig = verifier.verify(jwtPublicKey, Buffer.from(parts[2], "base64url"));
+            if (!isValidSig) {
+              return {
+                ok: false,
+                status: 401,
+                code: "INVALID_RS256_SIGNATURE",
+                message: "JWT RS256 cryptographic signature verification failed.",
+              };
+            }
+          } catch {
+            return {
+              ok: false,
+              status: 401,
+              code: "RS256_VERIFICATION_ERROR",
+              message: "Failed to verify RS256 JWT signature against configured public key.",
             };
           }
         }
 
         const payloadJson = Buffer.from(parts[1], "base64url").toString("utf-8");
         const claims = JSON.parse(payloadJson);
+        const nowSeconds = Math.floor(Date.now() / 1000);
 
         // P0-01: Expiration check (exp)
-        if (claims.exp && typeof claims.exp === "number") {
-          const nowSeconds = Math.floor(Date.now() / 1000);
-          if (claims.exp < nowSeconds) {
+        if (!claims.exp || typeof claims.exp !== "number") {
+          return {
+            ok: false,
+            status: 401,
+            code: "MISSING_JWT_EXPIRATION",
+            message: "JWT authentication token must contain a valid numeric 'exp' claim.",
+          };
+        }
+        if (claims.exp < nowSeconds) {
+          return {
+            ok: false,
+            status: 401,
+            code: "EXPIRED_AUTHENTICATION_TOKEN",
+            message: "The supplied JWT authentication token has expired.",
+          };
+        }
+
+        // P0-01: Not before check (nbf)
+        if (claims.nbf && typeof claims.nbf === "number" && claims.nbf > nowSeconds) {
+          return {
+            ok: false,
+            status: 401,
+            code: "TOKEN_NOT_YET_VALID",
+            message: "The supplied JWT authentication token is not yet valid (nbf check failed).",
+          };
+        }
+
+        // P0-01: Issuer check (iss)
+        const expectedIssuer = (process.env.EXPECTED_JWT_ISSUER || "").trim();
+        if (expectedIssuer && claims.iss !== expectedIssuer) {
+          return {
+            ok: false,
+            status: 401,
+            code: "INVALID_JWT_ISSUER",
+            message: `JWT issuer '${claims.iss}' does not match expected issuer '${expectedIssuer}'.`,
+          };
+        }
+
+        // P0-01: Audience check (aud)
+        const expectedAudience = (process.env.EXPECTED_JWT_AUDIENCE || "").trim();
+        if (expectedAudience) {
+          const audArray = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+          if (!audArray.includes(expectedAudience)) {
             return {
               ok: false,
               status: 401,
-              code: "EXPIRED_AUTHENTICATION_TOKEN",
-              message: "The supplied JWT authentication token has expired.",
+              code: "INVALID_JWT_AUDIENCE",
+              message: `JWT audience does not include expected audience '${expectedAudience}'.`,
             };
           }
         }
@@ -201,10 +273,14 @@ export function authenticateBearerHeader(
           };
         }
 
+        // Sanitize project_ids: filter out wildcard "*" to prevent unverified global access
+        const rawProjectIds = Array.isArray(claims.project_ids) ? claims.project_ids : parseProjectIds(claims.project_ids);
+        const sanitizedProjectIds = rawProjectIds.filter((p: string) => p !== "*");
+
         const jwtPrincipal: ApiAuthPrincipal = {
           actorId: String(claims.sub),
           role: parseRole(claims.role),
-          projectIds: Array.isArray(claims.project_ids) ? claims.project_ids : parseProjectIds(claims.project_ids),
+          projectIds: sanitizedProjectIds,
           organizationId: claims.org_id ? String(claims.org_id) : undefined,
           authenticationType: "jwt_token",
         };
