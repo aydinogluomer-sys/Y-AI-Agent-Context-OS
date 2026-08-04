@@ -6,7 +6,8 @@ export interface ApiAuthPrincipal {
   actorId: string;
   role: ApiAuthRole;
   projectIds: string[];
-  authenticationType: "configured_bearer" | "development_session";
+  organizationId?: string;
+  authenticationType: "configured_bearer" | "development_session" | "jwt_token";
 }
 
 export interface ApiAuthRuntime {
@@ -129,6 +130,35 @@ export function authenticateBearerHeader(
       message: "Configured API operator authenticated.",
       principal: runtime.configuredPrincipal,
     };
+  }
+
+  // Support structured JWT token payload parsing if token is 3-part base64
+  if (token.startsWith("ey") && token.includes(".")) {
+    try {
+      const parts = token.split(".");
+      if (parts.length === 3 && parts[1]) {
+        const payloadJson = Buffer.from(parts[1], "base64url").toString("utf-8");
+        const claims = JSON.parse(payloadJson);
+        if (claims && claims.sub) {
+          const jwtPrincipal: ApiAuthPrincipal = {
+            actorId: String(claims.sub),
+            role: parseRole(claims.role),
+            projectIds: Array.isArray(claims.project_ids) ? claims.project_ids : parseProjectIds(claims.project_ids),
+            organizationId: claims.org_id ? String(claims.org_id) : undefined,
+            authenticationType: "jwt_token",
+          };
+          return {
+            ok: true,
+            status: 200,
+            code: "AUTHENTICATED",
+            message: "JWT user principal token authenticated.",
+            principal: jwtPrincipal,
+          };
+        }
+      }
+    } catch {
+      // Invalid JWT format, fallback to standard token check
+    }
   }
 
   if (runtime.environment === "production" && !runtime.configuredToken) {

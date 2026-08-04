@@ -616,14 +616,32 @@ export function mockSemanticSearchFallback(
   query: string,
   items: any[],
   options?: SemanticRetrievalOptions
-): { item_id: string; semantic_similarity: number; is_fallback_approx: boolean }[] {
+): { item_id: string; semantic_similarity: number; is_fallback_approx: boolean; scoring_explanation: string }[] {
+  const queryWords = (query || "").toLowerCase().split(/\W+/).filter(Boolean);
+
   return items.map(item => {
-    const textToMatch = `${item.source_uri} ${JSON.stringify(item.metadata_json || {})}`;
-    const similarity = computeLexicalOverlap(query, textToMatch);
+    const textToMatch = `${item.source_uri} ${JSON.stringify(item.metadata_json || {})}`.toLowerCase();
+    let score = computeLexicalOverlap(query, textToMatch);
+
+    let keywordHits = 0;
+    for (const word of queryWords) {
+      if (word.length > 2 && textToMatch.includes(word)) {
+        keywordHits++;
+      }
+    }
+
+    if (queryWords.length > 0) {
+      score += (keywordHits / queryWords.length) * 0.4;
+    }
+
+    const similarity = Number(Math.min(1.0, Math.max(0.0, score)).toFixed(4));
+    const explanation = `Hybrid Score ${similarity} (Keyword Hits: ${keywordHits}/${queryWords.length})`;
+
     return {
       item_id: item.id,
       semantic_similarity: similarity,
-      is_fallback_approx: true
+      is_fallback_approx: true,
+      scoring_explanation: explanation
     };
   }).sort((a, b) => b.semantic_similarity - a.semantic_similarity);
 }
