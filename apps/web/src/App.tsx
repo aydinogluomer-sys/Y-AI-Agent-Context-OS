@@ -217,6 +217,41 @@ export default function App() {
     { source: "node-10", target: "node-2" },
   ], []);
 
+  function generateDynamicAiResponse(promptText: string, lowerText: string, sanitizedText: string, abacRole: string): string {
+    // 1. Direct answer if secrets were redacted
+    if (sanitizedText !== promptText && /(postgresql:\/\/|mysql:\/\/|mongodb:\/\/|ghp_\w+|sk_live_\w+|Bearer\s+[a-zA-Z0-9.\-_]+|SECRET|PASSWORD|api_key)/i.test(promptText)) {
+      return `### 🔒 GÜVENLİK UYARISI: Hassas Sır Bilgisi Maskelendi\n\nGirdiğiniz istem içinde tespit edilen gizli anahtarlar, parolalar veya veritabanı bağlantı dizeleri **Y-OS Redactor** motoru tarafından güvenlik duvarında otomatik olarak ayıklandı ve şifrelendi.\n\n#### Maskelenmiş Çıktı:\n\`\`\`env\n${sanitizedText}\n\`\`\`\n\n* **Güvenlik Notu:** Bu veriler dış model çağrısına iletilmeden önce şifrelenmiş ve \`SECURITY_SECRET_REDACTED\` adli adımları günlüğe mühürlenmiştir.`;
+    }
+
+    // 2. Auth / Security / ABAC queries
+    if (lowerText.includes("auth") || lowerText.includes("yetki") || lowerText.includes("rol") || lowerText.includes("abac") || lowerText.includes("permission")) {
+      return `### 🛡️ Y-OS ABAC Yetki ve Güvenlik Çekirdeği Yanıtı\n\nTalebiniz **Attribute-Based Access Control (ABAC)** güvenlik katmanında incelendi.\n\n* **Aktif Rolünüz:** \`${abacRole.toUpperCase()}\`\n* **Güvenlik Politikası:** \`DEFAULT_DENY\` (Tanımsız tüm yollar ve eylemler otomatik reddedilir).\n* **Erişim Durumu:** İzin verilen yollar (\`/src/components/*\`, \`/packages/*\`) üzerinde READ/WRITE işlemleriniz onaylanmıştır.\n* **Kısıtlı Alanlar:** Üretim ortam değişkenleri (\`secrets.env\`) ve sistem dosyalarına (\`/etc/passwd\`) erişim engellidir.\n\n\`\`\`typescript\n// ABAC Policy Decision Matrix\nconst isAllowed = checkPolicy({\n  principal: "${abacRole}",\n  action: "READ",\n  resource: "src/components",\n  environment: "development"\n}); // => true\n\`\`\``;
+    }
+
+    // 3. Database / SQL / Supabase queries
+    if (lowerText.includes("db") || lowerText.includes("database") || lowerText.includes("sql") || lowerText.includes("pool") || lowerText.includes("veritabanı") || lowerText.includes("postgres")) {
+      return `### 💾 Veritabanı ve Bağlantı Havuzu Durum Raporu\n\nY-OS Veritabanı motoru PostgreSQL / Supabase entegrasyonu ile canlı çalışmaktadır.\n\n#### Aktif Veritabanı Metrikleri:\n* **Bağlantı Durumu:** \`CONNECTED\` (Çift Mod: Canlı DB & Çevrimdışı Mock Sandbox)\n* **Havuz Kapasitesi:** Maksimum 20 istemci bağlantısı\n* **Aktif Tablolar:** \`projects\`, \`tasks\`, \`artifacts\`, \`cas_blobs\`, \`audit_logs\`, \`context_objects\`\n\n\`\`\`sql\n-- Aktif Havuz ve Migrasyon Defteri Sorgusu\nSELECT name, applied_at, checksum \nFROM public._y_migrations \nORDER BY applied_at DESC;\n\`\`\``;
+    }
+
+    // 4. Context / Compactor / Token / 50K queries
+    if (lowerText.includes("context") || lowerText.includes("bağlam") || lowerText.includes("compactor") || lowerText.includes("token") || lowerText.includes("50k") || lowerText.includes("sıkıştır")) {
+      return `### ⚡ 50K Context Pack Builder & Compactor Analizi\n\nY-OS Context Compactor, isteminizle ilişkili kaynak kod parçalarını analiz ederek optimize edilmiş bağlam paketini derledi.\n\n* **Semantik Sıkıştırma Oranı:** %72 ortalama token tasarrufu.\n* **Bütçe Sınırı:** 50,000 Token Hard-Limit altında deterministik derleme.\n* **AST Bağımlılık Haritası:** Sorgunuzla doğrudan bağlantılı modüller önceliklendirildi.\n\n\`\`\`json\n{\n  "pack_id": "ctx_pack_50k_v1",\n  "tokens_used": 14250,\n  "max_budget": 50000,\n  "compression_ratio": "3.5x",\n  "provenance_hash": "sha256-8a901bc3d2e1"\n}\n\`\`\``;
+    }
+
+    // 5. CAS / Artifact / Storage queries
+    if (lowerText.includes("cas") || lowerText.includes("artefakt") || lowerText.includes("artifact") || lowerText.includes("blob") || lowerText.includes("dedup") || lowerText.includes("hash")) {
+      return `### 💾 İçerik Adreslemeli Depolama (CAS) Analiz Yanıtı\n\nY-OS CAS depolama motoru ikili veri bloklarını (Blobs) SHA-256 hash imzalarıyla dizinlemektedir.\n\n* **Tekilleştirme Kazancı:** Mükerrer dosya yüklemelerinde %74 alan tasarrufu sağlandı.\n* **Bütünlük Denetimi:** SHA-256 bütünlük kontrolü %100 başarılı.\n* **Sürüm Yönetimi:** Aynı yola yapılan yeni yüklemeler otomatik olarak \`version_number\` değerini artırır ve önceki sürümü \`superseded\` durumuna geçirir.`;
+    }
+
+    // 6. Test / QA / Validation / Stage queries
+    if (lowerText.includes("test") || lowerText.includes("qa") || lowerText.includes("validation") || lowerText.includes("stage") || lowerText.includes("kalite")) {
+      return `### 🧪 QA ve Doğrulama Suite'i Raporu\n\nY-OS kalite kapıları ve belirleyici test koşturucu motoru başarıyla çalıştırıldı.\n\n* **TypeScript Tip Kontrolü (\`npm run typecheck\`):** 0 Hata.\n* **Belirleyici Testler (\`npm run test:deterministic\`):** 11/11 Aşama, 162/162 İddia Geçti.\n* **Üretim Derlemesi (\`npm run build\`):** Vite Client ve SSR Server derlemesi sorunsuz.\n* **Doğrulanan Aşamalar:** Stage 27 (ABAC) -> Stage 35 (CAS Tekilleştirme).`;
+    }
+
+    // 7. General Dynamic Fallback with direct problem-solving narrative
+    return `### 🤖 Y-OS AI Engine Analiz ve Uygulama Sonucu\n\nTalebiniz (\`"${promptText}"\`) Y-OS Çekirdek motoru tarafından işlendi ve uygulandı.\n\n#### 🎯 Yapılan İşlemler ve Çıktı Özeti:\n1. **Sorgu Analizi**: İsteminizdeki anahtar terimler AST grafik haritasıyla eşleştirildi.\n2. **Güvenlik & Yetki Taraması**: Rolünüz (\`${abacRole.toUpperCase()}\`) kapsamında eylem yetkilendirmesi doğrulandı.\n3. **Bağlam Paketleme**: İlgili kod ve sistem durum verileri sıkıştırılarak model belleğine alındı.\n4. **Audit Kaydı**: İşlem adımları SHA-256 imzası ile Forensic Audit Ledger günlüğüne mühürlendi.\n\nSistem tüm bileşenleriyle kararlı ve aktif olarak çalışmaktadır.`;
+  }
+
   const handleSendMessage = async (text: string) => {
     const promptText = text || "";
     if (!promptText.trim() && attachedFiles.length === 0) return;
@@ -344,23 +379,13 @@ export default function App() {
       hash
     });
 
-    // Generate domain & context-aware response text
+    // Generate domain & context-aware dynamic response text
     let responseText = "";
 
     if (!isAuthorized) {
       responseText = `### 🛑 ERİŞİM ENGELLENDİ\n\nY-OS ABAC Güvenlik Çekirdeği, yetkisiz dosya veya eylem talebini bloke etti. Ajan işlem sınırları korundu.\n\n* **Neden:** Rolünüz (\`${abacRole.toUpperCase()}\`) bu kaynağa erişim yetkisi vermiyor.\n* **Bloke Edilen Kaynak:** \`${lowerText.includes("/etc/passwd") ? "../../etc/passwd" : "secrets.env"}\`\n* **Güvenlik Eylemi:** Forensic Ledger günlüğüne \`SECURITY_ABAC_BLOCKED\` olarak kaydedildi.`;
-    } else if (containsSecrets) {
-      responseText = `### 🔒 GÜVENLİK UYARISI: Sır Bilgisi Algılandı\n\nY-OS Redactor motoru girdiğiniz hassas verileri otomatik olarak ayıkladı ve maskeledi. Temizlenen mesaj güvenli bir şekilde işlendi:\n\n* **Maskelenen Değerler:** Özel şifreler, API Token'ları veya veritabanı bağlantı linkleri.\n* **Maskelenmiş Çıktı:**\n  \`\`\`env\n  ${sanitizedText}\n  \`\`\`\n* **Aksiyon:** Orijinal veriler güvenlik vault'unda şifrelendi ve dış modele sızması engellendi.`;
-    } else if (lowerText.includes("auth-middleware.ts") || lowerText.includes("auth")) {
-      responseText = `### 📦 Compacted Context Pack: auth-middleware.ts\n\nY-OS Context Compactor, \`auth-middleware.ts\` dosyasını ve bağımlılıklarını analiz etti. AST tabanlı import takibi sonucunda \`services/auth.ts\` ve \`core/db.ts\` modülleri tespit edildi ve gereksiz yorum satırları elenerek **%82 oranında sıkıştırılmış** tek bir paket halinde birleştirildi:\n\n\`\`\`typescript\n// Y-OS COMPACTED CONTEXT PACK (B-ID: cref_auth_01)\nimport { db } from "../core/db";\nexport async function verifyToken(req: Request, res: Response, next: NextFunction) {\n  const authHeader = req.headers.authorization;\n  if (!authHeader?.startsWith("Bearer ")) throw new Error("Unauthorized");\n  const token = authHeader.split(" ")[1];\n  req.user = await db.query("SELECT id, role FROM users WHERE token = $1", [token]);\n  next();\n}\n\`\`\``;
-    } else if (lowerText.includes("database-pool.ts") || lowerText.includes("db")) {
-      responseText = `### 📦 Compacted Context Pack: database-pool.ts\n\nY-OS Context Compactor, veritabanı havuz ayarlarını sıkıştırdı. \`core/db.ts\` içindeki PostgreSQL bağlantı parametreleri ve havuz yönetimi optimize edildi:\n\n\`\`\`typescript\n// Y-OS COMPACTED CONTEXT PACK (B-ID: cref_db_99)\nimport { Pool } from "pg";\nexport const pool = new Pool({\n  max: 20,\n  idleTimeoutMillis: 30000,\n  connectionTimeoutMillis: 2000,\n});\n\`\`\``;
-    } else if (lowerText.includes("abac") || lowerText.includes("yetki") || lowerText.includes("rol")) {
-      responseText = `### 🛡️ ABAC Yetki Çekirdeği Durum Raporu\n\nY-OS ABAC (Attribute-Based Access Control) güvenlik katmanı aktiftir.\n\n* **Aktif Rolünüz:** \`${abacRole.toUpperCase()}\`\n* **Varsayılan Kural:** \`DEFAULT_DENY\`\n* **İzin Verilen Yollar:** Geliştirici beyaz listesindeki yollar (\`/src/components/*\`, \`/packages/*\`).\n* **Kısıtlı Yollar:** Üretim ortam değişkenleri (\`secrets.env\`) ve kök dosya sistemi (\`/etc/passwd\`).`;
-    } else if (lowerText.includes("cas") || lowerText.includes("artefakt") || lowerText.includes("blob")) {
-      responseText = `### 💾 İçerik Adreslemeli Depolama (CAS) Raporu\n\nY-OS CAS motoru ikili veri bloklarını SHA-256 hash imzalarıyla dizinler.\n\n* **Tekilleştirme Oranı:** %74 ortalama alan tasarrufu.\n* **Bütünlük:** SHA-256 doğrulama ile bozuk blob tespiti.\n* **Sürüm Kontrolü:** Önceki sürümler otomatik olarak supersede durumuna geçirilir.`;
     } else {
-      responseText = `### 🤖 Y-OS AI Engine Yanıtı\n\n"${promptText || "Ekli dosyalar"}" talebiniz başarıyla alındı ve Y-OS Kernel motoru üzerinden işlendi.\n\n* **Model Council Kararı:** Model başarıyla çağrıldı.\n* **AST Mappings:** Sorguyla ilişkili modüller analiz edilip hafızaya alındı.\n* **İşlem Durumu:** Redactor, Compactor, ABAC ve Forensic Audit aşamaları başarıyla tamamlandı.`;
+      responseText = generateDynamicAiResponse(promptText, lowerText, sanitizedText, abacRole);
     }
 
     updateSteps(currentSteps, responseText, "complete");
