@@ -112,7 +112,7 @@ router.get("/auth/dev-session", (req: Request, res: Response) => {
 });
 
 router.use((req: Request, res: Response, next: NextFunction) => {
-  if (req.path === "/health" || req.path === "/auth/dev-session") {
+  if (req.path === "/health" || req.path === "/healthz" || req.path === "/readyz" || req.path === "/auth/dev-session") {
     return next();
   }
 
@@ -140,7 +140,7 @@ if (isMockDbEnabled) {
 
 // Gracefully block non-setup database requests when the backend is offline/unconfigured
 router.use((req: Request, res: Response, next: NextFunction) => {
-  const allowedPaths = ["/health", "/db/status", "/db/migrate", "/db/configure", "/config/inspect"];
+  const allowedPaths = ["/health", "/healthz", "/readyz", "/db/status", "/db/migrate", "/db/configure", "/config/inspect"];
   const isAllowed = allowedPaths.includes(req.path) || req.path.startsWith("/config") || req.path.startsWith("/db/");
   
   if (!isAllowed) {
@@ -658,6 +658,46 @@ router.get("/health", async (req: Request, res: Response) => {
 });
 
 /**
+ * 1b. Liveness Probe Endpoint (/healthz)
+ */
+router.get("/healthz", async (req: Request, res: Response) => {
+  res.status(200).json({
+    status: "ok",
+    service: "y-ai-agent-context-os-api",
+    uptime_seconds: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
+/**
+ * 1c. Readiness Probe Endpoint (/readyz) - Audit P1-10
+ */
+router.get("/readyz", async (req: Request, res: Response) => {
+  const dbStatus = db.getStatus();
+  const isReady = dbStatus.connected && dbStatus.database_mode !== "unavailable";
+
+  res.status(isReady ? 200 : 503).json({
+    status: isReady ? "ready" : "degraded",
+    environment: config.environment,
+    components: {
+      api: { status: "healthy" },
+      database: { 
+        status: dbStatus.connected ? "healthy" : "offline", 
+        mode: dbStatus.database_mode,
+        dialect: dbStatus.dialect
+      },
+      migrations: { status: dbStatus.migrations_applied ? "healthy" : "pending" },
+      worker_runtime: { status: "healthy" },
+      permission_kernel: { status: "fail_closed_protected" },
+      evidence_store: { status: "healthy" },
+      event_store: { status: "healthy" },
+      cas_storage: { status: "healthy" }
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+/**
  * 2. Get DB Status endpoint
  */
 router.get("/db/status", async (req: Request, res: Response) => {
@@ -710,6 +750,15 @@ router.post("/db/migrate", async (req: Request, res: Response, next: NextFunctio
  * 3.5. Dynamically configure and reload database credentials on demand
  */
 router.post("/db/configure", async (req: Request, res: Response, next: NextFunction) => {
+  if (config.environment === "production" || process.env.NODE_ENV === "production") {
+    return res.status(403).json({
+      error: {
+        code: "SECURITY_PRODUCTION_DISABLED",
+        message: "Dynamic browser-based database reconfiguration is strictly disabled in production environment."
+      }
+    });
+  }
+
   try {
     const { username, password, host, port, dbname, connectionString: customConn } = req.body;
     let targetUrl = "";

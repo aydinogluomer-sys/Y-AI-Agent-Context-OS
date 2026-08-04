@@ -14,17 +14,37 @@ import { redactSecretLeaks } from "@y/security";
 import { TypeScriptASTParser } from "../../core/src/static-analysis";
 
 // GRAPH module - Discovery and impact mapping
-export function calculateImpactTrace(nodes: GraphNode[], edges: GraphEdge[], modifiedNodeId: string): string[] {
-  const affected: string[] = [modifiedNodeId];
-  
-  // Recursively discover affected components in graph projection
-  for (const edge of edges) {
-    if (edge.source === modifiedNodeId && !affected.includes(edge.target)) {
-      affected.push(edge.target);
+export function calculateImpactTrace(
+  nodes: GraphNode[], 
+  edges: GraphEdge[], 
+  modifiedNodeId: string,
+  options: { maxDepth?: number; direction?: "outgoing" | "incoming" | "both" } = {}
+): string[] {
+  const maxDepth = options.maxDepth || 10;
+  const direction = options.direction || "both";
+  const visited = new Set<string>([modifiedNodeId]);
+  const queue: { nodeId: string; depth: number }[] = [{ nodeId: modifiedNodeId, depth: 0 }];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (current.depth >= maxDepth) continue;
+
+    for (const edge of edges) {
+      let targetNodeId: string | null = null;
+      if ((direction === "outgoing" || direction === "both") && edge.source === current.nodeId) {
+        targetNodeId = edge.target;
+      } else if ((direction === "incoming" || direction === "both") && edge.target === current.nodeId) {
+        targetNodeId = edge.source;
+      }
+
+      if (targetNodeId && !visited.has(targetNodeId)) {
+        visited.add(targetNodeId);
+        queue.push({ nodeId: targetNodeId, depth: current.depth + 1 });
+      }
     }
   }
 
-  return affected;
+  return Array.from(visited);
 }
 
 /**

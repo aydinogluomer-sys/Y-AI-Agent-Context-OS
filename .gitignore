@@ -5,7 +5,10 @@ coverage/
 .DS_Store
 *.log
 .env
+.env.*
+!.env.example
 .antigravity/
+scratch/
 
 # Secrets and Credentials
 *.pem

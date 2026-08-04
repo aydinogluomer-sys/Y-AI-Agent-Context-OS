@@ -7,12 +7,30 @@ import crypto from "crypto";
 import { ContextSourceType } from "@y/shared";
 import { redactSecretLeaks } from "@y/security";
 
+export interface CanonicalTokenBudgetPolicy {
+  hardPackLimit: number;
+  systemPromptReserve: number;
+  toolCallReserve: number;
+  safetyMargin: number;
+  maxOutputTokens: number;
+  usableInputBudget: number;
+}
+
+export const CANONICAL_TOKEN_BUDGET: CanonicalTokenBudgetPolicy = {
+  hardPackLimit: 50000,
+  systemPromptReserve: 5000,
+  toolCallReserve: 5000,
+  safetyMargin: 2000,
+  maxOutputTokens: 8000,
+  usableInputBudget: 30000,
+};
+
 // CTX module token compression estimator
 export function estimateTokenCompression(rawTokens: number): { compressedTokens: number; ratioPercentage: number } {
   if (rawTokens <= 0) {
     return { compressedTokens: 0, ratioPercentage: 100 };
   }
-  const compressedTokens = Math.min(rawTokens, 50000);
+  const compressedTokens = Math.min(rawTokens, CANONICAL_TOKEN_BUDGET.hardPackLimit);
   const ratioPercentage = Number(((compressedTokens / rawTokens) * 100).toFixed(4));
   return { compressedTokens, ratioPercentage };
 }
