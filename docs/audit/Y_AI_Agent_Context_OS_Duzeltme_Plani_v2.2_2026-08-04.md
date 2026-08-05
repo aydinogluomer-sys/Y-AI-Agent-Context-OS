@@ -1,5 +1,8 @@
 # Y — AI Agent Context OS: Zorunlu Düzeltme ve Üretime Hazırlık Planı
 
+> [!WARNING]
+> **DEPRECATED**: This historical repair plan document has been superseded by canonical Audit v2.3 ([Y_AI_Agent_Context_OS_Butuncul_Guncel_Denetim_ve_Yol_Haritasi_v2.3_2026-08-04.md](file:///c:/Users/Trade%20Bilisim/Y-%E2%80%94-AI-Agent-Context-OS/docs/audit/Y_AI_Agent_Context_OS_Butuncul_Guncel_Denetim_ve_Yol_Haritasi_v2.3_2026-08-04.md)).
+
 **Belge sürümü:** 2.2  
 **Tarih:** 4 Ağustos 2026  
 **Repository:** `aydinogluomer-sys/Y-AI-Agent-Context-OS`  

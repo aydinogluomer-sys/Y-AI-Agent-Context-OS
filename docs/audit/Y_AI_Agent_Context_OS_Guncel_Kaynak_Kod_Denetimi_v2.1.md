@@ -1,5 +1,8 @@
 # Y — AI Agent Context OS: Güncel Kaynak Kod Denetimi, Üretim Hazırlığı Kararı ve Onarım Yol Haritası
 
+> [!WARNING]
+> **DEPRECATED**: This historical audit document has been superseded by canonical Audit v2.3 ([Y_AI_Agent_Context_OS_Butuncul_Guncel_Denetim_ve_Yol_Haritasi_v2.3_2026-08-04.md](file:///c:/Users/Trade%20Bilisim/Y-%E2%80%94-AI-Agent-Context-OS/docs/audit/Y_AI_Agent_Context_OS_Butuncul_Guncel_Denetim_ve_Yol_Haritasi_v2.3_2026-08-04.md)).
+
 
 **Belge sürümü:** 2.0  
 **Tarih:** 4 Ağustos 2026  
