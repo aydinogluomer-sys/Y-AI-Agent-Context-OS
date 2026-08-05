@@ -7,7 +7,7 @@ test.describe('Y-OS E2E Smoke Tests', () => {
   });
 
   test('should query API readiness probe', async ({ request }) => {
-    const readyz = await request.get('/readyz');
+    const readyz = await request.get('/api/readyz');
     expect(readyz.status()).toBe(200);
     const body = await readyz.json();
     expect(body.status).toBe('ready');
