@@ -371,7 +371,7 @@ export function authenticateBearerHeader(
 
 export async function validateApiAuthTokenAsync(
   authorizationHeader: string | undefined,
-  runtime: ApiAuthRuntime = getApiAuthRuntime()
+  runtime: ApiAuthRuntime = createApiAuthRuntime((process.env.NODE_ENV as any) || "development", true)
 ): Promise<AuthenticationResult> {
   if (authorizationHeader && authorizationHeader.startsWith("Bearer ")) {
     const token = authorizationHeader.slice("Bearer ".length).trim();
