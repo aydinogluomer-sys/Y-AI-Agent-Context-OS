@@ -28,7 +28,8 @@
     "db:migrate": "tsx apps/api/src/scripts/migrate.ts",
     "db:status": "tsx apps/api/src/scripts/status.ts",
     "db:reset:dev": "tsx scripts/db-reset-dev.ts",
-    "qa:debug-tags": "tsx scripts/qa-debug-tags.ts"
+    "qa:debug-tags": "tsx scripts/qa-debug-tags.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
