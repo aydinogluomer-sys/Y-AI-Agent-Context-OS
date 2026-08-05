@@ -27,6 +27,19 @@ export interface AuthenticationResult {
   principal?: ApiAuthPrincipal;
 }
 
+const jwksKeyCache = new Map<string, string>();
+
+export async function fetchJwksPublicKey(jwksUri?: string, kid?: string): Promise<string | null> {
+  if (kid && jwksKeyCache.has(kid)) {
+    return jwksKeyCache.get(kid)!;
+  }
+  const jwtPublicKey = process.env.JWT_PUBLIC_KEY;
+  if (jwtPublicKey && jwtPublicKey.trim().length > 0) {
+    return jwtPublicKey.trim();
+  }
+  return null;
+}
+
 function parseRole(value: string | undefined): ApiAuthRole {
   if (value === "admin" || value === "reviewer") return value;
   return "developer";

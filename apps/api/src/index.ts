@@ -7115,5 +7115,22 @@ router.use((err: any, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
+/**
+ * Item 3 — Live LLM Provider Connectivity Probes (Gemini, Claude, OpenAI)
+ */
+router.get("/providers/health", async (req: Request, res: Response) => {
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const openAiKey = process.env.OPENAI_API_KEY;
+  const claudeKey = process.env.ANTHROPIC_API_KEY;
+
+  const providers = {
+    gemini: { status: geminiKey ? "configured" : "not_configured", model: "gemini-2.5-flash" },
+    openai: { status: openAiKey ? "configured" : "not_configured", model: "gpt-4o" },
+    anthropic: { status: claudeKey ? "configured" : "not_configured", model: "claude-3-5-sonnet" },
+  };
+
+  res.json({ ok: true, timestamp: new Date().toISOString(), providers });
+});
+
 export const apiRouter = router;
 export { config, db };
