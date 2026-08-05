@@ -393,6 +393,8 @@ export async function validateApiAuthTokenAsync(
   return authenticateBearerHeader(authorizationHeader, runtime);
 }
 
+export const authenticateBearerHeaderAsync = validateApiAuthTokenAsync;
+
 export function principalCanAccessProject(
   principal: ApiAuthPrincipal,
   projectId: string
