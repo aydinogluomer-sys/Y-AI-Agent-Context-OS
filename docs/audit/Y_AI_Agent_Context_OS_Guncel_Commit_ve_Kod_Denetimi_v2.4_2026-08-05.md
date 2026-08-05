@@ -54,7 +54,7 @@ Security release gate: FAIL
 Önceki denetlenen `bb6f0a4` commitinden sonra aşağıdaki commitler eklenmiştir:
 
 | Commit | İddia edilen kapsam | Doğrulama sonucu |
-|---|---|---|
+| --- | --- | --- |
 | `164b091` | Auth, task route, CI, readiness | Kısmen doğru |
 | `990c4a1` | Canonical project/task route ve DB authorization | Kısmen doğru, contract ve authorization sorunları var |
 | `a10c6e9` | Model-aware tokenizer, BFS graph, demo indicator | Büyük ölçüde abartılı |
@@ -931,7 +931,7 @@ alanları zorunlu olmalıdır.
 ## 8. P0 Kapanış Durumu
 
 | P0 | Başlık | Durum |
-|---|---|---|
+| --- | --- | --- |
 | P0-01 | JWT/OIDC authentication | Kısmen |
 | P0-02 | Project membership authorization | Açık |
 | P0-03 | Canonical project/task routes | Kısmen |
