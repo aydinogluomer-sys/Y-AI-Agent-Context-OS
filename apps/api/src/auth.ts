@@ -27,16 +27,51 @@ export interface AuthenticationResult {
   principal?: ApiAuthPrincipal;
 }
 
-const jwksKeyCache = new Map<string, string>();
+const jwksKeyCache = new Map<string, { cert: string; fetchedAt: number }>();
 
 export async function fetchJwksPublicKey(jwksUri?: string, kid?: string): Promise<string | null> {
+  const targetUri = jwksUri || process.env.OIDC_JWKS_URI || process.env.JWKS_URI;
+
   if (kid && jwksKeyCache.has(kid)) {
-    return jwksKeyCache.get(kid)!;
+    const cached = jwksKeyCache.get(kid)!;
+    if (Date.now() - cached.fetchedAt < 600000) {
+      return cached.cert;
+    }
   }
-  const jwtPublicKey = process.env.JWT_PUBLIC_KEY;
-  if (jwtPublicKey && jwtPublicKey.trim().length > 0) {
-    return jwtPublicKey.trim();
+
+  const staticKey = (process.env.JWT_PUBLIC_KEY || process.env.JWT_RS256_PUBLIC_KEY || "").trim();
+  if (staticKey) {
+    return staticKey;
   }
+
+  if (!targetUri) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(targetUri, { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return null;
+    const body = (await response.json()) as { keys?: Array<any> };
+    if (!body || !Array.isArray(body.keys)) return null;
+
+    for (const key of body.keys) {
+      if (key.kty === "RSA" && Array.isArray(key.x5c) && key.x5c[0]) {
+        const cert = `-----BEGIN CERTIFICATE-----\n${key.x5c[0].match(/.{1,64}/g)?.join("\n")}\n-----END CERTIFICATE-----`;
+        const keyId = key.kid || "default";
+        jwksKeyCache.set(keyId, { cert, fetchedAt: Date.now() });
+      }
+    }
+
+    if (kid && jwksKeyCache.has(kid)) {
+      return jwksKeyCache.get(kid)!.cert;
+    }
+    if (jwksKeyCache.size > 0) {
+      return jwksKeyCache.values().next().value.cert;
+    }
+  } catch {
+    // Return null if offline or fetch fails
+  }
+
   return null;
 }
 
@@ -189,7 +224,8 @@ export function authenticateBearerHeader(
             };
           }
         } else if (header.alg === "RS256") {
-          if (!jwtPublicKey) {
+          const rsaPublicKey = jwtPublicKey;
+          if (!rsaPublicKey) {
             return {
               ok: false,
               status: 503,
@@ -200,7 +236,7 @@ export function authenticateBearerHeader(
           try {
             const verifier = crypto.createVerify("SHA256");
             verifier.update(`${parts[0]}.${parts[1]}`);
-            const isValidSig = verifier.verify(jwtPublicKey, Buffer.from(parts[2], "base64url"));
+            const isValidSig = verifier.verify(rsaPublicKey, Buffer.from(parts[2], "base64url"));
             if (!isValidSig) {
               return {
                 ok: false,
@@ -331,6 +367,30 @@ export function authenticateBearerHeader(
     code: "INVALID_AUTHENTICATION_TOKEN",
     message: "The supplied Bearer token is invalid.",
   };
+}
+
+export async function validateApiAuthTokenAsync(
+  authorizationHeader: string | undefined,
+  runtime: ApiAuthRuntime = getApiAuthRuntime()
+): Promise<AuthenticationResult> {
+  if (authorizationHeader && authorizationHeader.startsWith("Bearer ")) {
+    const token = authorizationHeader.slice("Bearer ".length).trim();
+    if (token.startsWith("ey") && token.includes(".")) {
+      try {
+        const parts = token.split(".");
+        if (parts.length === 3) {
+          const headerJson = Buffer.from(parts[0], "base64url").toString("utf-8");
+          const header = JSON.parse(headerJson);
+          if (header && header.alg === "RS256" && !process.env.JWT_PUBLIC_KEY && !process.env.JWT_RS256_PUBLIC_KEY) {
+            await fetchJwksPublicKey(undefined, header.kid);
+          }
+        }
+      } catch {
+        // ignore parse error here, main validator reports appropriate error
+      }
+    }
+  }
+  return authenticateBearerHeader(authorizationHeader, runtime);
 }
 
 export function principalCanAccessProject(
