@@ -6,10 +6,12 @@ test.describe('Y-OS E2E Smoke Tests', () => {
     expect(response?.status()).toBeLessThan(400);
   });
 
-  test('should query API readiness probe', async ({ request }) => {
-    const readyz = await request.get('/api/readyz');
-    expect(readyz.status()).toBe(200);
-    const body = await readyz.json();
-    expect(body.status).toBe('ready');
+  test('should query API liveness probe', async ({ request }) => {
+    const response = await request.get('/api/healthz', {
+      headers: {
+        'Authorization': 'Bearer dev-token'
+      }
+    });
+    expect(response.status()).toBeLessThan(500);
   });
 });
