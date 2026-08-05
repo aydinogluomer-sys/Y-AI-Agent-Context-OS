@@ -1,5 +1,4 @@
-// Playwright E2E Configuration Specification
-module.exports = {
+export default {
   testDir: "./tests/e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
