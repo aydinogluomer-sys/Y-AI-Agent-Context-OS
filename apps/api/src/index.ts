@@ -244,6 +244,26 @@ router.patch("/projects/:projectId/tasks/:taskId", async (req: Request, res: Res
       }
     }
 
+    if (updates.status && updates.status !== checkTask.rows[0].status) {
+      try {
+        let action: any = "start";
+        if (updates.status === "paused") action = "pause";
+        else if (updates.status === "in_progress") action = "resume";
+        else if (updates.status === "completed") action = "complete";
+        else if (updates.status === "failed") action = "fail";
+        else if (updates.status === "cancelled") action = "cancel";
+        else if (updates.status === "archived") action = "archive";
+
+        await taskLifecycleService.transitionTask(
+          projectId,
+          { taskId, action, targetStatus: updates.status, rationale: "Task status transition requested via canonical project endpoint." },
+          principal.actorId
+        );
+      } catch (err: any) {
+        return res.status(400).json({ error: { code: "INVALID_STATE_TRANSITION", message: err.message } });
+      }
+    }
+
     if (setClauses.length > 0) {
       const updateQuery = `UPDATE tasks SET ${setClauses.join(", ")}, updated_at = NOW() WHERE id = $1 AND project_id = $2 RETURNING *`;
       const updateRes = await pool.query(updateQuery, params);

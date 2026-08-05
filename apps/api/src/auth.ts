@@ -343,3 +343,27 @@ export function principalCanAccessProject(
   );
 }
 
+export async function principalCanAccessProjectAsync(
+  principal: ApiAuthPrincipal,
+  projectId: string,
+  queryDbFn?: (sql: string, params: any[]) => Promise<any>
+): Promise<boolean> {
+  if (principal.projectIds.includes("*") || principal.projectIds.includes(projectId)) {
+    return true;
+  }
+  if (queryDbFn && principal.actorId) {
+    try {
+      const res = await queryDbFn(
+        "SELECT 1 FROM project_memberships WHERE project_id = $1 AND user_id = $2 LIMIT 1;",
+        [projectId, principal.actorId]
+      );
+      if (res && res.rowCount && res.rowCount > 0) {
+        return true;
+      }
+    } catch {
+      // ignore missing table in test environment
+    }
+  }
+  return false;
+}
+

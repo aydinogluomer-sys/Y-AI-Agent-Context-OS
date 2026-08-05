@@ -33,7 +33,10 @@ export async function configureDatabase(payload: any) {
 export async function fetchProjects(): Promise<Project[]> {
   const res = await fetch("/api/projects");
   if (!res.ok) throw new Error(`Failed to load projects: ${res.status}`);
-  return res.json();
+  const data = await res.json();
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.projects)) return data.projects;
+  return [];
 }
 
 export async function createProject(name: string, description: string): Promise<Project> {
