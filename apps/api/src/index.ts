@@ -76,8 +76,11 @@ import { ArtifactCASService } from "./ArtifactCASService";
 import {
   ApiAuthPrincipal,
   authenticateBearerHeader,
+  validateApiAuthTokenAsync,
   createApiAuthRuntime,
-  principalCanAccessProject
+  principalCanAccessProject,
+  principalCanAccessProjectAsync,
+  getAuditActor
 } from "./auth";
 import { mayContinueAfterDatabaseFailure } from "./startup-policy";
 
@@ -1024,6 +1027,17 @@ router.post("/db/configure", async (req: Request, res: Response, next: NextFunct
       error: {
         code: "SECURITY_PRODUCTION_DISABLED",
         message: "Dynamic browser-based database reconfiguration is strictly disabled in production environment."
+      }
+    });
+  }
+
+  const authHeader = req.headers.authorization;
+  const authResult = await validateApiAuthTokenAsync(authHeader);
+  if (!authResult.ok) {
+    return res.status(401).json({
+      error: {
+        code: "UNAUTHORIZED_ADMIN_REQUIRED",
+        message: "Database reconfiguration requires authenticated privileges."
       }
     });
   }

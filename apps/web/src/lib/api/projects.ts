@@ -57,3 +57,12 @@ export async function fetchTaskMetrics(projectId: string) {
   }
   return res.json();
 }
+
+export async function fetchTasks(projectId: string): Promise<any[]> {
+  const res = await fetch(`/api/projects/${projectId}/tasks`);
+  if (!res.ok) throw new Error(`Failed to load tasks for project ${projectId}: ${res.status}`);
+  const data = await res.json();
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.tasks)) return data.tasks;
+  return [];
+}
