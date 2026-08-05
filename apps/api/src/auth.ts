@@ -367,3 +367,10 @@ export async function principalCanAccessProjectAsync(
   return false;
 }
 
+export function getAuditActor(req: any): string {
+  if (req && req.authPrincipal && req.authPrincipal.actorId) {
+    return req.authPrincipal.actorId;
+  }
+  return "system-principal";
+}
+
