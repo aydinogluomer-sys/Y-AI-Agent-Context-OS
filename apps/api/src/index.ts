@@ -4955,164 +4955,68 @@ const getGraphService = (): KnowledgeGraphService => {
   return new KnowledgeGraphService(db.getPool());
 };
 
-// 1. POST /api/projects/:id/graph/sync
-router.post("/projects/:id/graph/sync", requireProjectScope, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.id;
-    const actor = "User-Aydinoglu";
-    const graphService = getGraphService();
-    
-    const result = await graphService.syncGraphFoundation(projectId, actor, req.ip || "127.0.0.1");
-    res.json(result);
-  } catch (err) {
-    next(err);
+/**
+ * P05 / Y-P05-009 — Legacy graph route'ları KAPATILDI (410).
+ *
+ * Kapatılan 10 route: `graph/sync`, `graph`, `graph/nodes`, `graph/edges`
+ * (GET + POST), `graph/dependencies`, `graph/dependencies/:contextItemId`,
+ * `graph/reverse-dependencies` (+ `:contextItemId`), `graph/impact-preview`.
+ *
+ * NEDEN — P00 Truth Audit bulguları:
+ *
+ *   1. YANLIŞ KAYNAK. Node'lar `context_items` ve `tasks` tablolarından
+ *      üretiliyordu. Repo'da olup context'e alınmamış her dosya graf'ta
+ *      YOKTU. "Bu değişiklik neyi etkiler?" sorusu, yalnızca birinin
+ *      elle context'e eklediği dosyalar üzerinden yanıtlanıyordu.
+ *
+ *   2. YIKICI SYNC. Her `graph/sync` çağrısı önce
+ *      `DELETE FROM graph_edges ... WHERE relationship IN (...)` yapıyordu.
+ *      Rebuild boyunca graf tutarsız kalıyor, eşzamanlı retrieval yarım
+ *      graf görüyor ve bunu anlamasının yolu bulunmuyordu.
+ *
+ *   3. SNAPSHOT YOK. Graf'ın hangi commit'e ait olduğu kayıtlı değildi;
+ *      bayat bir graf ile güncel bir graf birbirinden ayırt edilemiyordu.
+ *
+ *   4. `dependencies/:contextItemId` — bağımlılık birimi CONTEXT ITEM'dı,
+ *      dosya ya da sembol değil. Kod bağımlılığı sorusu, doküman
+ *      bağımlılığı modeliyle yanıtlanıyordu.
+ *
+ * KANONİK KARŞILIKLARI
+ *   GET  /api/v1/projects/:projectId/graph/expand
+ *          ?seed=&direction=&depth=&limit=&edgeKinds=
+ *   POST /api/v1/admin/projects/:projectId/graph/rebuild   (admin)
+ *
+ *   Normal akışta graf ELLE senkronize edilmez: index job'ı bitince graph
+ *   job'ı otomatik kuyruğa girer (workers/graph-worker.ts). Elle tetikleme
+ *   bir kurtarma aracıdır, günlük akışın parçası değil — bu yüzden admin
+ *   yetkisi ister.
+ */
+router.all(
+  [
+    "/projects/:id/graph",
+    "/projects/:id/graph/sync",
+    "/projects/:id/graph/nodes",
+    "/projects/:id/graph/edges",
+    "/projects/:id/graph/dependencies",
+    "/projects/:id/graph/dependencies/:contextItemId",
+    "/projects/:id/graph/reverse-dependencies",
+    "/projects/:id/graph/reverse-dependencies/:contextItemId",
+    "/projects/:id/graph/impact-preview"
+  ],
+  (req: Request, res: Response) => {
+    return res.status(410).json({
+      error: {
+        code: "LEGACY_ROUTE_DEPRECATED",
+        message:
+          "Legacy graph route'lari kapatildi. Graf artik context_items'tan degil " +
+          "symbols/files tablolarindan uretiliyor ve bir snapshot'a bagli. " +
+          "Kanonik yuzey: GET /api/v1/projects/:projectId/graph/expand.",
+        canonical: "GET /api/v1/projects/:projectId/graph/expand",
+        phase: "P05"
+      }
+    });
   }
-});
-
-// 2. GET /api/projects/:id/graph
-router.get("/projects/:id/graph", requireProjectScope, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.id;
-    const nodeType = req.query.nodeType as string;
-    const relationshipType = req.query.relationshipType as string;
-    const graphService = getGraphService();
-    
-    const result = await graphService.getGraph(projectId, { nodeType, relationshipType }, "User-Aydinoglu");
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// 3. GET /api/projects/:id/graph/nodes
-router.get("/projects/:id/graph/nodes", requireProjectScope, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.id;
-    const type = req.query.type as string;
-    const graphService = getGraphService();
-    
-    const nodes = await graphService.getNodes(projectId, type);
-    res.json(nodes);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// 4. GET /api/projects/:id/graph/edges
-router.get("/projects/:id/graph/edges", requireProjectScope, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.id;
-    const relationship = req.query.relationship as string;
-    const graphService = getGraphService();
-    
-    const edges = await graphService.getEdges(projectId, relationship);
-    res.json(edges);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// 5. POST /api/projects/:id/graph/edges
-router.post("/projects/:id/graph/edges", requireProjectScope, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.id;
-    const actor = "User-Aydinoglu";
-    const graphService = getGraphService();
-    
-    const edge = await graphService.createEdge(projectId, {
-      ...req.body,
-      projectId
-    }, actor);
-    res.json(edge);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// 6. GET /api/projects/:id/graph/dependencies
-router.get("/projects/:id/graph/dependencies", requireProjectScope, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.id;
-    const graphService = getGraphService();
-    const result = await graphService.getDependencyGraph(projectId);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// 7. GET /api/projects/:id/graph/dependencies/:contextItemId
-router.get("/projects/:id/graph/dependencies/:contextItemId", requireProjectScope, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.id;
-    const contextItemId = req.params.contextItemId;
-    const graphService = getGraphService();
-    const result = await graphService.getContextItemDependencies(projectId, contextItemId);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// 8. GET /api/projects/:id/graph/reverse-dependencies
-router.get("/projects/:id/graph/reverse-dependencies", requireProjectScope, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.id;
-    const contextItemId = req.query.context_item_id as string;
-    const pathValue = req.query.path as string;
-    const graphService = getGraphService();
-    
-    const result = await graphService.getReverseDependencies(projectId, {
-      contextItemId,
-      path: pathValue
-    }, "User-Aydinoglu");
-    
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// 9. GET /api/projects/:id/graph/reverse-dependencies/:contextItemId
-router.get("/projects/:id/graph/reverse-dependencies/:contextItemId", requireProjectScope, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.id;
-    const contextItemId = req.params.contextItemId;
-    const graphService = getGraphService();
-    
-    const result = await graphService.getReverseDependencies(projectId, {
-      contextItemId
-    }, "User-Aydinoglu");
-    
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// 10. POST /api/projects/:id/graph/impact-preview
-router.post("/projects/:id/graph/impact-preview", requireProjectScope, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.id;
-    const { changed_files, include_indirect, max_depth } = req.body;
-    
-    if (!Array.isArray(changed_files)) {
-      res.status(400).json({ error: { code: "INVALID_REQUEST", message: "changed_files is required and must be an array of string paths." } });
-      return;
-    }
-
-    const graphService = getGraphService();
-    const result = await graphService.generateImpactPreview(projectId, {
-      changed_files,
-      include_indirect: !!include_indirect,
-      max_depth: max_depth ? Number(max_depth) : 1
-    }, "User-Aydinoglu");
-    
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
+);
 
 // 11. POST /api/projects/:id/impact/analyze
 router.post("/projects/:id/impact/analyze", requireProjectScope, async (req: Request, res: Response, next: NextFunction) => {

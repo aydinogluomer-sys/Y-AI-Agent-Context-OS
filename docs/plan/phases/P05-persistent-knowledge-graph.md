@@ -252,3 +252,128 @@ pnpm --filter @y/db run test:migrations:upgrade
 ```
 
 **`TraversalSpec` sözleşmesi bu gate'te donar** — P06 ve P10 buna bağımlıdır.
+
+---
+
+## Uygulama Kaydı (2026-08-14)
+
+### Tamamlanan görevler
+
+| Görev | Durum | Kanıt |
+|---|---|---|
+| Y-P05-001 modülerleşme | Kısmen | aşağıya bakınız |
+| Y-P05-002 şema genişletme | Tamam | migration `0058`, `0059` |
+| Y-P05-003 symbol kaynaklı builder | Tamam | `packages/graph/src/builder.ts` + 35 test |
+| Y-P05-004 recursive CTE traversal | Tamam | `traversal.ts` + 30 test |
+| Y-P05-005 ters bağımlılık | Tamam | `idx_graph_edges_reverse` (0059); ayrı kenar yazılmıyor |
+| Y-P05-006 artımlı invalidation | Tamam | `graph-invalidation.ts` + 15 test |
+| Y-P05-007 impact analizi | Tamam | `impact.ts` + 20 test; sabit confidence'lar kaldırıldı |
+| Y-P05-008 graph worker | Tamam | `workers/graph-worker.ts` + 15 test |
+| Y-P05-009 graph API'leri | Tamam | `graph/expand`, `graph/status`, `admin/.../graph/rebuild` + 15 test |
+| Y-P05-010 migration'lar | Tamam | `0060`–`0062` |
+
+### Migration numaralandırması
+
+Plan `0061`–`0066` öngörüyordu; gerçek numaralar `0057`'den devam ediyor.
+
+| Plan | Gerçek |
+|---|---|
+| 0061 graph_nodes | `0058_graph_nodes_snapshot.sql` |
+| 0062 graph_edges | `0059_graph_edges_snapshot.sql` |
+| 0063 graph_build_runs | `0060_graph_build_runs.sql` |
+| 0064 graph_tombstones | `0061_graph_tombstones.sql` |
+| 0065 impact + snapshot | `0062_impact_snapshot_binding.sql` |
+| 0066 backfill | Ayrı migration YOK — arşiv yaklaşımı, aşağıya bakınız |
+
+### Karar 1 — Eski graf satırları silinmiyor, arşiv sayılıyor
+
+Plan "backfill veya işaretleme" diyordu. Seçilen: `snapshot_id IS NULL` olan
+satırlar **arşivdir**. Yeni okuyucuların tamamı snapshot predicate'i
+kullandığı için onları görmez.
+
+Backfill yapılmadı çünkü eski node'lar `context_items` kaynaklıdır ve bir
+commit'e karşılık gelmezler. Onlara bir `snapshot_id` yazmak, hiç var
+olmamış bir bağı varmış gibi göstermek olurdu. Tekillik kısıtları bu yüzden
+**partial index**'tir: eski satırları geriye dönük ihlal etmez.
+
+### Karar 2 — `reverse_depends_on` kenarı yazılmıyor
+
+Plan bunu zaten söylüyordu; burada gerekçesi kayda geçiyor: aynı gerçeği iki
+satırda tutmak, biri güncellenip diğeri unutulduğunda grafı kendi içinde
+çelişkili yapar. Ters yön **sorgu yönüyle** elde edilir ve bedeli
+`idx_graph_edges_reverse` indeksidir.
+
+### Karar 3 — `packages/graph/src/index.ts` bölünmedi
+
+Plan 3.037 satırlık dosyanın modüllere bölünmesini öngörüyordu (Y-P05-001).
+Yapılan: kanonik modüller **ayrı dosyalarda** yazıldı ve `canonical.ts`
+barrel'ında toplandı. Legacy dosya olduğu yerde duruyor.
+
+Sebep: o dosya `context_items` kaynaklı eski grafı üretiyor ve legacy
+retrieval (`search-server.ts`, `retrieval-ranking-service.ts`) hâlâ ona
+bağlı. Dosyayı bölmek, davranışı değiştirmeden yapılsa bile, P06'da zaten
+yeniden yazılacak kodu taşımak demekti. Yeni kod yalnızca `@y/graph/*`
+alt yollarından import eder; legacy yüzeye yeni bağımlılık eklenmedi.
+
+**Kapanma koşulu:** P06 retrieval cutover'ında legacy graph yolu silinir.
+
+### Karar 4 — Legacy graph route'ları 410
+
+Kapatılan 10 route: `graph`, `graph/sync`, `graph/nodes`, `graph/edges`
+(GET+POST), `graph/dependencies` (+`:contextItemId`),
+`graph/reverse-dependencies` (+`:contextItemId`), `graph/impact-preview`.
+
+Tüketici kontrolü yapıldı: `apps/web/src/lib/api/graph.ts` yalnızca
+`useKnowledgeGraph.ts` tarafından import ediliyor, o hook'u ise **hiçbir
+bileşen kullanmıyor**. Zincir ölüydü; kapatma çalışan bir akışı bozmadı.
+
+`graph/sync` de kapatıldı (admin'e taşınmadı): kanonik karşılığı
+`POST /api/v1/admin/projects/:projectId/graph/rebuild` ve o route build'i
+çalıştırmaz, **kuyruğa alır** (ADR-019) — 202 döner.
+
+### Yan düzeltme — sır tarayıcısı: fonksiyon çağrısı
+
+Gate kendi kodumda bir false positive yakaladı: bir DTO dönüştürücüsünde
+bayrak alanını bool'a çeviren satır "sır" sayılıyordu. Çağrı bir ifadedir;
+gömülü sır her zaman literaldir. Kural eklendi + regresyon testi yazıldı.
+Bu düzeltme baseline'ı **84 → 73**'e düşürdü (11 kayıt artık bulunmuyor).
+
+### Kabul kriterlerinin durumu
+
+| # | Kriter | Durum | Kanıt |
+|---|---|---|---|
+| 1 | Graf `symbols`/`files` kaynaklı; `context_items` yolu kapalı | Evet | `builder.test.ts` "context_items'a HIC dokunulmamali" |
+| 2 | Her node/edge `snapshot_id` + `organization_id` taşıyor | Evet | `builder.test.ts` tenant testi |
+| 3 | direct/reverse/transitive + depth/node/fan-out + cycle detection | Evet | `traversal.test.ts` (30 test) |
+| 4 | Artımlı: tek dosya değişiminde < %2 dokunuş | Evet | `graph-invalidation.test.ts`: 10.000 dosyada 6 dosya |
+| 5 | Yıkıcı `DELETE + rebuild` yok | Evet | `builder.test.ts` "tüm edge tablosunu SİLMEZ" |
+| 6 | Graph build otomatik tetikleniyor | Evet | `enqueueGraphJob`; manuel yol maintainer ister |
+| 7 | Sabit confidence değerleri kaldırıldı | Evet | `impact.test.ts` "sabite kilitlenmiyor" |
+| 8 | Cross-org traversal imkânsız | Evet | org predicate'i hem anchor hem özyinelemede |
+
+### Gate sonuçları
+
+```text
+typecheck (loose + strict)   0 hata
+vitest                       659 passed | 4 skipped (663)
+build                        OK
+secret-scan                  0 yeni bulgu (baseline 84 -> 73)
+drift (verify-inventories)   8/8 kontrol geçti
+API envanteri                195 -> 185 route; CLOSED (410) 17
+```
+
+### Bu fazda kapatılmayanlar
+
+- **Recursive CTE'nin canlı Postgres'te doğrulanması.** Traversal testleri
+  sorgunun ŞEKLİNİ (yön, org predicate'i, döngü koruması, bütçe) ve sonuç
+  yorumlanmasını doğruluyor; CTE'nin gerçekten beklenen node kümesini
+  döndürdüğü **doğrulanmadı**. Bu, canlı şema gerektirir ve P19
+  entegrasyon paketine bırakıldı. Test dosyasının başında bu sınır
+  açıkça yazılıdır.
+- **`tests/e2e/graph-build.spec.ts`** — P19.
+- **Legacy `generateImpactAnalysis` / `generateChangeSimulation`'ın yeni
+  traversal'a bağlanması.** Kanonik `analyzeImpact` yazıldı ve test edildi;
+  legacy fonksiyonlar hâlâ eski yolu kullanıyor ve `impact_reports`'a
+  yazmaya devam ediyor. Yeni kolonlar (`snapshot_id`, `confidence_basis`,
+  `truncated`) şemada hazır. Bağlama işi P10 Change Firewall'da yapılacak;
+  o faz zaten bu çıktının tüketicisi.

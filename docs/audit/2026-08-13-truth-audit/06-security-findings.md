@@ -1,11 +1,11 @@
 # 06 — Güvenlik Bulguları
 
-> Baseline commit: `f00d17b7acb0a6b31872241ea188bc5309468678`
+> Baseline commit: `670392a702b6da8f3eb559f8fec252bdce9e32e5`
 > Sınıflandırma: **P0** = release blocker · **P1** = production-critical · **P2** = kozmetik
 
-Envanterden türeyen ölçüt: 195 route'un **36'i** yalnız
+Envanterden türeyen ölçüt: 185 route'un **36'i** yalnız
 bearer token kontrolünden geçiyor (proje kapsamı doğrulaması yok);
-58 tablonun **46'inde** tenant izolasyon kolonu yok.
+60 tablonun **42'inde** tenant izolasyon kolonu yok.
 
 ## P0 — Release blocker
 

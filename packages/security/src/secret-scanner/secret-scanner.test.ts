@@ -132,6 +132,17 @@ describe("scanForSecrets — tespit", () => {
     expect(scanForSecrets("api_key = $1")).toEqual([]);
   });
 
+  it("fonksiyon çağrısını sır saymaz", () => {
+    // Gate'in P05'te yakaladigi false positive: bir DTO donusturucusunde
+    // `fileContainsSecret: Boolean(row.contains_secret)`. Cagri bir
+    // IFADEDIR; gomulu sir ise her zaman literaldir.
+    expect(scanForSecrets("fileContainsSecret: Boolean(row.contains_secret)")).toEqual([]);
+    expect(scanForSecrets("const token = decryptToken(payload)")).toEqual([]);
+    expect(scanForSecrets("password: hashPassword(input.password)")).toEqual([]);
+    // Literal deger hala yakalanmali; kural fazla genis olmamali.
+    expect(scanForSecrets(`const token = "${fakeOpaqueSecret()}"`).length).toBeGreaterThan(0);
+  });
+
   it("çok kısa değerleri sır saymaz (eşik: 12 karakter)", () => {
     // Kisa degerler pratikte gercek sir degil; esigi dusurmek yanlis
     // pozitifi patlatiyor. Esik bilincli bir tercihtir ve burada kilitlenir.

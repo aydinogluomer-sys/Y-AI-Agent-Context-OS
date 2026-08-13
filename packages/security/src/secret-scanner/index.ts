@@ -162,6 +162,19 @@ export function looksLikeRealSecretValue(value: string): boolean {
   if (/^(?:process\.env|import\.meta|globalThis|window|self|config|options|params|opts|this)\b/.test(value)) return false;
   if (/^\$\{/.test(value) || /\(\)$/.test(value)) return false;
 
+  // Fonksiyon cagrisi. Cagri bir IFADEDIR, degismez bir deger degil —
+  // gomulu sir her zaman literaldir. Bu kural olmadan bir DTO
+  // donusturucusunde bir bayrak alanini bool'a ceviren satir sir
+  // sayiliyordu (P05'te gate'in kendi kodumda yakaladigi false positive).
+  //
+  // Kapanis parantezi ISTEGE BAGLI: yukaridaki `assignment` kurali deger
+  // yakalamasini `)` karakterinde durdurdugu icin buraya gelen metin
+  // cogu zaman parantezsiz biter.
+  //
+  // Tirnak iceren cagrilar HARIC TUTULMAZ: `decrypt("...")` bicimindeki
+  // bir literal gercek bir gomulu sir olabilir ve yakalanmalidir.
+  if (/^[A-Za-z_$][\w$.]*\s*\([^"'`]*\)?$/.test(value)) return false;
+
   // SQL kolon referansi: `contains_secret = EXCLUDED.contains_secret`,
   // `password = NEW.password`, `token = t.token`. Bir kolonun BASKA BIR
   // KOLONA atanmasi sir degildir — deger tasimaz, ad tasir.

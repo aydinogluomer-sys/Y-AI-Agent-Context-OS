@@ -22,10 +22,11 @@ export default defineConfig({
       "@y/db": path.resolve(root, "packages/db/src/index.ts"),
       "@y/core": path.resolve(root, "packages/core/src/index.ts"),
       "@y/context": path.resolve(root, "packages/context/src/index.ts"),
-      "@y/graph": path.resolve(root, "packages/graph/src/index.ts"),
       "@y/agents": path.resolve(root, "packages/agents/src/index.ts"),
       "@y/providers": path.resolve(root, "packages/providers/src/index.ts"),
       // Subpath alias, tam eslesmeden ONCE gelmeli.
+      "@y/graph/": path.resolve(root, "packages/graph/src") + "/",
+      "@y/graph": path.resolve(root, "packages/graph/src/index.ts"),
       "@y/security/": path.resolve(root, "packages/security/src") + "/",
       "@y/security": path.resolve(root, "packages/security/src/index.ts"),
       "@y/api": path.resolve(root, "apps/api/src"),

@@ -11,3 +11,8 @@ export * from "./provenance";
 export * from "./run";
 export * from "./context";
 export * from "./change";
+
+// P05'te eklendi. `GraphNode` adı legacy tarafta zaten kullanıldığı için
+// kanonik tipler `GraphNodeRecord`/`GraphEdgeRecord` adlarını taşır;
+// `export *` çakışma üretmez.
+export * from "./graph";

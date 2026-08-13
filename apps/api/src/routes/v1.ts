@@ -14,11 +14,12 @@
  */
 
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { orgRoleAtLeast, type ProjectRole } from "@y/shared";
+import { newId, orgRoleAtLeast, type ProjectRole } from "@y/shared";
 import { authnMiddleware, type AuthnConfig, type AuthenticatedRequest } from "../middleware/authn";
 import { requireProjectScope, type ScopedRequest } from "../middleware/authz";
 import { IdentityRepository, type Db } from "../domain/identity/user-repository";
 import { SymbolRepository } from "../domain/symbols/symbol-repository";
+import { GraphService, GraphServiceError } from "../domain/graph/graph-service";
 
 export interface V1Dependencies {
   db: Db;
@@ -40,6 +41,7 @@ export function createV1Router(deps: V1Dependencies): Router {
   const router = Router();
   const identity = new IdentityRepository(deps.db);
   const symbols = new SymbolRepository(deps.db);
+  const graph = new GraphService(deps.db);
 
   // Tüm /api/v1 yüzeyi kimlik doğrulaması ister. İstisna yok:
   // sağlık probe'ları /api/v1 altında değil, kök seviyededir.
@@ -216,7 +218,108 @@ export function createV1Router(deps: V1Dependencies): Router {
     })
   );
 
+  // --- Knowledge graph (P05) ----------------------------------------------
+
+  /**
+   * Legacy `/projects/:id/graph/*` route'larının kanonik karşılığı.
+   * Graf artık `context_items`'tan değil `symbols`/`files`'tan üretiliyor
+   * ve bir snapshot'a bağlı.
+   */
+  router.get(
+    "/projects/:projectId/graph/expand",
+    requireProjectScope(deps.db, { minimumRole: "viewer" }),
+    wrap(async (req, res) => {
+      const scope = (req as ScopedRequest).projectScope;
+      const seeds = toStringArray(req.query.seed);
+
+      if (seeds.length === 0) {
+        res.status(400).json({
+          error: {
+            code: "SEED_REQUIRED",
+            message: "En az bir seed gerekli. Ornek: ?seed=file:src/a.ts"
+          }
+        });
+        return;
+      }
+
+      try {
+        // organizationId SCOPE'tan gelir, istekten degil (T-02).
+        const result = await graph.expand({
+          organizationId: scope.orgId,
+          projectId: scope.projectId,
+          seeds,
+          direction: stringOrUndefined(req.query.direction),
+          depth: parseIntOrNull(req.query.depth) ?? undefined,
+          limit: parseIntOrNull(req.query.limit) ?? undefined,
+          edgeKinds: toStringArray(req.query.edgeKinds),
+          minConfidence: parseFloatOrNull(req.query.minConfidence) ?? undefined,
+          repositoryId: stringOrUndefined(req.query.repositoryId)
+        });
+        res.json(result);
+      } catch (error) {
+        if (!(error instanceof GraphServiceError)) throw error;
+        const status =
+          error.code === "INVALID_DIRECTION" || error.code === "INVALID_EDGE_KIND" ? 400 : 409;
+        res.status(status).json({ error: { code: error.code, message: error.message } });
+      }
+    })
+  );
+
+  router.get(
+    "/projects/:projectId/graph/status",
+    requireProjectScope(deps.db, { minimumRole: "viewer" }),
+    wrap(async (req, res) => {
+      const scope = (req as ScopedRequest).projectScope;
+      res.json(
+        await graph.buildStatus(
+          scope.orgId,
+          scope.projectId,
+          stringOrUndefined(req.query.repositoryId)
+        )
+      );
+    })
+  );
+
+  /**
+   * Elle rebuild. Normal akışta graf otomatik güncellenir (index job'ı
+   * bitince graph job'ı kuyruğa girer); bu route bir KURTARMA aracıdır ve
+   * bu yüzden maintainer yetkisi ister.
+   */
+  router.post(
+    "/admin/projects/:projectId/graph/rebuild",
+    requireProjectScope(deps.db, { minimumRole: "maintainer" }),
+    wrap(async (req, res) => {
+      const scope = (req as ScopedRequest).projectScope;
+      try {
+        const result = await graph.requestRebuild({
+          organizationId: scope.orgId,
+          projectId: scope.projectId,
+          jobId: newId("job"),
+          repositoryId: stringOrUndefined(req.body?.repositoryId)
+        });
+        // 202: is KUYRUGA ALINDI, bitmedi. 200 donmek "graf hazir"
+        // izlenimi verirdi.
+        res.status(202).json(result);
+      } catch (error) {
+        if (!(error instanceof GraphServiceError)) throw error;
+        res.status(409).json({ error: { code: error.code, message: error.message } });
+      }
+    })
+  );
+
   return router;
+}
+
+function toStringArray(value: unknown): string[] {
+  if (typeof value === "string") return value.length > 0 ? value.split(",").filter(Boolean) : [];
+  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === "string");
+  return [];
+}
+
+function parseFloatOrNull(value: unknown): number | null {
+  if (typeof value !== "string" || value.length === 0) return null;
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function stringOrUndefined(value: unknown): string | undefined {

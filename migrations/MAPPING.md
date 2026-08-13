@@ -81,5 +81,10 @@ migrate edilmiş veritabanları yeniden çalıştırılmaz.
 | 0055 | `0055_parser_versions.sql` | `2.2.2-parser-versions` | yeni | var |
 | 0056 | `0056_symbol_invalidations.sql` | `2.2.3-symbol-invalidations` | yeni | var |
 | 0057 | `0057_legacy_chunk_migration_audit.sql` | `2.2.4-legacy-chunk-audit` | yeni | var |
+| 0058 | `0058_graph_nodes_snapshot.sql` | `2.3.0-graph-nodes-snapshot` | yeni | var |
+| 0059 | `0059_graph_edges_snapshot.sql` | `2.3.1-graph-edges-snapshot` | yeni | var |
+| 0060 | `0060_graph_build_runs.sql` | `2.3.2-graph-build-runs` | yeni | var |
+| 0061 | `0061_graph_tombstones.sql` | `2.3.3-graph-tombstones` | yeni | var |
+| 0062 | `0062_impact_snapshot_binding.sql` | `2.3.4-impact-snapshot-binding` | yeni | var |
 
-Toplam: **57** migration (35 göç + 22 yeni).
+Toplam: **62** migration (35 göç + 27 yeni).
