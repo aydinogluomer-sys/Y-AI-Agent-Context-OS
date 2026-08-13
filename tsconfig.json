@@ -22,6 +22,9 @@
       "@y/shared": [
         "./packages/shared/src/index.ts"
       ],
+      "@y/db": [
+        "./packages/db/src/index.ts"
+      ],
       "@y/core": [
         "./packages/core/src/index.ts"
       ],

@@ -13,6 +13,7 @@ export default defineConfig(() => {
       alias: {
         '@': projectRoot,
         '@y/shared': path.resolve(projectRoot, 'packages/shared/src/index.ts'),
+        '@y/db': path.resolve(projectRoot, 'packages/db/src/index.ts'),
         '@y/core': path.resolve(projectRoot, 'packages/core/src/index.ts'),
         '@y/context': path.resolve(projectRoot, 'packages/context/src/index.ts'),
         '@y/graph': path.resolve(projectRoot, 'packages/graph/src/index.ts'),

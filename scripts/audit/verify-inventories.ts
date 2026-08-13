@@ -7,6 +7,7 @@
  * exit 0 = envanter güncel · exit 1 = drift var, envanteri yeniden üret.
  */
 
+import * as fs from "fs";
 import * as path from "path";
 import { REPO_ROOT, readCsv, readLines, walk } from "./lib";
 import { collectRoutes } from "./inventory-api";
@@ -53,24 +54,29 @@ function main(): void {
   const csvWithOwnScreen = uiCsv.filter((r) => r[5] !== "ModuleSimulationPanel").length;
   check("App.tsx `case` sayısı = kendi ekranı olan item", caseCount, csvWithOwnScreen, "eşleşmezse switch/nav sapması var");
 
-  // --- DB envanteri ---
+  // --- DB envanteri (P01/ADR-003 sonrasi migrations/*.sql kaynakli) ---
   const dbCsv = readCsv("04-db-inventory.csv").slice(1).filter((r) => r.length > 1);
-  const dbTs = readLines(path.join(REPO_ROOT, "apps", "api", "src", "db.ts"));
+  const migrationsDir = path.join(REPO_ROOT, "migrations");
   const createStatements = new Set<string>();
-  for (const line of dbTs) {
-    const m = /CREATE TABLE(?:\s+IF NOT EXISTS)?\s+([A-Za-z0-9_]+)/i.exec(line);
-    if (m) createStatements.add(m[1]);
+  const sqlFileList = fs.existsSync(migrationsDir)
+    ? fs.readdirSync(migrationsDir).filter((f) => f.endsWith(".sql"))
+    : [];
+  for (const f of sqlFileList) {
+    for (const line of readLines(path.join(migrationsDir, f))) {
+      const m = /CREATE TABLE(?:\s+IF NOT EXISTS)?\s+([A-Za-z0-9_]+)/i.exec(line);
+      if (m) createStatements.add(m[1]);
+    }
   }
-  check("Tablo sayısı (CSV vs db.ts DDL)", createStatements.size, dbCsv.length);
+  check("Tablo sayısı (CSV vs migrations/*.sql DDL)", createStatements.size, dbCsv.length);
 
-  // --- Şema dosyası yokluğu (P01'de değişecek; değiştiğinde bu check güncellenir) ---
-  const sqlFiles = walk(path.join(REPO_ROOT, "migrations"), [".sql"]);
-  const dbTsHasInlineArray = dbTs.some((l) => /migrationVersions\s*(?::|=)/.test(l));
-  if (sqlFiles.length === 0) {
-    check("Migration konumu", "inline (db.ts)", dbTsHasInlineArray ? "inline (db.ts)" : "bilinmiyor", "P01'de migrations/*.sql'e taşınacak");
-  } else {
-    check("Migration konumu", "migrations/*.sql", "migrations/*.sql", `${sqlFiles.length} dosya`);
-  }
+  // db.ts artik inline SQL tasimamali
+  const dbTs = readLines(path.join(REPO_ROOT, "apps", "api", "src", "db.ts"));
+  const inlineDdl = dbTs.filter((l) => /CREATE TABLE(?:\s+IF NOT EXISTS)?\s+[a-z_]+/i.test(l)).length;
+  check("db.ts icinde kalan inline CREATE TABLE", 0, inlineDdl, "ADR-003: sema migrations/*.sql'de yasar");
+
+  // --- Migration konumu (ADR-003) ---
+  const sqlFiles = walk(migrationsDir, [".sql"]);
+  check("Migration konumu", "migrations/*.sql", sqlFiles.length > 0 ? "migrations/*.sql" : "inline (db.ts)", `${sqlFiles.length} dosya`);
 
   // --- Rapor ---
   const failed = checks.filter((c) => !c.ok);

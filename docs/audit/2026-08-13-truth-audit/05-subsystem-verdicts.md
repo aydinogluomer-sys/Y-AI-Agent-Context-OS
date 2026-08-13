@@ -1,6 +1,6 @@
 # 05 — Subsystem Verdict'leri
 
-> Baseline commit: `9f10f70123cc72d0cfa59bf0998fc8cfafd557d6` · Verdict skalası: REAL · PARTIAL · SIMULATED · ABSENT
+> Baseline commit: `96afd6fe544d3bb11c29eb576faf451eb07bf2fe` · Verdict skalası: REAL · PARTIAL · SIMULATED · ABSENT
 
 | Subsystem | Verdict | Kanıt |
 |---|---|---|
@@ -30,5 +30,5 @@
 
 ## Sahte başarı yolları
 
-`scripts/audit/scan-false-green.ts` 197 bulgu üretti (**119 adet P0**).
+`scripts/audit/scan-false-green.ts` 165 bulgu üretti (**119 adet P0**).
 Detay: `10-test-honesty.md` ve `10-false-green-findings.csv`.

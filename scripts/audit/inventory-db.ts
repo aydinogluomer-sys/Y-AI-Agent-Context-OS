@@ -6,10 +6,12 @@
  * gerçek okuma/yazma sayısını çıkarır. read=0 && write=0 => ölü şema.
  */
 
+import * as fs from "fs";
 import * as path from "path";
 import { REPO_ROOT, readLines, rel, walk, writeCsv, isMain } from "./lib";
 
 const DB_TS = path.join(REPO_ROOT, "apps", "api", "src", "db.ts");
+const MIGRATIONS_DIR = path.join(REPO_ROOT, "migrations");
 const CODE_DIRS = ["apps", "packages", "workers", "scripts"];
 
 export interface TableRecord {
@@ -24,26 +26,36 @@ export interface TableRecord {
   verdict: string;
 }
 
+/**
+ * P01 / ADR-003 sonrası: şema `migrations/NNNN_*.sql` dosyalarında yaşar.
+ * (Önceden `apps/api/src/db.ts` içinde 1.170 satırlık inline string diziydi.)
+ */
 function collectMigrations(): { table: string; version: string; line: number; body: string }[] {
-  const lines = readLines(DB_TS);
   const out: { table: string; version: string; line: number; body: string }[] = [];
-  let currentVersion = "(unknown)";
 
-  for (let i = 0; i < lines.length; i++) {
-    const vm = /version:\s*["']([^"']+)["']/.exec(lines[i]);
-    if (vm) {
-      currentVersion = vm[1];
-      continue;
-    }
-    const cm = /CREATE TABLE(?:\s+IF NOT EXISTS)?\s+([A-Za-z0-9_]+)/i.exec(lines[i]);
-    if (cm) {
+  const files = fs.existsSync(MIGRATIONS_DIR)
+    ? fs
+        .readdirSync(MIGRATIONS_DIR)
+        .filter((f) => f.endsWith(".sql"))
+        .sort()
+    : [];
+
+  for (const fileName of files) {
+    const lines = readLines(path.join(MIGRATIONS_DIR, fileName));
+    const versionLine = lines.find((l) => /^--\s*Ledger version:/.test(l)) || "";
+    const version = versionLine.replace(/^--\s*Ledger version:\s*/, "").trim() || fileName;
+
+    for (let i = 0; i < lines.length; i++) {
+      const cm = /CREATE TABLE(?:\s+IF NOT EXISTS)?\s+([A-Za-z0-9_]+)/i.exec(lines[i]);
+      if (!cm) continue;
+
       // Tablo gövdesini kapanış parantezine kadar topla
       const bodyLines: string[] = [];
       for (let j = i; j < Math.min(i + 60, lines.length); j++) {
         bodyLines.push(lines[j]);
-        if (/\)\s*;?\s*`?/.test(lines[j]) && j > i) break;
+        if (/^\s*\)\s*;/.test(lines[j]) && j > i) break;
       }
-      out.push({ table: cm[1], version: currentVersion, line: i + 1, body: bodyLines.join("\n") });
+      out.push({ table: cm[1], version, line: i + 1, body: bodyLines.join("\n") });
     }
   }
   return out;
