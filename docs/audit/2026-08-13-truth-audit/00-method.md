@@ -1,6 +1,6 @@
 # 00 — Doğrulama Yöntemi
 
-> Baseline commit: `6a88280ac80d61509015ad92bc0cd605144629ff` (`feat/production-master-plan`) · Tarih: 2026-08-13
+> Baseline commit: `a7b39aefffc149ed987d56a025f20ec6049cda8e` (`feat/production-master-plan`) · Tarih: 2026-08-13
 
 ## Kanıt standardı (ADR-000)
 

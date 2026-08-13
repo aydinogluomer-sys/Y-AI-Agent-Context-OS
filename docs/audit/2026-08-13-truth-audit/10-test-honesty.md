@@ -7,9 +7,9 @@
 
 | Ölçüt | Değer |
 |---|---|
-| Taranan dosya | 146 |
-| Toplam bulgu | **163** |
-| P0 (release blocker) | **117** |
+| Taranan dosya | 162 |
+| Toplam bulgu | **161** |
+| P0 (release blocker) | **115** |
 | P1 (production-critical) | **46** |
 
 ## Kural bazlı dağılım
@@ -25,7 +25,7 @@
 | `hardcoded-metric` | P1 | 7 | Ölçülmeden yazılmış metrik/confidence literal'i |
 | `literal-run-count` | P0 | 1 | Run sonucunda hesaplanmadan yazılmış sayaç |
 | `fabricated-diff` | P1 | 4 | Git'e bakılmadan üretilmiş diff/author kaydı |
-| `embedded-secret` | P0 | 3 | Kaynak kodda gömülü / parçalanmış sır |
+| `embedded-secret` | P0 | 1 | Kaynak kodda gömülü / parçalanmış sır |
 | `permissive-fallback` | P0 | 10 | Hata durumunda izin veren güvenlik fallback'i |
 | `unconditional-flag` | P1 | 1 | Doğrulanmadan true yazılan güvenlik bayrağı |
 | `stub-dependency` | P1 | 6 | Gerçek analiz yerine stub bağımlılık kaydı |
@@ -51,16 +51,16 @@
 | `scripts/validate-phase-2-runner.ts` | 3 |
 | `scripts/validate-segment-11-14.ts` | 3 |
 | `apps/api/src/db.ts` | 2 |
-| `packages/security/src/index.ts` | 2 |
 | `scripts/validate-phase-3-startup.ts` | 2 |
 | `scripts/validate-stage-27.ts` | 2 |
 | `apps/api/src/startup-policy.ts` | 1 |
 | `apps/web/src/App.tsx` | 1 |
+| `packages/security/src/secret-scanner/secret-scanner.test.ts` | 1 |
 | `scripts/run-validation-suite.ts` | 1 |
-| `scripts/secret-scan.ts` | 1 |
 | `scripts/validate-phase-5-evidence-integrity.ts` | 1 |
 | `scripts/validate-stage-30.ts` | 1 |
 | `scripts/validate-stage-31.ts` | 1 |
+| `scripts/validate-stage-32.ts` | 1 |
 
 ## Yorum
 

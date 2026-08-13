@@ -1,136 +1,288 @@
 /**
- * @license
- * SPDX-License-Identifier: Apache-2.0
+ * P03 / Y-P03-010 — CI sır tarayıcısı (P0-11 kapanışı).
+ *
+ * P00 Truth Audit'in bu script hakkındaki iki bulgusu:
+ *
+ *   1. Kuralların ilki GERÇEK bir veritabanı parolasını literal olarak
+ *      içeriyordu (`regex: /EJfZexrU6oYdPpxH/g`). Yani sır taramasını yapan
+ *      dosyanın kendisi bir sır sızıntısıydı ve git geçmişinde duruyordu.
+ *
+ *   2. `entry.name.startsWith("validate-")` koşulu ~15.000 satırlık
+ *      doğrulama script'ini VE `scratch/` ağacını taramadan muaf tutuyordu.
+ *      Muafiyet listesi, tarayıcının değerini büyük ölçüde yok ediyordu.
+ *
+ * Bu sürüm `@y/security` içindeki kalıp + entropi tabanlı tarayıcıyı
+ * kullanır. Muafiyet listesi yalnızca ÜRETİLMİŞ ve İKİLİ dosyalarla sınırlı.
  */
 
-import fs from "fs";
-import path from "path";
+import * as fs from "fs";
+import * as path from "path";
+import { execFileSync } from "child_process";
+import { fileURLToPath } from "url";
+import { scanForSecrets, type SecretFinding } from "../packages/security/src/secret-scanner/index";
 
-// Exclusions
-const IGNORED_DIRS = new Set([
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+/** Taranmayacak dizinler — üretilmiş çıktı ve bağımlılıklar. */
+const SKIP_DIRS = new Set([
   "node_modules",
+  ".git",
   "dist",
   "build",
   "coverage",
-  ".git",
-  ".cache",
+  "playwright-report",
+  "test-results",
   ".next",
-  ".antigravity",
-  "scratch"
+  "out"
 ]);
 
-const IGNORED_FILES = new Set([
-  ".env",
-  ".env.local",
-  ".env.development.local",
-  ".env.test.local",
-  ".env.production.local",
-  ".env.example",
-  "secret-scan.ts", // exclude self
-  "validate-vault.ts", // exclude vault validation test suite
-  "verify-permission-manual-checklist.ts", // exclude manual checklist test suite
-  "package-lock.json",
-  "pnpm-lock.yaml"
+/**
+ * Taranmayacak dosyalar.
+ *
+ * DİKKAT: buraya kaynak kodu eklenmez. Eski sürümdeki
+ * `startsWith("validate-")` muafiyeti 15.000 satırı kör noktaya çeviriyordu.
+ */
+const SKIP_FILES = new Set(["pnpm-lock.yaml", "package-lock.json"]);
+
+const SKIP_EXTENSIONS = new Set([
+  ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".webp",
+  ".woff", ".woff2", ".ttf", ".eot",
+  ".pdf", ".zip", ".gz", ".tar", ".7z",
+  ".mp4", ".mp3", ".wav"
 ]);
 
-const SECRET_DETECTION_PATTERNS = [
-  {
-    name: "Supabase DB Password",
-    regex: /EJfZexrU6oYdPpxH/g,
-  },
-  {
-    name: "Raw PostgreSQL Credentials Link",
-    // This looks for postgresql://user:password@host with any actual password not marked as placeholder
-    regex: /postgresql?:\/\/([a-zA-Z0-9_\-]+):((?!(?:safe_pass|safe_database_pass|\[REDACTED_PASSWORD\]|username|password))[^@]+)@/gi,
-  },
-  {
-    name: "Committed Environment Secrets",
-    regex: /(?:GEMINI_API_KEY|DATABASE_URL|STRIPE_SECRET_KEY|OAUTH_SECRET)\s*=\s*["']([^"'][a-zA-Z0-9_\-]{15,})["']/gi,
-  }
+/**
+ * Bilinen güvenli yer tutucular.
+ *
+ * `.env.example` gibi dosyalarda kasıtlı örnek değerler bulunur.
+ * Bunları muaf tutmak, dosyayı taramadan çıkarmaktan farklıdır:
+ * yalnız BU değerler geçilir, dosyanın geri kalanı taranır.
+ */
+const KNOWN_PLACEHOLDERS = [
+  "MY_GEMINI_API_KEY",
+  "MY_APP_URL",
+  "safe_pass",
+  "safe_database_pass",
+  "your-token-here",
+  "changeme",
+  "example",
+  "REDACTED"
 ];
 
-interface LeakInfo {
+interface Report {
   file: string;
-  line: number;
-  patternName: string;
-  matchedText: string;
+  findings: SecretFinding[];
 }
 
-const leaks: LeakInfo[] = [];
+/**
+ * Baseline dosyası.
+ *
+ * Mevcut bir kod tabanına sır tarayıcısı eklemenin standart yolu budur.
+ * Alternatifler ve neden reddedildikleri:
+ *
+ *   (a) Muafiyet listesi (eski script'in yaptığı) — dosyayı TAMAMEN kör
+ *       noktaya çevirir; o dosyaya yeni bir sır girse de görünmez.
+ *   (b) Gate'i devre dışı bırakmak — tarayıcının hiç olmamasıyla aynı.
+ *   (c) Baseline — SEÇİLEN. Bilinen bulgular kayıtlıdır; gate yalnız
+ *       YENİ bulgu eklendiğinde kırılır. Baseline büyüyemez, yalnız küçülür.
+ *
+ * Baseline girdileri `dosya:satır:tür` anahtarıyla tutulur. Satır kayması
+ * yanlış alarma yol açmasın diye tür ve dosya da anahtarın parçasıdır.
+ */
+const BASELINE_PATH = path.join(REPO_ROOT, "docs", "audit", "secret-scan-baseline.json");
 
-function scanDirectory(dir: string) {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
+interface Baseline {
+  _comment: string;
+  generatedAt: string;
+  /** Bu bulguların neden kabul edildiği ve ne zaman kapanacağı. */
+  rationale: Record<string, string>;
+  accepted: string[];
+}
 
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    const relativePath = path.relative(process.cwd(), fullPath);
+function findingKey(file: string, f: SecretFinding): string {
+  return `${file}:${f.line}:${f.kind}`;
+}
 
-    if (entry.isDirectory()) {
-      if (IGNORED_DIRS.has(entry.name)) {
-        continue;
+function loadBaseline(): Set<string> {
+  try {
+    const raw = JSON.parse(fs.readFileSync(BASELINE_PATH, "utf-8")) as Baseline;
+    return new Set(raw.accepted);
+  } catch {
+    return new Set();
+  }
+}
+
+function shouldSkipFile(fileName: string): boolean {
+  if (SKIP_FILES.has(fileName)) return true;
+  return SKIP_EXTENSIONS.has(path.extname(fileName).toLowerCase());
+}
+
+function isPlaceholderLine(line: string): boolean {
+  return KNOWN_PLACEHOLDERS.some((p) => line.includes(p));
+}
+
+function scanFile(absolutePath: string): SecretFinding[] {
+  let content: string;
+  try {
+    content = fs.readFileSync(absolutePath, "utf-8");
+  } catch {
+    return [];
+  }
+
+  // Ikili dosyalari atla (NUL bayti iceriyorsa).
+  if (content.includes("\0")) return [];
+
+  const lines = content.split("\n");
+  return scanForSecrets(content).filter((f) => {
+    const line = lines[f.line - 1] ?? "";
+    return !isPlaceholderLine(line);
+  });
+}
+
+/**
+ * Taranacak dosya kümesi = git'in İZLEDİĞİ dosyalar.
+ *
+ * Bu bilinçli bir kapsam kararıdır. İlk çalıştırmada tarayıcı 919 bulgu
+ * üretti ve 661'i `.antigravity/` IDE önbelleğindeydi — zaten `.gitignore`'da
+ * olan, repository'ye hiç girmeyen bir dizin. `.env` ve `scratch/` de aynı
+ * durumda.
+ *
+ * Sır taramasının amacı "repository'ye sır GİRDİ mi?" sorusunu yanıtlamaktır.
+ * İzlenmeyen dosyalar bu sorunun kapsamı dışındadır ve onları taramak
+ * tarayıcıyı gürültüyle işlevsiz kılar.
+ *
+ * Not: bu, eski script'teki `startsWith("validate-")` muafiyetinden
+ * FARKLIDIR. O, izlenen kaynak kodunu muaf tutuyordu; bu ise hiç
+ * commit edilmemiş dosyaları kapsam dışı bırakıyor.
+ */
+function trackedFiles(): string[] {
+  try {
+    const out = execFileSync("git", ["ls-files", "-z"], {
+      cwd: REPO_ROOT,
+      encoding: "utf-8",
+      maxBuffer: 64 * 1024 * 1024
+    });
+    return out.split("\0").filter((p) => p.length > 0);
+  } catch {
+    console.error("UYARI: `git ls-files` calistirilamadi; tam agac taranacak.");
+    return [];
+  }
+}
+
+function collect(reports: Report[]): number {
+  const tracked = trackedFiles();
+
+  if (tracked.length === 0) {
+    // Git yoksa (or. tarball dagitimi) tum agaci tara.
+    const walk = (dir: string): void => {
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return;
       }
-      scanDirectory(fullPath);
-    } else if (entry.isFile()) {
-      if (
-        IGNORED_FILES.has(entry.name) || 
-        entry.name.startsWith("validate-") || 
-        entry.name.endsWith(".png") || 
-        entry.name.endsWith(".jpg") || 
-        entry.name.endsWith(".ico")
-      ) {
-        continue;
-      }
-
-      // Check file content
-      const content = fs.readFileSync(fullPath, "utf8");
-      const lines = content.split("\n");
-
-      for (let i = 0; i < lines.length; i++) {
-        const lineText = lines[i];
-        
-        for (const pattern of SECRET_DETECTION_PATTERNS) {
-          // Re-instantiate regex for safety
-          const rx = new RegExp(pattern.regex);
-          const match = rx.exec(lineText);
-          if (match) {
-            // Confirm it's not a generic placeholder or explanation
-            const matchedSegment = match[0];
-            if (
-              matchedSegment.includes("postgresql://") && 
-              (matchedSegment.includes("username:") || matchedSegment.includes("your_pass") || matchedSegment.includes("your-host"))
-            ) {
-              continue; // Skip interactive design/documentation hints in UI or guidance
-            }
-            
-            leaks.push({
-              file: relativePath,
-              line: i + 1,
-              patternName: pattern.name,
-              matchedText: "[REDACTED_FOR_SECURITY_SCAN]"
-            });
+      for (const entry of entries) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (SKIP_DIRS.has(entry.name)) continue;
+          walk(full);
+        } else if (entry.isFile() && !shouldSkipFile(entry.name)) {
+          const findings = scanFile(full);
+          if (findings.length > 0) {
+            reports.push({ file: path.relative(REPO_ROOT, full).split(path.sep).join("/"), findings });
           }
         }
       }
-    }
+    };
+    walk(REPO_ROOT);
+    return -1;
   }
+
+  let scanned = 0;
+  for (const relative of tracked) {
+    if (shouldSkipFile(path.basename(relative))) continue;
+    if (relative.split("/").some((seg) => SKIP_DIRS.has(seg))) continue;
+
+    scanned++;
+    const findings = scanFile(path.join(REPO_ROOT, relative));
+    if (findings.length > 0) reports.push({ file: relative, findings });
+  }
+  return scanned;
 }
 
-console.log("=== STARTING MULTI-LAYER SECRET AND CREDENTIAL EXPOSURE SCAN ===");
-try {
-  scanDirectory(process.cwd());
-  
-  if (leaks.length > 0) {
-    console.error(`\n❌ ERROR: ${leaks.length} potential credential leakage(s) detected!`);
-    for (const leak of leaks) {
-      console.error(`  - FILE: ${leak.file} (Line: ${leak.line})`);
-      console.error(`    TYPE: ${leak.patternName}`);
+function main(): void {
+  console.log("=== Y Secret Scan ===");
+  console.log(`Kok: ${REPO_ROOT}`);
+  console.log(`Muafiyet: yalniz uretilmis/ikili dosyalar. Kaynak kodu muaf DEGILDIR.\n`);
+
+  const reports: Report[] = [];
+  const scanned = collect(reports);
+  console.log(scanned >= 0 ? `Taranan izlenen dosya: ${scanned}\n` : "Git yok; tam agac tarandi.\n");
+
+  const baseline = loadBaseline();
+  const writeBaseline = process.argv.includes("--update-baseline");
+
+  const fresh: { file: string; finding: SecretFinding }[] = [];
+  const accepted: string[] = [];
+
+  for (const report of reports) {
+    for (const f of report.findings) {
+      const key = findingKey(report.file, f);
+      if (baseline.has(key)) accepted.push(key);
+      else fresh.push({ file: report.file, finding: f });
     }
-    process.exit(1);
-  } else {
-    console.log("\n✅ SUCCESS: No secrets or credentials found in tracked files!");
-    process.exit(0);
   }
-} catch (e: any) {
-  console.error(`Failed to execute secret scanner: ${e.message}`);
+
+  if (writeBaseline) {
+    const all = reports.flatMap((r) => r.findings.map((f) => findingKey(r.file, f))).sort();
+    const payload: Baseline = {
+      _comment:
+        "P03/Y-P03-010 sir tarayicisi baseline'i. Bu dosya YALNIZ KUCULEBILIR. " +
+        "Yeni bulgu icin once bulguyu duzeltin, baseline'a EKLEMEYIN. " +
+        "Guncelleme: npm run secret-scan -- --update-baseline",
+      generatedAt: new Date().toISOString(),
+      rationale: {
+        "scripts/validate-*":
+          "Sahte test fixture'lari. Bu script'ler P19'da (Y-P19-008) tamamen silinecek.",
+        "scripts/verify-permission-manual-checklist.ts": "Sahte test fixture'i. P19'da silinecek.",
+        "packages/security/src/secret-scanner/secret-scanner.test.ts":
+          "Tarayicinin kendi test verileri; parcalardan runtime'da kuruluyor, gercek sir degil.",
+        "tests/test.md": "Dokumantasyondaki ornek deger.",
+        "apps/api/src/*": "Legacy yuzey; P19'da silinecek.",
+        "apps/web/src/*": "Legacy UI; P15'te silinecek."
+      },
+      accepted: all
+    };
+    fs.mkdirSync(path.dirname(BASELINE_PATH), { recursive: true });
+    fs.writeFileSync(BASELINE_PATH, JSON.stringify(payload, null, 2) + "\n", "utf-8");
+    console.log(`Baseline guncellendi: ${all.length} bulgu kaydedildi.`);
+    console.log(`  ${path.relative(REPO_ROOT, BASELINE_PATH)}`);
+    return;
+  }
+
+  console.log(`Baseline'da kabul edilmis : ${accepted.length}`);
+  console.log(`Baseline disi (YENI)      : ${fresh.length}\n`);
+
+  if (fresh.length === 0) {
+    console.log("Yeni sir bulgusu yok. Sir taramasi temiz.");
+    if (baseline.size > accepted.length) {
+      console.log(
+        `Not: baseline'daki ${baseline.size - accepted.length} kayit artik bulunmuyor (duzeltilmis). ` +
+          "Baseline'i kucultmek icin: npm run secret-scan -- --update-baseline"
+      );
+    }
+    return;
+  }
+
+  console.error("YENI SIR BULGULARI:");
+  for (const { file, finding: f } of fresh) {
+    // Ham sir ASLA yazdirilmaz — yalniz tur, konum ve maskelenmis onizleme.
+    console.error(`  ${file}:${f.line}:${f.column}  ${f.kind}  (${f.length} karakter) ${f.preview}`);
+  }
+
+  console.error(`\n=== ${fresh.length} YENI bulgu ===`);
+  console.error("Sir taramasi BASARISIZ. Bulgulari DUZELTIN; baseline'a eklemeyin.");
   process.exit(1);
 }
+
+main();

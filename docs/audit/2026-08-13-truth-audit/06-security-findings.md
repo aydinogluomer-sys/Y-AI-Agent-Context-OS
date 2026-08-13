@@ -1,11 +1,11 @@
 # 06 — Güvenlik Bulguları
 
-> Baseline commit: `6a88280ac80d61509015ad92bc0cd605144629ff`
+> Baseline commit: `a7b39aefffc149ed987d56a025f20ec6049cda8e`
 > Sınıflandırma: **P0** = release blocker · **P1** = production-critical · **P2** = kozmetik
 
 Envanterden türeyen ölçüt: 195 route'un **36'i** yalnız
 bearer token kontrolünden geçiyor (proje kapsamı doğrulaması yok);
-48 tablonun **42'inde** tenant izolasyon kolonu yok.
+53 tablonun **44'inde** tenant izolasyon kolonu yok.
 
 ## P0 — Release blocker
 
@@ -33,7 +33,7 @@ bearer token kontrolünden geçiyor (proje kapsamı doğrulaması yok);
 | P1-2 | Şema↔kod drift'i (5 kalem) gerçek 500'ler üretiyor | `07-schema-drift.md` | P02 |
 | P1-3 | CI E2E'yi kuruyor ama çalıştırmıyor; migration'lar testlerden sonra | `.github/workflows/ci.yml` | P19 |
 | P1-4 | Mock DB production kod yolunda; `ENABLE_MOCK_DB` yerel `.env`'de `true` | `apps/api/src/db.ts:562+` | P19 |
-| P1-5 | 163 sahte başarı bulgusu (117 P0) | `10-false-green-findings.csv` | P17/P19 |
+| P1-5 | 161 sahte başarı bulgusu (115 P0) | `10-false-green-findings.csv` | P17/P19 |
 | P1-6 | helmet / CORS / rate limit / body limit yok | `server.ts` | P01 |
 | P1-7 | Primary key'ler `Math.random()` ile üretiliyor | 60 çağrı noktası | P01 |
 | P1-8 | Event store'da hash chain yok | `event_records` | P14 |

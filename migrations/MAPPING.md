@@ -69,5 +69,12 @@ migrate edilmiş veritabanları yeniden çalıştırılmaz.
 | 0043 | `0043_audit_logs_actor_and_scope.sql` | `2.0.7-audit-logs-actor-and-scope` | yeni | var |
 | 0044 | `0044_permission_policies_scope.sql` | `2.0.8-permission-policies-scope` | yeni | var |
 | 0045 | `0045_migrate_legacy_memberships.sql` | `2.0.9-migrate-legacy-memberships` | yeni | var |
+| 0046 | `0046_repositories.sql` | `2.1.0-repositories` | yeni | var |
+| 0047 | `0047_repository_connections.sql` | `2.1.1-repository-connections` | yeni | var |
+| 0048 | `0048_repository_snapshots.sql` | `2.1.2-repository-snapshots` | yeni | var |
+| 0049 | `0049_files.sql` | `2.1.3-files` | yeni | var |
+| 0050 | `0050_index_jobs_snapshot.sql` | `2.1.4-index-jobs-snapshot` | yeni | var |
+| 0051 | `0051_repo_access_audit.sql` | `2.1.5-repo-access-audit` | yeni | var |
+| 0052 | `0052_migrate_repo_sources.sql` | `2.1.6-migrate-repo-sources` | yeni | var |
 
-Toplam: **45** migration (35 göç + 10 yeni).
+Toplam: **52** migration (35 göç + 17 yeni).

@@ -22,49 +22,36 @@ export {
 
 // SEC Module - Secret redaction and credential protection bounds
 
-export const SECRET_PATTERNS = [
-  /(AI_KEY|API_KEY|SECRET|PASSWORD|TOKEN|PASSCODE|CREDENTIAL|JWT_SECRET|GEMINI_API_KEY)["'\s:=]+/gi,
-  /([A-Za-z0-9+/]{40,})/g, // Base64 or long hex strings
-];
+// P03 / Y-P03-010 — Sır tespiti ve maskeleme.
+//
+// P0-11 KAPATILDI: bu dosya artık hiçbir gerçek sır içermiyor.
+// Önceki hali gerçek bir DB parolasını iki parçaya bölüp runtime'da
+// birleştiriyor ve ondan regex kuruyordu; ayrıca belirli bir Supabase
+// project host'u hard-code'luydu. Bu yaklaşım (a) sırrı kaynakta ve git
+// geçmişinde tutuyor, (b) yalnız O parolayı koruyor, (c) parola rotate
+// edildiğinde sessizce işlevsizleşiyordu.
+//
+// Yerine kalıp + entropi tabanlı tarayıcı: ./secret-scanner
+export {
+  scanForSecrets,
+  redactSecrets,
+  containsSecret,
+  shannonEntropy,
+  isRedactionMarker,
+  type SecretFinding,
+  type SecretKind
+} from "./secret-scanner/index";
+
+import { redactSecrets as redactSecretsImpl } from "./secret-scanner/index";
 
 /**
- * Redacts potential credentials, keys or passcodes from any text target.
- * Extremely robust protection bounds to prevent leaks into prompts or terminal telemetry.
+ * Geriye dönük uyumlu API.
+ *
+ * ~20 çağrı noktası bu adı kullanıyor (audit, permission metadata, hata
+ * yanıtları, repo dosya okuma). İsim korundu, implementasyon değişti.
  */
 export function redactSecretLeaks(text: string): string {
-  if (!text) return "";
-  
-  let redacted = text;
-
-  // Redact the specific known database password to guarantee zero leak even if it appears naked
-  const obfuscatedSecretParts = ["EJfZexrU6o", "YdPpxH"];
-  const dbPassRegex = new RegExp(obfuscatedSecretParts.join(""), "g");
-  redacted = redacted.replace(dbPassRegex, "[REDACTED_PASSWORD]");
-
-  // Redact PostgreSQL/postgres connections with credentials (user:pass@host)
-  redacted = redacted.replace(/(postgres(?:ql)?:\/\/)([^:]+):([^@\s\/]+)@/gi, "$1$2:[REDACTED_PASSWORD]@");
-
-  // Redact DATABASE_URL environment variables or key value pairs in outputs/logs
-  redacted = redacted.replace(/(?:DATABASE_URL|database_url|DatabaseUrl)\s*=\s*(["']?)(postgres(?:ql)?:\/\/[^"'\s$]+)\1/gi, "DATABASE_URL=[REDACTED_DATABASE_URL] with password [REDACTED_PASSWORD]");
-  redacted = redacted.replace(/(?:DATABASE_URL|database_url|DatabaseUrl)\s*:\s*(["']?)(postgres(?:ql)?:\/\/[^"'\s$]+)\1/gi, "DATABASE_URL: [REDACTED_DATABASE_URL] with password [REDACTED_PASSWORD]");
-
-  // Pattern-based structural replacement for general keys/secrets
-  redacted = redacted.replace(/AI_KEY\s*=\s*["']([^"']+)["']/gi, 'AI_KEY = "[REDACTED_API_KEY]"');
-  redacted = redacted.replace(/API_KEY\s*=\s*["']([^"']+)["']/gi, 'API_KEY = "[REDACTED_API_KEY]"');
-  redacted = redacted.replace(/GEMINI_API_KEY\s*=\s*["']([^"']+)["']/gi, 'GEMINI_API_KEY = "[REDACTED_API_KEY]"');
-  redacted = redacted.replace(/PASSWORD\s*=\s*["']([^"']+)["']/gi, 'PASSWORD = "[REDACTED_SECRET]"');
-  redacted = redacted.replace(/TOKEN\s*=\s*["']([^"']+)["']/gi, 'TOKEN = "[REDACTED_TOKEN]"');
-
-  // Redact JSON properties that hold secrets
-  redacted = redacted.replace(/("|')?(?:api_key|api-key|apikey|key|secret|password|token|passcode|credential)("|')?\s*[:=]\s*("|')([^"'\\]*(?:\\.[^"'\\]*)*)\3/gi, '$1key$2: "[REDACTED_SECRET]"');
-
-  // Redact Bearer headers
-  redacted = redacted.replace(/Bearer\s+([A-Za-z0-9\-._~+/]+=*)/gi, "Bearer [REDACTED_BEARER_TOKEN]");
-
-  // Redact any occurrences of connection URL-like strings containing passwords in error reports
-  redacted = redacted.replace(/db\.vnnfcwpywdxepdwwuqoo\.supabase\.co:[0-9]+\/[a-zA-Z0-9_\-]+/gi, "db.vnnfcwpywdxepdwwuqoo.supabase.co:[REDACTED]");
-
-  return redacted;
+  return redactSecretsImpl(text);
 }
 
 /**
