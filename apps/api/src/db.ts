@@ -6,6 +6,7 @@
 import pg from "pg";
 import { sysLogger } from "./logger";
 import { redactSecretLeaks } from "@y/security";
+import { newId } from "@y/shared";
 
 const { Pool } = pg;
 
@@ -393,7 +394,7 @@ function handleInsert(sql: string, params: any[]): any {
   }
   const camelOrSnakeId = cols.includes("id") ? "id" : null;
   if (camelOrSnakeId && !newRow[camelOrSnakeId]) {
-    newRow[camelOrSnakeId] = "id_" + Math.random().toString(36).substring(2, 11);
+    newRow[camelOrSnakeId] = newId("id");
   }
   if (!newRow["created_at"]) newRow["created_at"] = new Date().toISOString();
   if (!newRow["updated_at"]) newRow["updated_at"] = new Date().toISOString();

@@ -11,8 +11,7 @@ import {
   IncrementalIndexStatusDTO,
   CreateIncrementalIndexEventDTO,
   IndexJobDTO,
-  ChangeKind
-} from "@y/shared";
+  ChangeKind, newId } from "@y/shared";
 import { redactSecretLeaks } from "@y/security";
 import { RepoAdapterService } from "./repo-adapter-service";
 import { IndexJobService } from "./index-job-service";
@@ -66,7 +65,7 @@ export class IncrementalIndexService {
     rationale = "",
     resourceId = ""
   ): Promise<void> {
-    const logId = `audit_log_${Math.random().toString(36).substring(2, 11)}`;
+    const logId = newId("audit_log");
     const cleanRationale = redactSecretLeaks(rationale);
     
     // Check and redact metadata
@@ -83,7 +82,7 @@ export class IncrementalIndexService {
     const isSecretInRationale = rationale !== cleanRationale;
 
     if ((isSecretInMetadata || isSecretInRationale) && action !== "INCREMENTAL_INDEX_SECRET_REDACTED") {
-      const redLogId = `audit_log_${Math.random().toString(36).substring(2, 11)}`;
+      const redLogId = newId("audit_log");
       try {
         await this.query(
           `INSERT INTO audit_logs (
@@ -252,7 +251,7 @@ export class IncrementalIndexService {
       metadataJson = { redacted: true };
     }
 
-    const eventId = `event_${Math.random().toString(36).substring(2, 11)}`;
+    const eventId = newId("event");
 
     // Enqueue bound index_jobs through our IndexJobService
     let indexJobId: string | null = null;

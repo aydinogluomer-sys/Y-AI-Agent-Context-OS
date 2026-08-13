@@ -11,8 +11,7 @@ import {
   CreateIndexJobDTO,
   IndexJobStatus,
   IndexJobType,
-  IndexJobPriority
-} from "@y/shared";
+  IndexJobPriority, newId } from "@y/shared";
 import { redactSecretLeaks } from "@y/security";
 
 export interface IndexJob {
@@ -98,7 +97,7 @@ export class IndexJobService {
     rationale = "",
     resourceId = ""
   ): Promise<void> {
-    const logId = `audit_log_${Math.random().toString(36).substring(2, 11)}`;
+    const logId = newId("audit_log");
     const cleanRationale = redactSecretLeaks(rationale);
     
     // Redact all metadata before database commits
@@ -108,7 +107,7 @@ export class IndexJobService {
     const isSecretInRationale = rationale !== cleanRationale;
 
     if ((isSecretInMetadata || isSecretInRationale) && action !== "INDEX_JOB_SECRET_REDACTED") {
-      const redLogId = `audit_log_${Math.random().toString(36).substring(2, 11)}`;
+      const redLogId = newId("audit_log");
       try {
         await this.query(
           `INSERT INTO audit_logs (
@@ -212,7 +211,7 @@ export class IndexJobService {
       }
     }
 
-    const jobId = `job_${Math.random().toString(36).substring(2, 11)}`;
+    const jobId = newId("job");
     const jobType = req.jobType || "repo_scan";
     const status = "pending";
     const priority = req.priority || "medium";

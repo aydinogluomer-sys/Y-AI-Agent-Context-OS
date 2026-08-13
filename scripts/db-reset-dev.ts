@@ -8,6 +8,7 @@ import pg from "pg";
 import fs from "fs";
 import path from "path";
 import { redactSecretLeaks } from "../packages/security/src/index";
+import { newId } from "@y/shared";
 
 dotenv.config({ override: true });
 
@@ -105,7 +106,7 @@ async function runDevReset() {
       `);
       
       if (tableCheck.rows[0].exists) {
-        const logId = `audit_log_reset_${Math.random().toString(36).substring(2, 11)}`;
+        const logId = newId("audit_log_reset");
         await client.query(`
           INSERT INTO audit_logs (
             id, project_id, actor, feature_id, action, status, 

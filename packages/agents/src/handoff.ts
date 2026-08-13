@@ -2,8 +2,7 @@ import { redactSecretLeaks } from "@y/security";
 import { 
   NotFoundError,
   PermissionDeniedError,
-  BaseError
-} from "@y/shared";
+  BaseError, newId } from "@y/shared";
 
 export interface CreateHandoffDTO {
   source_provider: string;
@@ -83,7 +82,7 @@ export class MultiAgentHandoffService {
     resourceId = "",
     ipAddress = "127.0.0.1"
   ): Promise<void> {
-    const logId = `audit_log_${Math.random().toString(36).substring(2, 11)}`;
+    const logId = newId("audit_log");
     const cleanRationale = redactSecretLeaks(rationale);
     
     let cleanMetadata: Record<string, any> = {};
@@ -444,7 +443,7 @@ export class MultiAgentHandoffService {
       generated_at: new Date().toISOString()
     })));
 
-    const handoffId = `handoff_${Math.random().toString(36).substring(2, 11)}`;
+    const handoffId = newId("handoff");
 
     await this.query(
       `INSERT INTO agent_handoffs (

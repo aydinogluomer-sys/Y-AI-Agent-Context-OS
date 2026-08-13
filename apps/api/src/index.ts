@@ -34,8 +34,7 @@ import {
   NotFoundError,
   ConflictError,
   BaseError,
-  PermissionDeniedError
-} from "@y/shared";
+  PermissionDeniedError, newId } from "@y/shared";
 import { evaluatePlatformReadiness, RepoAdapterService, LocalFilesystemRepoAdapter, ReadOnlyGitHubRepoAdapter, IndexJobService, IncrementalIndexService, TypeScriptASTParser, RegexFallbackParser, StaticAnalysisResultDTO } from "@y/core";
 import { PermissionKernelService } from "./PermissionKernelService";
 import { 
@@ -1236,7 +1235,7 @@ router.post("/projects", async (req: Request, res: Response, next: NextFunction)
       return res.status(400).json({ error: "Missing required project 'name' parameter." });
     }
 
-    const projectId = body.id || `proj_${Math.random().toString(36).substring(2, 11)}`;
+    const projectId = body.id || newId("proj");
     const description = body.description || null;
     const teamId = body.teamId || null;
     const metadataJson = body.metadataJson || {};
@@ -1566,7 +1565,7 @@ router.post("/projects/:id/tasks", requireProjectScope, async (req: Request, res
       return res.status(404).json({ error: `Cannot add task; parent Project does not exist: ${projectId}` });
     }
 
-    const taskId = body.id || `task_${Math.random().toString(36).substring(2, 11)}`;
+    const taskId = body.id || newId("task");
     const description = body.description || null;
     const category = body.category || "Coding";
     const riskLevel = body.riskLevel || "Low";
@@ -3064,7 +3063,7 @@ router.post("/projects/:id/context-items", requireProjectScope, async (req: Requ
     const checksum = calculateChecksum(content);
     const tokenCount = estimateTokens(content);
     const parsedTitle = path.basename(path_or_uri);
-    const contextItemId = `ctx_item_${Math.random().toString(36).substring(2, 11)}`;
+    const contextItemId = newId("ctx_item");
 
     const metadata_json = {
       ...(metadata || {}),
@@ -3099,7 +3098,7 @@ router.post("/projects/:id/context-items", requireProjectScope, async (req: Requ
     // Deteminitic chunking sequence
     const chunks = chunkContent(content);
     for (const chunk of chunks) {
-      const chunkId = `ctx_chunk_${Math.random().toString(36).substring(2, 11)}`;
+      const chunkId = newId("ctx_chunk");
       await queryDb(`
         INSERT INTO context_chunks (id, context_item_id, chunk_index, content, token_count, embedding_id)
         VALUES ($1, $2, $3, $4, $5, NULL);
@@ -3295,7 +3294,7 @@ router.patch("/context-items/:contextItemId", async (req: Request, res: Response
       chunksCount = newChunks.length;
       
       for (const chunk of newChunks) {
-        const chunkId = `ctx_chunk_${Math.random().toString(36).substring(2, 11)}`;
+        const chunkId = newId("ctx_chunk");
         await queryDb(`
           INSERT INTO context_chunks (id, context_item_id, chunk_index, content, token_count, embedding_id)
           VALUES ($1, $2, $3, $4, $5, NULL);
@@ -3599,7 +3598,7 @@ router.get("/context/search-server/status", async (req: Request, res: Response, 
 
     // Register status inquiry audit trace sequentially
     try {
-      const logId = `audit_log_${Math.random().toString(36).substring(2, 11)}`;
+      const logId = newId("audit_log");
       await db.getPool().query(
         `INSERT INTO audit_logs (id, project_id, actor, feature_id, action, status, metadata, rationale, resource_id, ip_address, created_at)
          VALUES ($1, NULL, 'User-Aydinoglu', 'CTX', 'DB_READINESS_CHECK', 'authorized', $2, 'Checked isolated search server status.', NULL, $3, NOW());`,

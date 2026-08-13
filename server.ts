@@ -4,15 +4,27 @@ import { createServer as createViteServer } from "vite";
 import { createDefaultProviderRegistry, type ModelProvider } from "@y/providers";
 import dotenv from "dotenv";
 import { apiReady, apiRouter } from "./apps/api/src/index";
+import { createApp, installErrorHandler } from "./apps/api/src/app";
 
 dotenv.config();
 
-const app = express();
 const PORT = Number.parseInt(process.env.PORT || "3000", 10);
 const HOST = process.env.HOST || "127.0.0.1";
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
-app.use(express.json());
-app.use("/api", apiRouter);
+/**
+ * P01 / Y-P01-003: express kurulumu `createApp()`'e devredildi.
+ * Öncesinde helmet, CORS, rate limit ve body limiti hiç yoktu (P00 bulgusu P1-6).
+ */
+const app = createApp({
+  apiRouter,
+  isProduction: IS_PRODUCTION,
+  corsOrigins: (process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean),
+  bodyLimit: process.env.BODY_LIMIT || "1mb"
+});
 
 const providerRegistry = createDefaultProviderRegistry(process.env);
 
@@ -305,6 +317,10 @@ async function startServer() {
     });
     console.log(`Serving static assets from ${distPath}.`);
   }
+
+  // Hata yakalayıcı EN SON kaydedilir: legacy router kendi handler'ını
+  // /providers/health route'undan önce kaydettiği için o route korumasızdı.
+  installErrorHandler(app, IS_PRODUCTION);
 
   await new Promise<void>((resolve, reject) => {
     const server = app.listen(PORT, HOST, () => {

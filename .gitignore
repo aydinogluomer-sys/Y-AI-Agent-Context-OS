@@ -15,3 +15,13 @@ scratch/
 *.key
 secrets.json
 credentials.json
+
+# Test/build ciktilari
+playwright-report/
+test-results/
+.vitest/
+
+# ADR-014: tek paket yoneticisi pnpm. npm lockfile'i CI ile yerel arasinda
+# sessiz surum sapmasi uretiyordu.
+package-lock.json
+yarn.lock

@@ -4,6 +4,14 @@
  */
 
 // ==========================================
+// 0. Kanonik alt modüller (P01)
+// ==========================================
+
+// ADR-013 — kimlik üretimi. `Math.random()` ile primary key üretimi yasaktır;
+// tüm kimlikler buradan gelir.
+export { newId, newSortableId, isValidId } from "./ids";
+
+// ==========================================
 // 1. Shared Error Types
 // ==========================================
 

@@ -10,8 +10,7 @@ import {
   ResumeScheduleType,
   ResumeScheduleStatus,
   CreateResumeScheduleDTO,
-  UpdateResumeScheduleDTO
-} from "@y/shared";
+  UpdateResumeScheduleDTO, newId } from "@y/shared";
 import { redactSecretLeaks } from "@y/security";
 
 export class ResumeEngineService {
@@ -61,7 +60,7 @@ export class ResumeEngineService {
     resourceId = "",
     ipAddress = "127.0.0.1"
   ): Promise<void> {
-    const logId = `audit_log_${Math.random().toString(36).substring(2, 11)}`;
+    const logId = newId("audit_log");
     const cleanRationale = redactSecretLeaks(rationale);
     
     let cleanMetadata: Record<string, any> = {};
@@ -132,7 +131,7 @@ export class ResumeEngineService {
       ["paused", taskId, projectId]
     );
 
-    const id = `resume_state_${Math.random().toString(36).substring(2, 11)}`;
+    const id = newId("resume_state");
     const defaultTaskState = {
       taskId,
       projectId,
@@ -203,7 +202,7 @@ export class ResumeEngineService {
   ): Promise<ResumeState> {
     await this.validateProjectAndTaskScope(projectId, taskId);
 
-    const id = `resume_state_${Math.random().toString(36).substring(2, 11)}`;
+    const id = newId("resume_state");
 
     // Redact all entries before database write
     const cleanStatus = redactSecretLeaks(dto.status || "paused");
@@ -706,7 +705,7 @@ export class ResumeEngineService {
     );
     const resumeStateId = stateRes.rowCount > 0 ? stateRes.rows[0].id : null;
 
-    const id = `schedule_${Math.random().toString(36).substring(2, 11)}`;
+    const id = newId("schedule");
     const now = new Date();
     const resumeAt = new Date(now.getTime() + delayMinutes * 60000);
 

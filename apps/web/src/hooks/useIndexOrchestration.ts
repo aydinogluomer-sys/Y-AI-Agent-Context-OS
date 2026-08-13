@@ -6,6 +6,7 @@
 import { useState, useEffect } from "react";
 import * as apiContext from "../lib/api/context";
 import * as apiAdapter from "../lib/api/adapter";
+import { newId } from "@y/shared";
 
 export function useIndexOrchestration(projectId: string) {
   // Index Jobs Queue states
@@ -104,7 +105,7 @@ export function useIndexOrchestration(projectId: string) {
     if (!projectId) return;
     setClaimingNextJob(true);
     try {
-      const workerId = `worker_ui_${Math.random().toString(36).substring(2, 7)}`;
+      const workerId = newId("worker_ui");
       const data = await apiContext.claimNextIndexJob(projectId, workerId);
       if (data) {
         alert(`Successfully claimed Job ID: ${data.id}. Worker started in background.`);

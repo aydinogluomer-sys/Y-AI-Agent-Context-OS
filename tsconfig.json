@@ -34,17 +34,11 @@
       "@y/agents": [
         "./packages/agents/src/index.ts"
       ],
-      "@y/connectors": [
-        "./packages/connectors/src/index.ts"
-      ],
       "@y/providers": [
         "./packages/providers/src/index.ts"
       ],
       "@y/security": [
         "./packages/security/src/index.ts"
-      ],
-      "@y/ui": [
-        "./packages/ui/src/index.ts"
       ],
       "@y/web/*": [
         "./apps/web/src/*"

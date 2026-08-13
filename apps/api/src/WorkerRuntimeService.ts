@@ -16,8 +16,7 @@ import {
   AuditActionType,
   AuditLogStatusType,
   IndexJobDTO,
-  IndexJobStatus
-} from "@y/shared";
+  IndexJobStatus, newId } from "@y/shared";
 import { redactSecretLeaks } from "@y/security";
 import { sysLogger } from "./logger";
 import { PermissionKernelService } from "./PermissionKernelService";
@@ -185,7 +184,7 @@ export class WorkerRuntimeService {
     const metadataJson = dto.metadata_json || {};
 
     // Generate internal ID wrkr_xxxx
-    const randId = `wrkr_${Math.random().toString(36).substring(2, 11)}`;
+    const randId = newId("wrkr");
 
     // Try upserting to guarantee project-worker level identity
     const queryStr = `
@@ -887,7 +886,7 @@ export class WorkerRuntimeService {
     taskId?: string | null,
     indexJobId?: string | null
   ): Promise<void> {
-    const logId = `wlog_${Math.random().toString(36).substring(2, 11)}`;
+    const logId = newId("wlog");
     const redactedMessage = this.sanitizeWorkerLog(message);
 
     try {

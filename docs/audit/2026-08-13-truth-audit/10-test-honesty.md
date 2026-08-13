@@ -8,9 +8,9 @@
 | Ölçüt | Değer |
 |---|---|
 | Taranan dosya | 129 |
-| Toplam bulgu | **197** |
+| Toplam bulgu | **165** |
 | P0 (release blocker) | **119** |
-| P1 (production-critical) | **78** |
+| P1 (production-critical) | **46** |
 
 ## Kural bazlı dağılım
 
@@ -30,7 +30,7 @@
 | `unconditional-flag` | P1 | 1 | Doğrulanmadan true yazılan güvenlik bayrağı |
 | `stub-dependency` | P1 | 6 | Gerçek analiz yerine stub bağımlılık kaydı |
 | `weak-e2e-assertion` | P1 | 0 | toBeLessThan(400/500) — 401/404 dahi geçiren E2E iddiası |
-| `random-primary-key` | P1 | 60 | Math.random() ile primary key üretimi |
+| `random-primary-key` | P1 | 28 | Math.random() ile primary key üretimi (ADR-013 ihlali) |
 
 ## En yoğun 25 dosya
 
@@ -40,27 +40,27 @@
 | `scripts/validate-segment-20-26.ts` | 23 |
 | `scripts/validate-segment-19-21.ts` | 18 |
 | `packages/context/src/index.ts` | 12 |
-| `apps/api/src/index.ts` | 10 |
 | `scripts/validate-segment-1-10.ts` | 8 |
 | `scripts/validate-segment-15-18.ts` | 6 |
 | `scripts/validate-stage-34.ts` | 6 |
 | `scripts/validate-stage-35.ts` | 6 |
-| `apps/api/src/db.ts` | 4 |
+| `apps/api/src/index.ts` | 4 |
 | `apps/web/src/lib/api/ai.ts` | 4 |
-| `packages/agents/src/resume.ts` | 4 |
 | `scripts/validation-suite.ts` | 4 |
+| `apps/api/src/db.ts` | 3 |
 | `packages/context/src/search-server.ts` | 3 |
-| `packages/core/src/incremental-index-service.ts` | 3 |
-| `packages/core/src/index-job-service.ts` | 3 |
 | `scripts/validate-phase-2-runner.ts` | 3 |
 | `scripts/validate-segment-11-14.ts` | 3 |
-| `apps/api/src/WorkerRuntimeService.ts` | 2 |
-| `packages/agents/src/debug.ts` | 2 |
-| `packages/agents/src/handoff.ts` | 2 |
 | `packages/security/src/index.ts` | 2 |
 | `scripts/validate-phase-3-startup.ts` | 2 |
 | `scripts/validate-stage-27.ts` | 2 |
-| `apps/api/src/audit.ts` | 1 |
+| `apps/api/src/PermissionKernelService.ts` | 1 |
+| `apps/api/src/startup-policy.ts` | 1 |
+| `apps/web/src/App.tsx` | 1 |
+| `scripts/run-validation-suite.ts` | 1 |
+| `scripts/secret-scan.ts` | 1 |
+| `scripts/validate-phase-5-evidence-integrity.ts` | 1 |
+| `scripts/validate-stage-30.ts` | 1 |
 
 ## Yorum
 

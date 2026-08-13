@@ -120,8 +120,10 @@ const RULES: Rule[] = [
   {
     id: "random-primary-key",
     severity: "P1",
-    description: "Math.random() ile primary key üretimi",
-    pattern: /Math\.random\(\)\.toString\(36\)\.substring/
+    description: "Math.random() ile primary key üretimi (ADR-013 ihlali)",
+    pattern: /Math\.random\(\)\.toString\(36\)\.substring/,
+    // packages/shared/src/ids.* kanonik cozumdur ve eski kaliba bilerek atif yapar.
+    exclude: /^packages\/shared\/src\/ids\.(ts|test\.ts)$/
   }
 ];
 

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AuditLog, AuditLogStatusType, AuditFeatureIdType, AuditActionType } from "@y/shared";
+import { AuditLog, AuditLogStatusType, AuditFeatureIdType, AuditActionType, newId } from "@y/shared";
 import { sysLogger } from "./logger";
 import { redactSecretLeaks } from "@y/security";
 
@@ -54,7 +54,7 @@ export class AuditLogHelper {
       cleanMetadata = { redaction_error: "Failed to cleanly serialize metadata for audit logs." };
     }
 
-    const logId = `audit_log_${Math.random().toString(36).substring(2, 11)}`;
+    const logId = newId("audit_log");
 
     const auditEntry: AuditLog = {
       id: logId,

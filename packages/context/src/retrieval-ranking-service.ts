@@ -13,8 +13,7 @@ import {
   PermissionDeniedError,
   ContextBoundaryViolationError,
   SecretLeakedError,
-  ContextSourceType
-} from "@y/shared";
+  ContextSourceType, newId } from "@y/shared";
 import { SearchServer } from "./search-server";
 import { 
   detectSecrets, 
@@ -54,7 +53,7 @@ export class RetrievalRankingService {
     resourceId = "",
     ipAddress = "127.0.0.1"
   ): Promise<void> {
-    const logId = `audit_log_${Math.random().toString(36).substring(2, 11)}`;
+    const logId = newId("audit_log");
     try {
       await this.query(
         `INSERT INTO audit_logs (id, project_id, actor, feature_id, action, status, metadata, rationale, resource_id, ip_address, created_at)

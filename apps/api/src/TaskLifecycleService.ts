@@ -13,8 +13,7 @@ import {
   NotFoundError,
   AuditFeatureIdType,
   AuditActionType,
-  AuditLogStatusType
-} from "@y/shared";
+  AuditLogStatusType, newId } from "@y/shared";
 import { sysLogger } from "./logger";
 
 const ACTION_TO_STATUS: Record<TaskTransitionActionType, TaskStatusType> = {
@@ -202,7 +201,7 @@ export class TaskLifecycleService {
     rationale: string | null,
     metadata: Record<string, any>
   ): Promise<string> {
-    const historyId = `history_${Math.random().toString(36).substring(2, 11)}`;
+    const historyId = newId("history");
     const sanitizedMeta = this.sanitizeTransitionMetadata(metadata);
 
     await this.query(

@@ -7,8 +7,7 @@ import {
   NotFoundError,
   PermissionDeniedError,
   ConflictError,
-  BaseError
-} from "@y/shared";
+  BaseError, newId } from "@y/shared";
 import { redactSecretLeaks } from "@y/security";
 import crypto from "crypto";
 
@@ -110,7 +109,7 @@ export class AgentSessionRecoveryService {
     resourceId = "",
     ipAddress = "127.0.0.1"
   ): Promise<void> {
-    const logId = `audit_log_${Math.random().toString(36).substring(2, 11)}`;
+    const logId = newId("audit_log");
     const cleanRationale = redactSecretLeaks(rationale);
     
     // Redact metadata values

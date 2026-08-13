@@ -8,8 +8,7 @@ import {
   CreateGraphNodeDTO,
   CreateGraphEdgeDTO,
   NotFoundError,
-  PermissionDeniedError
-} from "@y/shared";
+  PermissionDeniedError, newId } from "@y/shared";
 import { redactSecretLeaks } from "@y/security";
 import { TypeScriptASTParser } from "../../core/src/static-analysis";
 
@@ -121,7 +120,7 @@ export class KnowledgeGraphService {
     resourceId = "",
     ipAddress = "127.0.0.1"
   ): Promise<void> {
-    const logId = `audit_log_${Math.random().toString(36).substring(2, 11)}`;
+    const logId = newId("audit_log");
     const cleanRationale = redactSecretLeaks(rationale);
     
     let cleanMetadata: Record<string, any> = {};
