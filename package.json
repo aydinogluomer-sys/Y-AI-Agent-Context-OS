@@ -9,7 +9,7 @@
     "start": "node dist/server/server.js",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.strict.json",
     "test": "vitest run",
     "test:phase1": "tsx scripts/validate-phase-1-auth.ts",
     "test:phase2": "tsx scripts/validate-phase-2-runner.ts",
@@ -36,7 +36,9 @@
     "audit:inventory": "tsx scripts/audit/inventory-api.ts && tsx scripts/audit/inventory-ui.ts && tsx scripts/audit/inventory-db.ts && tsx scripts/audit/generate-reports.ts",
     "audit:verify": "tsx scripts/audit/verify-inventories.ts",
     "audit:false-green": "tsx scripts/audit/scan-false-green.ts",
-    "audit:registry": "tsx scripts/audit/rebuild-feature-registry.ts"
+    "audit:registry": "tsx scripts/audit/rebuild-feature-registry.ts",
+    "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json",
+    "migrations:mapping": "tsx scripts/audit/regenerate-migration-mapping.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -47,6 +49,7 @@
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.1",
     "helmet": "^8.3.0",
+    "jose": "^5.10.0",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "pg": "^8.21.0",

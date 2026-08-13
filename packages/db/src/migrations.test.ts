@@ -31,8 +31,9 @@ function normalizeSql(sql: string): string {
 describe("migration dosyaları", () => {
   const loaded = loadMigrations(MIGRATIONS_DIR);
 
-  it("35 migration dosyası yüklenir", () => {
-    expect(loaded.length).toBe(35);
+  it("en az göç edilen 35 migration mevcut", () => {
+    // Yeni migration'lar ADDITIVE eklenir; alt sinir baseline'dir.
+    expect(loaded.length).toBeGreaterThanOrEqual(baseline.count);
   });
 
   it("sıra numaraları boşluksuz ve artan", () => {
@@ -64,16 +65,18 @@ describe("migration dosyaları", () => {
 describe("dondurulmus baseline ↔ dosya paritesi (ADR-003 göç güvencesi)", () => {
   const loaded = loadMigrations(MIGRATIONS_DIR);
 
-  it("migration sayısı göç öncesiyle aynı", () => {
-    expect(loaded.length).toBe(baseline.count);
-    expect(loaded.length).toBe(baseline.migrations.length);
+  it("göç edilen ilk N migration korunmuş", () => {
+    expect(loaded.length).toBeGreaterThanOrEqual(baseline.count);
   });
 
-  it("ledger version sırası birebir aynı", () => {
-    expect(loaded.map((m) => m.version)).toEqual(baseline.migrations.map((m) => m.version));
+  it("ledger version sırası ilk N'de birebir aynı", () => {
+    // Baseline yalniz goc edilen migration'lari kapsar; sonrasi yeni istir.
+    expect(loaded.slice(0, baseline.count).map((m) => m.version)).toEqual(
+      baseline.migrations.map((m) => m.version)
+    );
   });
 
-  it("her migration'ın SQL içeriği hash düzeyinde birebir aynı", () => {
+  it("göç edilen her migration'ın SQL içeriği hash düzeyinde birebir aynı", () => {
     for (let i = 0; i < baseline.migrations.length; i++) {
       const actual = createHash("sha256").update(normalizeSql(loaded[i].up), "utf-8").digest("hex");
       expect(actual, `${loaded[i].fileName} icerigi goc anindakinden sapmis`).toBe(
@@ -149,12 +152,14 @@ function createFakePool(state: FakeState): Queryable {
 }
 
 describe("runMigrations", () => {
+  const TOTAL = loadMigrations(MIGRATIONS_DIR).length;
+
   it("boş ledger'da tüm migration'ları uygular", async () => {
     const state: FakeState = { ledger: new Set(), calls: [] };
     const res = await runMigrations(createFakePool(state), { migrationsDir: MIGRATIONS_DIR });
-    expect(res.applied.length).toBe(35);
+    expect(res.applied.length).toBe(TOTAL);
     expect(res.skipped.length).toBe(0);
-    expect(state.ledger.size).toBe(35);
+    expect(state.ledger.size).toBe(TOTAL);
   });
 
   it("ikinci çalıştırma no-op (idempotent)", async () => {
@@ -162,7 +167,7 @@ describe("runMigrations", () => {
     await runMigrations(createFakePool(state), { migrationsDir: MIGRATIONS_DIR });
     const second = await runMigrations(createFakePool(state), { migrationsDir: MIGRATIONS_DIR });
     expect(second.applied.length).toBe(0);
-    expect(second.skipped.length).toBe(35);
+    expect(second.skipped.length).toBe(TOTAL);
   });
 
   it("kısmen uygulanmış ledger'da yalnız eksikleri uygular", async () => {
@@ -170,7 +175,7 @@ describe("runMigrations", () => {
     const state: FakeState = { ledger: new Set(partial), calls: [] };
     const res = await runMigrations(createFakePool(state), { migrationsDir: MIGRATIONS_DIR });
     expect(res.skipped.length).toBe(10);
-    expect(res.applied.length).toBe(25);
+    expect(res.applied.length).toBe(TOTAL - 10);
   });
 
   it("advisory lock alır ve bırakır", async () => {
@@ -200,7 +205,7 @@ describe("runMigrations", () => {
   it("dry-run modunda ledger'a yazmaz", async () => {
     const state: FakeState = { ledger: new Set(), calls: [] };
     const res = await runMigrations(createFakePool(state), { migrationsDir: MIGRATIONS_DIR, dryRun: true });
-    expect(res.applied.length).toBe(35);
+    expect(res.applied.length).toBe(TOTAL);
     expect(state.ledger.size).toBe(0);
     expect(state.calls).toContain("ROLLBACK;");
   });
@@ -216,6 +221,6 @@ describe("detectLedgerDrift", () => {
   it("ledger'da olmayan dosyaları tespit eder", async () => {
     const state: FakeState = { ledger: new Set(), calls: [] };
     const drift = await detectLedgerDrift(createFakePool(state), MIGRATIONS_DIR);
-    expect(drift.missingFromLedger.length).toBe(35);
+    expect(drift.missingFromLedger.length).toBe(loadMigrations(MIGRATIONS_DIR).length);
   });
 });

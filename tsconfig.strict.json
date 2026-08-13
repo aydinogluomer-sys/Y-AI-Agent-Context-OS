@@ -1,0 +1,33 @@
+{
+  // P02 — Kanonik kod için strict typecheck.
+  //
+  // Neden ayrı bir config: P00 Truth Audit, kök `tsconfig.json`'da `strict`
+  // olmadığını ortaya çıkardı. Bu yalnız bir stil eksikliği değil —
+  // `strictNullChecks` kapalıyken TypeScript discriminated union'ları
+  // DARALTMIYOR, yani `if (!result.ok) result.failure` derlenmiyor.
+  // Güvenlik kararlarını taşıyan kodda bu kabul edilemez.
+  //
+  // Legacy kod tabanında strict açmak 101 hata üretiyor. ADR-001 (paralel
+  // kanonik yüzey) gereği çözüm bunları toptan düzeltmek değil:
+  // YENİ kod strict yazılır, legacy grandfathered kalır ve faz faz boşaltılır.
+  //
+  // P19'da (Y-P19-004) legacy yüzey silindiğinde bu config kök config olur.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false
+  },
+  "include": [
+    "packages/shared/src/domain/**/*.ts",
+    "packages/shared/src/ids.ts",
+    "packages/shared/src/ids.test.ts",
+    "packages/db/src/**/*.ts",
+    "apps/api/src/app.ts",
+    "apps/api/src/app.test.ts",
+    "apps/api/src/middleware/**/*.ts",
+    "apps/api/src/routes/**/*.ts",
+    "apps/api/src/domain/**/*.ts",
+    "scripts/audit/**/*.ts"
+  ]
+}

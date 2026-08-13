@@ -102,6 +102,26 @@ export type AuthzDenialReason =
   | "POLICY_STORE_UNAVAILABLE";
 
 /**
+ * Karar guard'ları.
+ *
+ * Kok `tsconfig.json`'da `strict` kapali oldugu icin TypeScript
+ * discriminated union'lari otomatik daraltmiyor. Bu guard'lar hem legacy
+ * hem strict config altinda calisir ve kararin iki dalini da tip guvenli
+ * kilar. P19'da (Y-P19-004) legacy config kalkinca sadelesecekler.
+ */
+export function isAuthzAllowed(
+  decision: AuthzDecision
+): decision is Extract<AuthzDecision, { allowed: true }> {
+  return decision.allowed === true;
+}
+
+export function isAuthzDenied(
+  decision: AuthzDecision
+): decision is Extract<AuthzDecision, { allowed: false }> {
+  return decision.allowed === false;
+}
+
+/**
  * FAIL CLOSED kuralı.
  *
  * Policy/membership deposu erişilemezse karar DAİMA reddir. P00 bulgusu
