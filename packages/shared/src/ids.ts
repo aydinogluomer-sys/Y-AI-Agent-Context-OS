@@ -15,10 +15,46 @@
  * denetler; P17'de CI gate'i olur.
  */
 
-import { randomUUID, randomBytes } from "crypto";
+/**
+ * Web Crypto API kullanılır — Node 19+ ve tarayıcıda aynı yüzey.
+ *
+ * `node:crypto`'dan import etmek bu modülü sunucuya hapsederdi:
+ * `packages/shared` hem `apps/api` hem `apps/web` tarafından tüketiliyor ve
+ * Rollup tarayıcı bundle'ında `crypto` modülünü çözemez (P01 build hatası).
+ */
+const webcrypto: Crypto = globalThis.crypto;
+
+if (!webcrypto || typeof webcrypto.getRandomValues !== "function") {
+  throw new Error(
+    "Web Crypto API bulunamadi. Kimlik uretimi kriptografik bir kaynak gerektirir " +
+      "(Node 19+ veya guvenli baglam icinde tarayici). Math.random() fallback'i YASAKTIR (ADR-013)."
+  );
+}
 
 /** Prefix'te izin verilen karakterler — id'nin ayrıştırılabilir kalması için. */
 const PREFIX_RE = /^[a-z][a-z0-9_]{0,23}$/;
+
+function randomUUID(): string {
+  if (typeof webcrypto.randomUUID === "function") {
+    return webcrypto.randomUUID();
+  }
+  // randomUUID yoksa (eski tarayıcı) RFC 4122 v4'ü getRandomValues ile kur.
+  const bytes = new Uint8Array(16);
+  webcrypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10
+  const hex: string[] = [];
+  for (let i = 0; i < 16; i++) hex.push(bytes[i].toString(16).padStart(2, "0"));
+  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex
+    .slice(8, 10)
+    .join("")}-${hex.slice(10, 16).join("")}`;
+}
+
+function randomBytes(length: number): Uint8Array {
+  const bytes = new Uint8Array(length);
+  webcrypto.getRandomValues(bytes);
+  return bytes;
+}
 
 /**
  * Kriptografik olarak güvenli kimlik üretir.
