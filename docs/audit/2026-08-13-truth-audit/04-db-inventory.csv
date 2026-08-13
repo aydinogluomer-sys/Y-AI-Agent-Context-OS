@@ -1,12 +1,12 @@
 table,migration_version,defined_at_line,column_count,has_project_id,has_org_id,reads,writes,verdict
-projects,1.0.0-projects-foundation,10,7,false,false,83,50,KEEP + ALTER (needs organization_id)
+projects,1.0.0-projects-foundation,10,7,false,true,84,50,KEEP
 memberships,1.0.1-memberships-foundation,10,6,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
-tasks,1.0.2-tasks-foundation,10,13,true,false,102,78,KEEP + ALTER (needs organization_id)
+tasks,1.0.2-tasks-foundation,10,13,true,true,102,78,KEEP
 context_items,1.0.3-context-vault-foundation,10,13,true,false,46,30,KEEP + ALTER (needs organization_id)
 context_chunks,1.0.3-context-vault-foundation,27,6,false,false,18,13,KEEP + ALTER (needs organization_id)
 graph_nodes,1.0.4-knowledge-graph-foundation,10,7,true,false,15,10,KEEP + ALTER (needs organization_id)
 graph_edges,1.0.4-knowledge-graph-foundation,21,7,true,false,11,10,KEEP + ALTER (needs organization_id)
-audit_logs,1.0.5-audit-and-telemetry-foundation,10,11,true,false,66,33,KEEP + ALTER (needs organization_id)
+audit_logs,1.0.5-audit-and-telemetry-foundation,10,11,true,true,66,33,KEEP
 artifacts,1.0.6-artifacts-debug-connections,10,8,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
 debug_logs,1.0.6-artifacts-debug-connections,22,9,false,false,1,0,READ-ONLY (never written) -> investigate
 connections,1.0.6-artifacts-debug-connections,35,9,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
@@ -36,8 +36,14 @@ context_object_refs,1.3.0-context-object-store-mvp,31,9,true,false,3,3,KEEP + AL
 worker_registry,1.3.1-production-queue-worker-runtime,10,13,true,false,13,16,KEEP + ALTER (needs organization_id)
 worker_runtime_logs,1.3.1-production-queue-worker-runtime,27,10,true,false,2,2,KEEP + ALTER (needs organization_id)
 file_locks,1.3.2-file-locking-mvp,10,19,true,false,12,10,KEEP + ALTER (needs organization_id)
-permission_policies,1.3.3-permission-kernel-mvp,10,10,false,false,3,0,READ-ONLY (never written) -> investigate
+permission_policies,1.3.3-permission-kernel-mvp,10,10,true,true,3,0,READ-ONLY (never written) -> investigate
 permission_evaluations,1.3.3-permission-kernel-mvp,23,12,true,false,1,2,KEEP + ALTER (needs organization_id)
 permission_overrides,1.3.3-permission-kernel-mvp,38,11,true,false,0,2,WRITE-ONLY (never read) -> DROP
 cas_blobs,1.3.4-artifact-cas-mvp,10,12,true,false,5,2,KEEP + ALTER (needs organization_id)
 artifact_versions,1.3.4-artifact-cas-mvp,26,21,true,false,14,7,KEEP + ALTER (needs organization_id)
+organizations,2.0.0-organizations,12,7,false,false,0,0,"DEAD (0 read, 0 write) -> DROP"
+users,2.0.1-users,11,8,false,false,0,0,"DEAD (0 read, 0 write) -> DROP"
+org_memberships,2.0.2-org-memberships,8,6,false,true,1,0,READ-ONLY (never written) -> investigate
+project_memberships,2.0.3-project-memberships,12,6,true,false,2,0,READ-ONLY (never written) -> investigate
+service_identities,2.0.4-service-identities,11,8,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
+orphaned_memberships,2.0.9-migrate-legacy-memberships,18,7,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"

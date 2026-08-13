@@ -11,24 +11,15 @@ export async function fetchHealthStatus() {
   return res.json();
 }
 
-export async function fetchConfigInspect() {
-  const res = await fetch("/api/config/inspect");
-  if (!res.ok) throw new Error(`Config inspect failed: ${res.status}`);
-  return res.json();
-}
+// [P02 / Y-P02-009] fetchConfigInspect KALDIRILDI.
+// GET /api/config/inspect silindi: yaniti regex'lenip duz metin DB parolasi
+// React state'ine yaziliyordu (P0-12). Operasyonel ozet icin
+// /api/v1/admin/health kullanilacak (P18).
 
-export async function configureDatabase(payload: any) {
-  const res = await fetch("/api/db/configure", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-  const data = await res.json();
-  if (!res.ok || !data.success) {
-    throw new Error(data.error || "Failed to configure database dynamic connection.");
-  }
-  return data;
-}
+// [P02 / Y-P02-009] configureDatabase KALDIRILDI.
+// POST /api/db/configure silindi (P0-2): govdeden connection string alip
+// duz metin parolayi .env'e yaziyordu. DATABASE_URL artik yalnizca ortam
+// degiskeni / secret manager'dan gelir.
 
 export async function fetchProjects(): Promise<Project[]> {
   const res = await fetch("/api/projects");

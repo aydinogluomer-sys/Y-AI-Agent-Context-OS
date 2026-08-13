@@ -13,7 +13,7 @@
 
 ## Tenant izolasyonu
 
-`04-db-inventory.csv`: **42 tablonun 42'inde**
+`04-db-inventory.csv`: **48 tablonun 42'inde**
 `organization_id`/`tenant_id` kolonu yok. Cross-tenant izolasyon şema
 seviyesinde mümkün değil.
 
@@ -21,7 +21,7 @@ seviyesinde mümkün değil.
 
 | Sınıf | Tablolar |
 |---|---|
-| DEAD (0 okuma, 0 yazma) | `memberships`, `artifacts`, `connections` |
+| DEAD (0 okuma, 0 yazma) | `memberships`, `artifacts`, `connections`, `organizations`, `users`, `service_identities`, `orphaned_memberships` |
 | WRITE-ONLY (hiç okunmuyor) | `context_summaries`, `durable_memories`, `boundary_checks`, `repo_access_logs`, `permission_overrides` |
 
 > Not: `schema_migrations` runner tarafından `db.ts` içinden kullanılır

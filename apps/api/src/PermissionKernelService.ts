@@ -64,87 +64,25 @@ export class PermissionKernelService {
         }));
       }
     } catch (err: any) {
-      const isTestEnv = process.env.NODE_ENV === "test" || process.env.ALLOW_STATIC_POLICY_FALLBACK === "true" || process.env.DETERMINISTIC_TEST_MODE === "true" || process.env.CI === "true";
-      if (!isTestEnv) {
-        sysLogger.error("CRITICAL: Failed to load policies from database: " + err.message);
-        sysLogger.warn("SECURITY ALERT: Policy store unavailable. Fail-closed security activated (DEFAULT DENY).");
-        return []; // Fail-closed: empty policy set defaults to DENY for all authorization evaluation
-      }
-      sysLogger.debug("Fallback to static rules in test environment: " + err.message);
+      // P02 / Y-P02-006 — FAIL CLOSED.
+      //
+      // P00 Truth Audit bulgusu P0-5: burada
+      //   NODE_ENV=test || ALLOW_STATIC_POLICY_FALLBACK || DETERMINISTIC_TEST_MODE || CI=true
+      // kosullarindan biri saglandiginda 7 maddelik STATIK ALLOW listesine
+      // dusuluyordu. `CI=true` set eden HER deployment allow-by-default
+      // oluyordu — ve bu bayrak CI ortamlarinda varsayilan olarak set edilir.
+      //
+      // Politika deposuna ulasilamiyorsa dogru davranis DENY'dir. Bos
+      // politika kumesi, evaluate() icinde varsayilan red uretir.
+      sysLogger.error("CRITICAL: Failed to load policies from database: " + err.message);
+      sysLogger.warn(
+        "SECURITY ALERT: Policy store unavailable. Fail-closed security activated (DEFAULT DENY)."
+      );
+      return [];
     }
 
-    return [
-      {
-        id: "policy-admin-bypass",
-        effect: "allow",
-        subject_type: "*",
-        resource_type: "*",
-        action: "*",
-        conditions: { is_admin: true },
-        description: "Administrative bypass override rule",
-        enabled: true
-      },
-      {
-        id: "policy-system-bypass",
-        effect: "allow",
-        subject_type: "system",
-        resource_type: "*",
-        action: "*",
-        conditions: {},
-        description: "System/internal action rule",
-        enabled: true
-      },
-      {
-        id: "policy-worker-jobs",
-        effect: "allow",
-        subject_type: "worker",
-        resource_type: "index_job",
-        action: "claim",
-        conditions: {},
-        description: "Worker claiming jobs rule",
-        enabled: true
-      },
-      {
-        id: "policy-worker-job-update",
-        effect: "allow",
-        subject_type: "worker",
-        resource_type: "index_job",
-        action: "update",
-        conditions: {},
-        description: "Worker updating claimed jobs rule",
-        enabled: true
-      },
-      {
-        id: "policy-worker-locks",
-        effect: "allow",
-        subject_type: "worker",
-        resource_type: "file_lock",
-        action: "*",
-        conditions: {},
-        description: "Worker managing file locks rule",
-        enabled: true
-      },
-      {
-        id: "policy-task-locks",
-        effect: "allow",
-        subject_type: "task",
-        resource_type: "file_lock",
-        action: "*",
-        conditions: {},
-        description: "Tasks managing file locks rule",
-        enabled: true
-      },
-      {
-        id: "policy-task-rw",
-        effect: "allow",
-        subject_type: "task",
-        resource_type: "file",
-        action: "*",
-        conditions: {},
-        description: "Tasks reading and writing project files rule",
-        enabled: true
-      }
-    ];
+    // Politika deposu erisilebilir ama bos ise de sonuc DENY'dir.
+    return [];
   }
 
   public sanitizePermissionMetadata(metadata: Record<string, any> | null | undefined): Record<string, any> {

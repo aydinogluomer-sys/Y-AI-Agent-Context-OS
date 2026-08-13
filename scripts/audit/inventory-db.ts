@@ -58,6 +58,22 @@ function collectMigrations(): { table: string; version: string; line: number; bo
       out.push({ table: cm[1], version, line: i + 1, body: bodyLines.join("\n") });
     }
   }
+
+  // `ALTER TABLE ... ADD COLUMN` ile eklenen kolonları da tablo gövdesine yaz.
+  // Aksi halde P02'de `organization_id` eklenen tablolar envanterde hâlâ
+  // "tenant izolasyon kolonu yok" görünürdü — yanlış bir güvenlik tablosu.
+  const byTable = new Map<string, { table: string; version: string; line: number; body: string }>();
+  for (const rec of out) byTable.set(rec.table, rec);
+
+  for (const fileName of files) {
+    for (const line of readLines(path.join(MIGRATIONS_DIR, fileName))) {
+      const am = /ALTER TABLE\s+([A-Za-z0-9_]+)\s+ADD COLUMN(?:\s+IF NOT EXISTS)?\s+([A-Za-z0-9_]+)/i.exec(line);
+      if (!am) continue;
+      const target = byTable.get(am[1]);
+      if (target) target.body += `\n  ${am[2]} -- (ALTER, ${fileName})`;
+    }
+  }
+
   return out;
 }
 

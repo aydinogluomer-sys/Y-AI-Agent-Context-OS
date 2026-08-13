@@ -96,25 +96,17 @@ const authRuntime = createApiAuthRuntime(
   isMockDbEnabled
 );
 
-router.get("/auth/dev-session", (req: Request, res: Response) => {
-  if (!authRuntime.developmentToken || !authRuntime.developmentPrincipal) {
-    return res.status(404).json({
-      error: {
-        code: "DEVELOPMENT_SESSION_UNAVAILABLE",
-        message: "Development authentication bootstrap is unavailable."
-      }
-    });
-  }
-
-  return res.json({
-    token: authRuntime.developmentToken,
-    principal: authRuntime.developmentPrincipal,
-    expires: "process_restart"
-  });
-});
+// [P02 / Y-P02-009] KALDIRILDI — P0-1
+// GET /auth/dev-session, kimlik dogrulamasi OLMADAN role:"admin",
+// projectIds:["*"] tasiyan bir bearer token dagitiyordu. Tek kosul
+// ENABLE_MOCK_DB=true idi ve yerel .env dosyasi bunu tasiyordu; yani
+// porta erisen herkes tam yetki alabiliyordu.
+// Yerine: gercek OIDC akisi (apps/api/src/middleware/authn.ts, ADR-016).
+// Yerel gelistirme icin docker/idp altindaki IdP kullanilir.
 
 router.use((req: Request, res: Response, next: NextFunction) => {
-  if (req.path === "/health" || req.path === "/healthz" || req.path === "/readyz" || req.path === "/auth/dev-session") {
+  // /auth/dev-session P02'de silindi (P0-1); bypass listesinden de cikarildi.
+  if (req.path === "/health" || req.path === "/healthz" || req.path === "/readyz") {
     return next();
   }
 
@@ -142,8 +134,12 @@ if (isMockDbEnabled) {
 
 // Gracefully block non-setup database requests when the backend is offline/unconfigured
 router.use((req: Request, res: Response, next: NextFunction) => {
-  const allowedPaths = ["/health", "/healthz", "/readyz", "/db/status", "/db/migrate", "/db/configure", "/config/inspect"];
-  const isAllowed = allowedPaths.includes(req.path) || req.path.startsWith("/config") || req.path.startsWith("/db/");
+  // P02: /db/configure ve /config/inspect silindi (P0-2, P0-12).
+  // Kalan iki DB route'u yalnizca operasyonel teshis icindir.
+  const allowedPaths = ["/health", "/healthz", "/readyz", "/db/status", "/db/migrate"];
+  // P02: onceki hali `startsWith("/config")` ve `startsWith("/db/")` ile
+  // genis bir bypass aciyordu; artik yalnizca acik liste gecerli.
+  const isAllowed = allowedPaths.includes(req.path);
   
   if (!isAllowed) {
     const dbStatus = db.getStatus();
@@ -1020,172 +1016,24 @@ router.post("/db/migrate", async (req: Request, res: Response, next: NextFunctio
 /**
  * 3.5. Dynamically configure and reload database credentials on demand
  */
-router.post("/db/configure", async (req: Request, res: Response, next: NextFunction) => {
-  if (config.environment === "production" || process.env.NODE_ENV === "production") {
-    return res.status(403).json({
-      error: {
-        code: "SECURITY_PRODUCTION_DISABLED",
-        message: "Dynamic browser-based database reconfiguration is strictly disabled in production environment."
-      }
-    });
-  }
-
-  const authHeader = req.headers.authorization;
-  const authResult = await validateApiAuthTokenAsync(authHeader);
-  if (!authResult.ok) {
-    return res.status(401).json({
-      error: {
-        code: "UNAUTHORIZED_ADMIN_REQUIRED",
-        message: "Database reconfiguration requires authenticated privileges."
-      }
-    });
-  }
-
-  try {
-    const { username, password, host, port, dbname, connectionString: customConn } = req.body;
-    let targetUrl = "";
-
-    if (customConn && customConn.trim().length > 0) {
-      targetUrl = customConn.trim();
-    } else if (username && host) {
-      const encUser = encodeURIComponent(username.trim());
-      const encPass = encodeURIComponent(password ? password.trim() : "");
-      const targetHost = host.trim();
-      const targetPort = port ? port.toString().trim() : "5432";
-      const targetDb = dbname ? dbname.trim() : "postgres";
-      targetUrl = `postgresql://${encUser}:${encPass}@${targetHost}:${targetPort}/${targetDb}`;
-    } else {
-      return res.status(400).json({ 
-        success: false, 
-        error: "Geçerli bir bağlantı adresi (connectionString) ya da tüm alanları (İsim, Şifre, Sunucu, Port, Veritabanı) doldurmalısınız." 
-      });
-    }
-
-    sysLogger.info(`Validating dynamic database reconfiguration request for host: ${host || "custom_raw_uri"}`);
-
-    // Create a temporary connection pool to test credentials
-    const isSupabaseOrRenderTest = targetUrl.includes("supabase") || targetUrl.includes("render") || targetUrl.includes("vnnfcwpywdxepdwwuqoo");
-    const testCaCert = getSupabaseCaCert();
-    const testPool = new pg.Pool({
-      connectionString: targetUrl,
-      connectionTimeoutMillis: 5000,
-      ssl: isSupabaseOrRenderTest || targetUrl.includes("sslmode=require") || targetUrl.includes("sslmode=prefer")
-        ? { rejectUnauthorized: true, ca: testCaCert || undefined }
-        : undefined
-    });
-
-    try {
-      const testClient = await testPool.connect();
-      try {
-        await testClient.query("SELECT 1;");
-      } finally {
-        testClient.release();
-      }
-      await testPool.end();
-    } catch (testErr: any) {
-      await testPool.end().catch(() => {});
-      sysLogger.error(`Dynamic DB Reconfiguration failed verification: ${testErr.message}`);
-      return res.status(400).json({
-        success: false,
-        error: `Veritabanına bağlanılamadı. Lütfen şifrenizin veya bilgilerin doğruluğundan emin olun. Hata: ${testErr.message}`
-      });
-    }
-
-    // Validation succeeded! Update process environment dynamically
-    process.env.DATABASE_URL = targetUrl;
-    
-    // Rewrite reload configurations
-    config = loadApiConfiguration();
-    
-    // Create new connection coordinator
-    const nextConnector = new DatabaseConnector(targetUrl);
-    await nextConnector.connect();
-    
-    // Replace current global reference & register pool
-    db = nextConnector;
-    registerAuditPool(db.getPool());
-
-    sysLogger.info(`Dynamic DB successfully reloaded and activated. Writing setup to workspace .env file...`);
-
-    // Write persistent workspace file
-    try {
-      const envPath = path.join(process.cwd(), ".env");
-      let envContent = `DATABASE_URL=${targetUrl}\n`;
-      if (fs.existsSync(envPath)) {
-        const existing = fs.readFileSync(envPath, "utf-8");
-        const lines = existing.split("\n");
-        let replaced = false;
-        const newLines = lines.map(line => {
-          if (line.trim().startsWith("DATABASE_URL=")) {
-            replaced = true;
-            return `DATABASE_URL=${targetUrl}`;
-          }
-          return line;
-        });
-        if (!replaced) {
-          newLines.push(`DATABASE_URL=${targetUrl}`);
-        }
-        envContent = newLines.join("\n");
-      }
-      fs.writeFileSync(envPath, envContent, "utf-8");
-    } catch (fsErr: any) {
-      sysLogger.warn(`Persisting .env failed: ${fsErr.message}. Active memory context resides updated.`);
-    }
-
-    // Run migrations on the new database automatically!
-    let migrationsResult;
-    try {
-      migrationsResult = await db.runMigrations();
-    } catch (migErr: any) {
-      sysLogger.error(`Database migrations failed on dynamic target database: ${migErr.message}`);
-    }
-
-    // Record dynamic update audit trace
-    try {
-      await auditHelper.logAction(
-        "system",
-        "developer",
-        "SEC",
-        "UPDATE_PROJECT",
-        "authorized",
-        { verified: true, migrated: !!migrationsResult },
-        `Database reconfigured dynamically. Active connection activated successfully.`
-      );
-    } catch (logErr) {
-      // Silently skip if audit log table behaves oddly prior to refresh
-    }
-
-    return res.json({
-      success: true,
-      message: "Veritabanı bağlantısı başarıyla sağlandı, kaydedildi ve tüm tablolar kuruldu!",
-      activeSchemaVersion: db.getStatus().activeSchemaVersion,
-      migrated: !!migrationsResult
-    });
-  } catch (err: any) {
-    next(err);
-  }
-});
+// [P02 / Y-P02-009] KALDIRILDI — P0-2
+// POST /db/configure govdeden connection string aliyor, global db
+// referansini calisma zamaninda degistiriyor, DUZ METIN PAROLAYI
+// <cwd>/.env dosyasina yaziyor ve ardindan migration calistiriyordu.
+// Tek koruma "production degil" + herhangi bir gecerli bearer'di.
+// Etki: SSRF + credential harvest + kalici config zehirlenmesi.
+// Yerine: DATABASE_URL yalnizca ortam degiskeni / secret manager'dan gelir;
+// migration calistirma bir CLI/deploy adimidir (npm run db:migrate).
 
 /**
  * 4. Configuration Inspector endpoint (Redacted safely to prevent credential leak)
  */
-router.get("/config/inspect", async (req: Request, res: Response) => {
-  const safeData = inspectSafeConfig(config);
-  try {
-    await auditHelper.logAction(
-      "system",
-      "developer",
-      "SEC",
-      "DB_READINESS_CHECK",
-      "authorized",
-      { inspectedParamsCount: Object.keys(safeData).length },
-      "Inspected server safe configurations securely. Raw secrets redacted."
-    );
-  } catch (e) {
-    // Audit failure should not block the app
-  }
-  res.json(safeData);
-});
+// [P02 / Y-P02-009] KALDIRILDI
+// GET /config/inspect yapilandirmayi istemciye donduruyordu. Frontend
+// (apps/web/src/hooks/useWorkspace.ts) yanitini regex'leyip DUZ METIN DB
+// PAROLASINI React state'ine yaziyordu (P0-12) — parola bir <input>
+// value'sunda DOM'da bulunuyordu.
+// Yerine: /api/v1/admin/health, sir alani icermeyen operasyonel ozet doner.
 
 /**
  * 5. Audit Logs list / query endpoint
@@ -2986,13 +2834,11 @@ router.post("/tasks/readiness-eval", async (req: Request, res: Response, next: N
 /**
  * 9. Secret check simulation endpoint
  */
-router.post("/security/redact-check", (req: Request, res: Response) => {
-  const { rawText } = req.body;
-  if (!rawText) return res.status(400).json({ error: "Missing rawText parameter" });
-  
-  const redacted = redactSecretLeaks(rawText);
-  res.json({ original: rawText, redacted });
-});
+// [P02 / Y-P02-009] KALDIRILDI
+// POST /security/redact-check yanitinda hem `original` hem `redacted`
+// alanlarini donduruyordu; yani gonderilen ham sirri geri yansitiyordu.
+// Redaksiyon dogrulamasi bir urun yuzeyi degil, bir testtir
+// (packages/security testleri).
 
 /**
  * ==========================================

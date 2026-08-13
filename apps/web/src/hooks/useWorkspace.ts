@@ -100,59 +100,37 @@ export function useWorkspace() {
     }
   };
 
+  /**
+   * [P02 / Y-P02-009] P0-12 KAPATILDI.
+   *
+   * Onceki hali GET /api/config/inspect yanitindaki DATABASE_URL'i regex'leyip
+   * DUZ METIN PAROLAYI React state'ine yaziyordu; parola bir <input> value'sunda
+   * DOM'da bulunuyordu. Endpoint de silindi (P0-2 ile ayni ailede).
+   *
+   * Baglanti bilgisi artik istemciye hic gonderilmez.
+   */
   const loadConfigInspect = async () => {
-    try {
-      const data = await api.fetchConfigInspect();
-      if (data && data.databaseUrl) {
-        setDbConnStr(data.databaseUrl);
-        try {
-          const match = data.databaseUrl.match(/postgresql?:\/\/([^:]+):([^@]+)@([^:/]+)(?::(\d+))?\/([^?]+)/);
-          if (match) {
-            setDbUsername(decodeURIComponent(match[1]));
-            const rawPass = decodeURIComponent(match[2]);
-            if (!rawPass.includes("REDACTED") && rawPass !== "[REDACTED_API_KEY_PRESENT]" && rawPass !== "[REDACTED]") {
-              setDbPassword(rawPass);
-            }
-            setDbHost(match[3]);
-            if (match[4]) setDbPort(match[4]);
-            setDbName(match[5].split("?")[0]);
-          }
-        } catch (e) {
-          console.warn("Failed to parse config inspect URL:", e);
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to inspect config parameters:", e);
-    }
+    // Bilerek bos: istemcinin veritabani baglanti bilgisine ihtiyaci yok.
   };
 
+  /**
+   * [P02 / Y-P02-009] P0-2 KAPATILDI.
+   *
+   * POST /api/db/configure silindi: govdeden connection string alip global db
+   * referansini calisma zamaninda degistiriyor ve duz metin parolayi .env'e
+   * yaziyordu (SSRF + credential harvest + kalici config zehirlenmesi).
+   *
+   * Veritabani yapilandirmasi bir UI islemi degildir; DATABASE_URL ortam
+   * degiskeni / secret manager'dan gelir (ADR-073).
+   */
   const handleConfigureDb = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    setConfigPending(true);
-    setConfigResultMsg(null);
-    try {
-      const payload: any = {};
-      if (useRawString) {
-        payload.connectionString = dbConnStr;
-      } else {
-        payload.username = dbUsername;
-        payload.password = dbPassword;
-        payload.host = dbHost;
-        payload.port = dbPort;
-        payload.dbname = dbName;
-      }
-      const data = await api.configureDatabase(payload);
-      setConfigResultMsg({ success: true, text: data.message });
-      await loadHealthStatus();
-      setTimeout(() => {
-        setShowConfigModal(false);
-        setConfigResultMsg(null);
-      }, 1500);
-    } catch (err: any) {
-      setConfigResultMsg({ success: false, text: err.message || "孙Sunucu connection configure failed." });
-    } finally {
-      setConfigPending(false);
-    }
+    setConfigResultMsg({
+      success: false,
+      text:
+        "Veritabani yapilandirmasi UI uzerinden yapilamaz. DATABASE_URL ortam " +
+        "degiskeni veya secret manager uzerinden ayarlanir (P02 / ADR-073)."
+    });
   };
 
   useEffect(() => {

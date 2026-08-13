@@ -142,7 +142,26 @@ function main(): void {
   const findings: Finding[] = [];
   for (const file of targets) {
     const lines = readLines(file);
+    let inBlockComment = false;
+
     for (let i = 0; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
+
+      // Blok yorumu takibi
+      if (inBlockComment) {
+        if (trimmed.includes("*/")) inBlockComment = false;
+        continue;
+      }
+      if (trimmed.startsWith("/*")) {
+        if (!trimmed.includes("*/")) inBlockComment = true;
+        continue;
+      }
+      // Satir yorumu: bir kaliba ATIFTA BULUNAN aciklama, o kalibin
+      // kullanimi degildir. "P0-2 kaldirildi" yazan bir yorum bulgu sayilmaz.
+      if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("--")) {
+        continue;
+      }
+
       for (const rule of RULES) {
         if (rule.exclude && rule.exclude.test(rel(file))) continue;
         if (rule.include && !rule.include.test(rel(file))) continue;

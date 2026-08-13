@@ -1,12 +1,10 @@
 rule,severity,file,line,text
-permissive-fallback,P0,apps/api/src/db.ts,258,// Module-level seeding is disabled to respect the fail-loud database policy. Seeding only occurs explicitly when ENABLE_MOCK_DB=true is initialized.
-permissive-fallback,P0,apps/api/src/db.ts,575,"if (process.env.ENABLE_MOCK_DB !== ""true"") {"
-permissive-fallback,P0,apps/api/src/db.ts,576,"throw new Error(""Mock database mode requires ENABLE_MOCK_DB=true."");"
+permissive-fallback,P0,apps/api/src/db.ts,590,"if (process.env.ENABLE_MOCK_DB !== ""true"") {"
+permissive-fallback,P0,apps/api/src/db.ts,591,"throw new Error(""Mock database mode requires ENABLE_MOCK_DB=true."");"
 simulation-generator,P0,apps/api/src/index.ts,49,"mockSemanticSearchFallback,"
 permissive-fallback,P0,apps/api/src/index.ts,91,"const isMockDbEnabled = process.env.ENABLE_MOCK_DB === ""true"" &&"
-literal-run-count,P0,apps/api/src/index.ts,330,"payload_json: { runId, selectedItemsCount: 3, tokenBudget: 50000, usableInput: 30000 },"
-skip-then-pass,P0,apps/api/src/index.ts,606,"sysLogger.info(""Skipping mock data pre-seeding as mock database mode is inactive."");"
-permissive-fallback,P0,apps/api/src/PermissionKernelService.ts,67,"const isTestEnv = process.env.NODE_ENV === ""test"" || process.env.ALLOW_STATIC_POLICY_FALLBACK === ""true"" || process.env.DETERMINISTIC_TEST_MODE === ""true"" || process.env.CI === ""true"";"
+literal-run-count,P0,apps/api/src/index.ts,326,"payload_json: { runId, selectedItemsCount: 3, tokenBudget: 50000, usableInput: 30000 },"
+skip-then-pass,P0,apps/api/src/index.ts,602,"sysLogger.info(""Skipping mock data pre-seeding as mock database mode is inactive."");"
 permissive-fallback,P0,apps/api/src/startup-policy.ts,7,"env.ALLOW_OFFLINE_API_BOOT === ""true"""
 fabricated-hash,P0,apps/web/src/App.tsx,373,"const hash = ""sha256-"" + Math.random().toString(16).substring(2, 10) + Math.random().toString(16).substring(2, 10);"
 simulation-generator,P0,apps/web/src/lib/api/ai.ts,125,export function createLocalAiSimulation(
