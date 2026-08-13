@@ -46,7 +46,6 @@ import {
   scoreContextItem,
   detectMissingContext,
   calculateConfidenceScore,
-  mockSemanticSearchFallback,
   stubGraphTraversal,
   buildContextPack,
   compressDocument,

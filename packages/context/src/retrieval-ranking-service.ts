@@ -131,9 +131,24 @@ export class RetrievalRankingService {
   }
 
   /**
-   * CTX-11: Scores candidates using BM25-based keyword patterns
+   * Anahtar kelime ortusmesi skoru.
+   *
+   * P06 / Y-P06-012 — ADI DUZELTILDI: bu metot eskiden "BM25" adini
+   * tasiyordu ama BM25'in uc bileseninin hicbirine sahip degil:
+   *
+   *   - IDF yok:  nadir bir terim ile `the` ayni agirlikta.
+   *   - TF yok:   terimin kac kez gectigi onemsiz.
+   *   - Uzunluk normalizasyonu yok: uzun dosyalar avantajli.
+   *
+   * Yaptigi is `eslesen kelime / sorgu kelimesi * 40 (+ yol eslesirse 15)`.
+   * Bu mesru bir sinyaldir; MESRU OLMAYAN, ona BM25 demektir. Yanlis ad,
+   * okuyanin sistemin yapmadigi bir seyi yaptigini sanmasina yol acar.
+   *
+   * Gercek lexical siralama artik Postgres FTS ile yapiliyor:
+   * `packages/context/src/retrieval/lexical.ts` (`ts_rank_cd`). Bu metot
+   * legacy yuzey P15 cutover'ina kadar ayakta kalsin diye duruyor.
    */
-  public scoreKeywordBM25(combinedContent: string, query: string, path: string): number {
+  public scoreKeywordOverlap(combinedContent: string, query: string, path: string): number {
     const wordOverlap = this.calculateKeywordOverlap(combinedContent, query);
     let keyword_score = Math.round(wordOverlap * 40);
     
@@ -373,7 +388,7 @@ export class RetrievalRankingService {
     const compiled = rawCandidates.map(c => {
       // Keyword
       const combinedContent = c.excerpt || ""; 
-      const keywordScore = this.scoreKeywordBM25(combinedContent, query, c.path);
+      const keywordScore = this.scoreKeywordOverlap(combinedContent, query, c.path);
 
       // Graph
       const reason_codes = [...(c.reason_codes || [])];

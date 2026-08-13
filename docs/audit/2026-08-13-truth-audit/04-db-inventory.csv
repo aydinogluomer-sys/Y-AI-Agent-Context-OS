@@ -50,12 +50,14 @@ orphaned_memberships,2.0.9-migrate-legacy-memberships,18,7,true,false,0,0,"DEAD 
 repositories,2.1.0-repositories,12,11,true,true,4,0,READ-ONLY (never written) -> investigate
 repository_connections,2.1.1-repository-connections,11,7,false,false,0,0,"DEAD (0 read, 0 write) -> DROP"
 repository_snapshots,2.1.2-repository-snapshots,11,10,false,true,16,5,KEEP
-files,2.1.3-files,11,15,false,true,18,6,KEEP
+files,2.1.3-files,11,15,false,true,22,6,KEEP
 orphaned_repo_sources,2.1.6-migrate-repo-sources,16,5,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
-symbols,2.2.0-symbols,15,20,false,true,23,8,KEEP
-chunks,2.2.1-chunks,16,21,false,true,7,6,KEEP
+symbols,2.2.0-symbols,15,20,false,true,25,8,KEEP
+chunks,2.2.1-chunks,16,21,false,true,12,8,KEEP
 parser_versions,2.2.2-parser-versions,13,5,false,false,5,2,KEEP + ALTER (needs organization_id)
 symbol_invalidations,2.2.3-symbol-invalidations,20,11,false,true,5,2,KEEP
 legacy_chunk_migration_audit,2.2.4-legacy-chunk-audit,45,7,false,false,0,0,"DEAD (0 read, 0 write) -> DROP"
 graph_build_runs,2.3.2-graph-build-runs,19,16,true,true,5,7,KEEP
 graph_tombstones,2.3.3-graph-tombstones,21,11,false,true,0,2,WRITE-ONLY (never read) -> DROP
+retrieval_runs,2.4.3-retrieval-runs,31,16,true,true,0,0,"DEAD (0 read, 0 write) -> DROP"
+retrieval_candidates,2.4.4-retrieval-candidates,31,26,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"

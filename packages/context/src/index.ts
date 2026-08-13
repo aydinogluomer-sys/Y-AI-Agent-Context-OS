@@ -671,45 +671,32 @@ export function calculateConfidenceScore(
   };
 }
 
-// CTX-015 Type Safe MVP Semantic Retrieval Interface Stub
-export interface SemanticRetrievalOptions {
-  vectorEmbeddingFallback: boolean;
-  threshold?: number;
-}
-
-export function mockSemanticSearchFallback(
-  query: string,
-  items: any[],
-  options?: SemanticRetrievalOptions
-): { item_id: string; semantic_similarity: number; is_fallback_approx: boolean; scoring_explanation: string }[] {
-  const queryWords = (query || "").toLowerCase().split(/\W+/).filter(Boolean);
-
-  return items.map(item => {
-    const textToMatch = `${item.source_uri} ${JSON.stringify(item.metadata_json || {})}`.toLowerCase();
-    let score = computeLexicalOverlap(query, textToMatch);
-
-    let keywordHits = 0;
-    for (const word of queryWords) {
-      if (word.length > 2 && textToMatch.includes(word)) {
-        keywordHits++;
-      }
-    }
-
-    if (queryWords.length > 0) {
-      score += (keywordHits / queryWords.length) * 0.4;
-    }
-
-    const similarity = Number(Math.min(1.0, Math.max(0.0, score)).toFixed(4));
-    const explanation = `Hybrid Score ${similarity} (Keyword Hits: ${keywordHits}/${queryWords.length})`;
-
-    return {
-      item_id: item.id,
-      semantic_similarity: similarity,
-      is_fallback_approx: true,
-      scoring_explanation: explanation
-    };
-  }).sort((a, b) => b.semantic_similarity - a.semantic_similarity);
-}
+// P06 / Y-P06-012 — Sahte semantic arama fonksiyonu SILINDI.
+//
+// Eski hali (P00 Truth Audit'in en somut bulgusu) soyle isliyordu:
+//
+//     let score = computeLexicalOverlap(query, textToMatch);
+//     score += (keywordHits / queryWords.length) * 0.4;
+//     return { semantic_similarity: similarity, is_fallback_approx: true, ... };
+//
+// Fonksiyon `search-server.ts:98` ve `:290`'dan cagriliyor, sonucu 30 ile
+// carpilip `semantic_score` adiyla sunuluyordu. Yaptigi is keyword
+// ortusmesiydi: ne vektor vardi, ne gomme, ne kosinus.
+//
+// Adi bu yorumda BILEREK gecmiyor: `p06-no-fake-retrieval.test.ts` kaynak
+// agacinda o ismi ariyor ve bir yorum satirinda gecmesi testi anlamsiz
+// kilardi (P03'te ayni tuzaga bir kez dusuldu).
+//
+// `is_fallback_approx: true` bayragi ilginctir — durustluk niyeti KODDA
+// duruyordu ama bayrak hicbir yerde okunmuyordu. Cikti tarafinda
+// yaklasiklik gorunmuyordu. Bir uyarinin okunmadigi yerde durmasi,
+// uyarinin hic olmamasindan farksizdir.
+//
+// KANONIK KARSILIGI
+//   packages/context/src/retrieval/semantic.ts — pgvector uzerinde
+//   gercek kosinus benzerligi. Embedding saglayicisi yoksa kanal DEVRE
+//   DISI kalir ve retrieval `degraded` isaretlenir; keyword ortusmesi
+//   "semantic" diye sunulmaz.
 
 // CTX-017 Real Graph Traversal Engine Integration
 export interface GraphEdgeRef {

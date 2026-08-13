@@ -159,7 +159,16 @@ export function looksLikeRealSecretValue(value: string): boolean {
   if (isRedactionMarker(value)) return false;
 
   // Kod referansi: process.env.X, config.foo, this.bar, fn(), ${...}
-  if (/^(?:process\.env|import\.meta|globalThis|window|self|config|options|params|opts|this)\b/.test(value)) return false;
+  // Kod referansi. Liste, `token = req.cookies[...]` gibi gercek kod
+  // satirlarindan buyudu: bir ozelligin BASKA bir nesneden okunmasi deger
+  // tasimaz, YOL tasir. Gomulu bir sir ise her zaman literaldir.
+  if (
+    /^(?:process\.env|import\.meta|globalThis|window|self|config|options|params|opts|this|req|request|res|response|ctx|headers|body|query|row|record|input|payload|env)\b/.test(
+      value
+    )
+  ) {
+    return false;
+  }
   if (/^\$\{/.test(value) || /\(\)$/.test(value)) return false;
 
   // Fonksiyon cagrisi. Cagri bir IFADEDIR, degismez bir deger degil —

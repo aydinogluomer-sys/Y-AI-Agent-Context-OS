@@ -291,3 +291,134 @@ pnpm --filter @y/db run test:migrations:upgrade
 ```
 
 **`RankedCandidate[]` sözleşmesi bu gate'te donar** — P08 buna bağımlıdır.
+
+---
+
+## Uygulama Kaydı (2026-08-14)
+
+### Tamamlanan görevler
+
+| Görev | Durum | Kanıt |
+|---|---|---|
+| Y-P06-001 pgvector + FTS şeması | Tamam | migration `0063`–`0065` |
+| Y-P06-002 `EmbeddingProvider` + registry | Tamam | `packages/providers/src/embedding/provider.ts` |
+| Y-P06-003 embedding worker | Tamam | `workers/embedding-worker.ts` + 28 test |
+| Y-P06-004 lexical retrieval | Tamam | `retrieval/lexical.ts` — `ts_rank_cd` |
+| Y-P06-005 semantic retrieval | Tamam | `retrieval/semantic.ts` — pgvector kosinüs |
+| Y-P06-006 symbol retrieval | Tamam | `retrieval/symbol.ts` |
+| Y-P06-007 graph genişletme | Kısmen | sinyal girdisi hazır, bağlama P08'de |
+| Y-P06-008 git sinyalleri | Kısmen | sinyal fonksiyonları hazır, git servisine bağlama P08'de |
+| Y-P06-009 14 sinyalli ranker | Tamam | `ranking/{ranker,weights,signals}.ts` + 28 test |
+| Y-P06-010 explainability | Tamam | migration `0067`, `explain()` |
+| Y-P06-011 hibrit birleştirme | Tamam | `retrieval/hybrid.ts` — RRF |
+| Y-P06-012 sahte yolların silinmesi | Tamam | `p06-no-fake-retrieval.test.ts` (7 test) |
+| Y-P06-013 recall harness | **YAPILMADI** | aşağıya bakınız |
+
+### Migration numaralandırması
+
+| Plan | Gerçek |
+|---|---|
+| 0067 pgvector | `0063_pgvector_embeddings.sql` |
+| 0068 tsvector | `0064_chunks_fulltext.sql` |
+| 0069 trigram | `0065_chunks_trigram.sql` |
+| 0070 retrieval_runs | `0066_retrieval_runs.sql` |
+| 0071 retrieval_candidates | `0067_retrieval_candidates.sql` |
+| 0072 legacy temizlik | Ayrı migration YOK — temizlik KOD tarafındaydı |
+
+### Silinenler (Y-P06-012)
+
+- **Sahte semantic arama fonksiyonu.** Keyword örtüşmesi hesaplayıp
+  sonucu 30 ile çarpıp `semantic_score` adıyla sunuyordu. İçinde
+  `is_fallback` bayrağı vardı ama **hiçbir yerde okunmuyordu** —
+  dürüstlük niyeti kodda duruyor, çıktıda kayboluyordu.
+- **Statik bellek stub modu.** Üç uydurma dosya döndürüyordu
+  (`src/services/auth.ts` dahil) ve bunların kullanıcının repo'sunda var
+  olup olmadığı hiç kontrol edilmiyordu.
+- **Yanıltıcı "BM25" adı.** Fonksiyon duruyor (meşru bir sinyal) ama
+  artık `scoreKeywordOverlap`: BM25'in üç bileşeninin (IDF, TF, uzunluk
+  normalizasyonu) hiçbirine sahip değil ve adı bunu saklamamalı.
+
+Silme, 6 legacy doğrulama script'ine ve `SearchServerKind` tipine kadar
+yayıldı. `p06-no-fake-retrieval.test.ts` bu isimlerin kaynak ağacına geri
+dönmediğini doğrular; testin kendi taraması iki **pozitif kontrol** ile
+denetlenir (boş dosya listesi üzerinde çalışan bir "bulunamadı" sonucu
+yanlış yeşildir).
+
+### Karar 1 — `ts_rank_cd` BM25 değildir ve öyle sunulmuyor
+
+Postgres FTS cover density ölçer; BM25'in k1/b parametreleri yoktur. Kod
+aramasında pratikte benzer sıralama üretir ama **aynı değildir**. Bu fark
+ADR-025'te ve `lexical.ts` başında yazılı; ölçümü P16 benchmark'ına ait.
+
+Dil konfigürasyonu `simple` seçildi: `english` stemming yapar
+(`getUser` → `getus`) ve stop-word atar (`in`, `for`, `is`) — ikisi de kod
+aramasında zararlıdır.
+
+### Karar 2 — Kanal skorları toplanmıyor, RRF ile birleşiyor
+
+`ts_rank_cd` sınırsız, kosinüs benzerliği −1..1, sembol eşleşmesi 0..1.
+Bunları toplamak, ölçeği büyük olan kanalı **sessizce baskın** yapar.
+Reciprocal Rank Fusion yalnız sıraya bakar. RRF aday HAVUZUNU kurar;
+nihai sıralama 14 sinyalli ranker'ındır — ikisi karıştırılmamalıdır.
+
+### Karar 3 — İzin ve politika sinyal değil FİLTRE
+
+Master plan bu ikisini 14 sinyal arasında sayıyor. Uygulamada erişim
+kararı **aday üretiminden önce** SQL predicate'i olarak uygulanır
+(ADR-027). Düşük skorla listenin sonuna atmak, yeterince az aday
+olduğunda yasak içeriğin yine de seçilmesi demek olurdu.
+
+`policy_alignment` kolonu yalnız politika **tercihlerini** taşır
+("test dosyalarını öne al" gibi), erişim kararını değil.
+
+### Karar 4 — `null` sinyal, `0` sinyal değildir
+
+Hesaplanamayan bir sinyal `null` döner ve ağırlığı hesaplanabilenler
+arasında **orantılı dağıtılır**. `0` yazmak adayı haksızca cezalandırır;
+ağırlığı basitçe düşürmek ise tüm skorları küçültüp farklı
+çalıştırmaları karşılaştırılamaz kılar.
+
+### Yapılmayan — Y-P06-013 recall harness
+
+Ground-truth veri kümesi gerektiriyor: bir görev metni ve o görev için
+**gerçekten gerekli** dosyaların insan tarafından etiketlenmiş listesi.
+Bu etiketleri kendim üretmek, ölçtüğüm sistemin çıktısını doğru kabul
+etmek olurdu — recall ölçümünü anlamsız kılan tam olarak budur.
+
+P16 benchmark fazı bu veri kümesini bağımsız etiketlemeyle kuracak.
+Harness kodu o veri olmadan yazılabilir ama **bir sayı raporlayamaz**;
+raporlanamayan bir kabul kriterini "tamam" işaretlemek yanlış yeşildir.
+
+### Kabul kriterlerinin durumu
+
+| # | Kriter | Durum | Not |
+|---|---|---|---|
+| 1 | Gerçek embedding üretiliyor | Kısmi | Worker ve şema hazır; gerçek sağlayıcı P14'te bağlanacak. Bugün yapılandırılmamış sağlayıcı **açıkça hata verir**, sahte vektör üretmez |
+| 2 | Lexical retrieval Postgres FTS ile | Evet | `ts_rank_cd` + GIN |
+| 3 | Sahte yollar kaynak ağacında yok | Evet | `p06-no-fake-retrieval.test.ts` |
+| 4 | 14 sinyal ayrı kolonlarda | Evet | migration `0067` |
+| 5 | Her aday için `included_because` | Evet | `explain()` + `explanation` kolonu |
+| 6 | Skor sinyallerden yeniden hesaplanabiliyor | Evet | `recomputeScore()` + denetim testi |
+| 7 | Permission/policy filtre olarak | Evet | SQL predicate + `assertFirewallRespected` |
+| 8 | Recall harness taban değer raporluyor | **HAYIR** | P16'ya bağlı, yukarıya bakınız |
+
+### Gate sonuçları
+
+```text
+typecheck (loose + strict)   0 hata
+vitest                       779 passed | 4 skipped (783)
+build                        OK
+secret-scan                  0 yeni bulgu (baseline 73 -> 71)
+drift (verify-inventories)   8/8 kontrol geçti
+```
+
+### Bu fazda kapatılmayanlar
+
+- **Canlı Postgres doğrulaması.** FTS sıralaması, pgvector ANN geri
+  çağırması ve trigram eşleşmesi canlı şema gerektirir; testler sorgu
+  şeklini ve sonuç yorumlanmasını doğruluyor. P19.
+- **Gerçek embedding sağlayıcısı** — P14.
+- **Retrieval'ın compile akışına bağlanması** — P08. Bugün kanallar ve
+  ranker ayrı ayrı test edilmiş durumda; uçtan uca akış P08'in konusu.
+- **Git sinyallerinin gerçek `git log --numstat`'a bağlanması** — sinyal
+  fonksiyonları ve girdi sözleşmesi hazır; besleme P08'de.

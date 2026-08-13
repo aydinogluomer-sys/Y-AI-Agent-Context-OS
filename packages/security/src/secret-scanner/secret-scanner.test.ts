@@ -132,6 +132,16 @@ describe("scanForSecrets — tespit", () => {
     expect(scanForSecrets("api_key = $1")).toEqual([]);
   });
 
+  it("istek/yanıt nesnesinden okumayı sır saymaz", () => {
+    // P06'da gate'in yakaladigi false positive: `token = req.cookies['jwt']`.
+    // Bir ozelligin baska bir nesneden OKUNMASI deger degil yol tasir.
+    expect(scanForSecrets("const token = req.cookies['jwt']")).toEqual([]);
+    expect(scanForSecrets("const apiKey = request.headers.authorization")).toEqual([]);
+    expect(scanForSecrets("password: row.password_hash")).toEqual([]);
+    // Literal hala yakalanmali.
+    expect(scanForSecrets(`const token = "${fakeOpaqueSecret()}"`).length).toBeGreaterThan(0);
+  });
+
   it("fonksiyon çağrısını sır saymaz", () => {
     // Gate'in P05'te yakaladigi false positive: bir DTO donusturucusunde
     // `fileContainsSecret: Boolean(row.contains_secret)`. Cagri bir

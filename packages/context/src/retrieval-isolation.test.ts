@@ -138,11 +138,14 @@ describe("SearchServer backend modları", () => {
     pool = createMockPool();
   });
 
-  it("local_memory_stub sıralı aday listesi döndürür", async () => {
-    const server = new SearchServer(null as any, "local_memory_stub");
-    const candidates = await server.queryCandidates({ project_id: "proj_valid_123", query: "auth" } as any);
-    expect(candidates.length).toBeGreaterThan(0);
-    expect(candidates[0].path).toContain("auth.ts");
+  it("bilinmeyen backend modu SESSIZCE bos donmez, hata verir", async () => {
+    // P06 / Y-P06-012: statik bellek stub modu silindi. O mod uc uydurma
+    // dosya donduruyordu (`src/services/auth.ts` dahil) ve bu testin eski
+    // hali tam da o uydurmayi dogruluyordu.
+    const server = new SearchServer(null as any, "kaldirilmis_mod" as any);
+    await expect(
+      server.queryCandidates({ project_id: "proj_valid_123", query: "auth" } as any)
+    ).rejects.toThrow(/Unsupported SearchServer kind/);
   });
 
   it("external_stub_only uzak aday üretmez (dürüst boş dizi)", async () => {

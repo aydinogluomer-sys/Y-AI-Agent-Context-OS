@@ -1,3 +1,7 @@
+// P06 / Y-P06-012: sahte semantic arama fonksiyonu ve statik bellek
+// stub modu silindi. Bu legacy dogrulama script'inin ilgili adimlari
+// kaldirildi; kanonik karsiliklari retrieval/semantic.ts ve
+// packages/context/src/retrieval/*.test.ts icinde test ediliyor.
 // SEGMENT 4: STAGES 19-21
 /**
  * @license
@@ -17,7 +21,6 @@ import {
   scoreContextItem,
   detectMissingContext,
   calculateConfidenceScore,
-  mockSemanticSearchFallback,
   stubGraphTraversal,
   buildContextPack,
   DEFAULT_TOKEN_BUDGET,

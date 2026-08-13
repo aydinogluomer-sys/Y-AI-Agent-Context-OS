@@ -86,5 +86,10 @@ migrate edilmiş veritabanları yeniden çalıştırılmaz.
 | 0060 | `0060_graph_build_runs.sql` | `2.3.2-graph-build-runs` | yeni | var |
 | 0061 | `0061_graph_tombstones.sql` | `2.3.3-graph-tombstones` | yeni | var |
 | 0062 | `0062_impact_snapshot_binding.sql` | `2.3.4-impact-snapshot-binding` | yeni | var |
+| 0063 | `0063_pgvector_embeddings.sql` | `2.4.0-pgvector-embeddings` | yeni | var |
+| 0064 | `0064_chunks_fulltext.sql` | `2.4.1-chunks-fulltext` | yeni | var |
+| 0065 | `0065_chunks_trigram.sql` | `2.4.2-chunks-trigram` | yeni | var |
+| 0066 | `0066_retrieval_runs.sql` | `2.4.3-retrieval-runs` | yeni | var |
+| 0067 | `0067_retrieval_candidates.sql` | `2.4.4-retrieval-candidates` | yeni | var |
 
-Toplam: **62** migration (35 göç + 27 yeni).
+Toplam: **67** migration (35 göç + 32 yeni).

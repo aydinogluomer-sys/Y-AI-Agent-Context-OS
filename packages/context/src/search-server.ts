@@ -10,11 +10,7 @@ import {
   SearchServerKind,
   ContextSourceType 
 } from "@y/shared";
-import { 
-  scoreContextItem, 
-  computeLexicalOverlap, 
-  mockSemanticSearchFallback 
-} from "./index";
+import { scoreContextItem, computeLexicalOverlap } from "./index";
 
 export class SearchServer {
   constructor(
@@ -36,8 +32,6 @@ export class SearchServer {
     switch (this.kind) {
       case "local_sql":
         return this.queryLocalSql(queryDTO, graphService);
-      case "local_memory_stub":
-        return this.queryLocalMemoryStub(queryDTO);
       case "external_stub_only":
         return this.queryExternalStub(queryDTO);
       default:
@@ -95,12 +89,11 @@ export class SearchServer {
           const keywordScore =
             Math.round(lexical * 40) +
             (String(path).toLowerCase().includes(query.toLowerCase()) ? 15 : 0);
-          const semanticResult = mockSemanticSearchFallback(query, [
-            { source_uri: path, metadata_json: metadata },
-          ]);
-          const semanticScore = Math.round(
-            (semanticResult[0]?.semantic_similarity || 0) * 30
-          );
+          // P06 / Y-P06-012: sahte semantic skor KALDIRILDI.
+          // Burada uretilen deger keyword ortusmesiydi ve `semantic_score`
+          // adiyla sunuluyordu. Legacy yuzey embedding'e erisemez; 0 yazip
+          // uyari birakmak, uydurma bir skor uretmekten durusttur.
+          const semanticScore = 0;
 
           return {
             id: row.id,
@@ -286,9 +279,9 @@ export class SearchServer {
         }
       }
 
-      // E. Compute mock semantic search fallback using the existing items-wrapping function
-      const semResult = mockSemanticSearchFallback(query, [item]);
-      const semantic_score = Math.round((semResult[0]?.semantic_similarity || 0) * 30);
+      // E. P06 / Y-P06-012: sahte semantic skor KALDIRILDI (yukaridaki
+      // gerekce). Kanonik semantic kanal: retrieval/semantic.ts.
+      const semantic_score = 0;
 
       // F. Final blending score (summed and tailored by priority depending on caller)
       const final_score = baseScoring.score + keyword_score + recency_score + graph_score + semantic_score;
@@ -340,67 +333,18 @@ export class SearchServer {
       .slice(0, limit || 50);
   }
 
-  /**
-   * Evaluates targets based on static mock/dictionary fallback index.
-   */
-  private async queryLocalMemoryStub(
-    queryDTO: RetrievalQueryDTO
-  ): Promise<RetrievalCandidateDTO[]> {
-    const { project_id, query } = queryDTO;
-    
-    // Fallback static context items to query when DB is missing/offline
-    const staticItems = [
-      {
-        id: "item_core_index",
-        source_type: "code",
-        source_uri: "src/index.ts",
-        content: "export function main() { console.log('Y-OS Core initialized'); }"
-      },
-      {
-        id: "item_auth_service",
-        source_type: "code",
-        source_uri: "src/services/auth.ts",
-        content: "export function authenticateJWT() { // enforce SameSite secure cookies }"
-      },
-      {
-        id: "item_system_spec",
-        source_type: "markdown",
-        source_uri: "docs/architecture.md",
-        content: "# Architectural Specifications\nEnforce strict client-side sandboxes and server-isolated database transactions."
-      }
-    ];
-
-    const results: RetrievalCandidateDTO[] = staticItems.map(item => {
-      const kwOverlap = computeLexicalOverlap(item.content, query);
-      const isPathMatch = item.source_uri.toLowerCase().includes(query.toLowerCase());
-
-      const keyword_score = Math.round(kwOverlap * 40) + (isPathMatch ? 20 : 0);
-      const base_score = item.source_type === "code" ? 30 : 50;
-      const final_score = base_score + keyword_score;
-
-      return {
-        id: item.id,
-        project_id,
-        source_type: item.source_type,
-        source_id: item.id,
-        path: item.source_uri,
-        title: item.source_uri.split("/").pop() || null,
-        excerpt: item.content,
-        token_estimate: Math.ceil(item.content.length / 4),
-        base_score,
-        keyword_score,
-        semantic_score: 0,
-        graph_score: 0,
-        recency_score: 5,
-        final_score,
-        reason_codes: ["STATIC_FALLBACK_STUB"],
-        warnings: ["Running under in-memory standalone static mode."],
-        metadata: { in_memory: true }
-      };
-    });
-
-    return results.sort((a, b) => b.final_score - a.final_score);
-  }
+  // P06 / Y-P06-012 — Statik bellek stub modu SILINDI.
+  //
+  // Bu mod UC UYDURMA dosya donduruyordu: `src/index.ts`,
+  // `src/services/auth.ts`, `docs/architecture.md`. Bu dosyalarin
+  // kullanicinin repo'sunda var olup olmadigi hic kontrol edilmiyordu.
+  // Cikti `reason_codes: ["STATIC_FALLBACK_STUB"]` ve bir uyari
+  // tasiyordu ama yine de gecerli birer aday olarak siralamaya
+  // giriyordu.
+  //
+  // Veritabani yokken retrieval'in yapmasi gereken sey aday UYDURMAK
+  // degil, calisamadigini soylemektir. `external_stub_only` modu bunu
+  // zaten dogru yapiyor: bos liste donduruyor.
 
   /**
    * Safe disabled/not-implemented behavior for external search server mode.

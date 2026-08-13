@@ -1,3 +1,7 @@
+// P06 / Y-P06-012: sahte semantic arama fonksiyonu ve statik bellek
+// stub modu silindi. Bu legacy dogrulama script'inin ilgili adimlari
+// kaldirildi; kanonik karsiliklari retrieval/semantic.ts ve
+// packages/context/src/retrieval/*.test.ts icinde test ediliyor.
 // SEGMENT 1: STAGES 1-10
 /**
  * @license
@@ -17,7 +21,6 @@ import {
   scoreContextItem,
   detectMissingContext,
   calculateConfidenceScore,
-  mockSemanticSearchFallback,
   stubGraphTraversal,
   buildContextPack,
   DEFAULT_TOKEN_BUDGET,
@@ -403,14 +406,6 @@ async function runTests() {
       assert("Confidence score maps reasonable scale according to search scope inputs", confScore.score > 50 && confScore.level !== undefined);
 
       // D. Mock Semantic Fallback Search (MVP Interface)
-      const mockSemantic = mockSemanticSearchFallback(
-        "stripe payments config",
-        [
-          { id: "itm-a", source_uri: "src/billing/config.ts", metadata_json: { type: "config" } },
-          { id: "itm-b", source_uri: "src/auth.ts", metadata_json: {} }
-        ]
-      );
-      assert("Semantic fallback calculates keyword overlap correctly", mockSemantic.length === 2 && mockSemantic[0].item_id === "itm-a");
 
       // E. E2E Cross-Project Protection Leakage Prevention and Scoped Multi-project Queries
       // otherProjectId already globally defined

@@ -1,3 +1,7 @@
+// P06 / Y-P06-012: sahte semantic arama fonksiyonu ve statik bellek
+// stub modu silindi. Bu legacy dogrulama script'inin ilgili adimlari
+// kaldirildi; kanonik karsiliklari retrieval/semantic.ts ve
+// packages/context/src/retrieval/*.test.ts icinde test ediliyor.
 // SEGMENT 5: STAGES 20-26
 /**
  * @license
@@ -17,7 +21,6 @@ import {
   scoreContextItem,
   detectMissingContext,
   calculateConfidenceScore,
-  mockSemanticSearchFallback,
   stubGraphTraversal,
   buildContextPack,
   DEFAULT_TOKEN_BUDGET,
@@ -945,12 +948,6 @@ async function runTests() {
     const { SearchServer } = await import("../packages/context/src/search-server");
     const { RetrievalRankingService } = await import("../packages/context/src/retrieval-ranking-service");
 
-    const memoryServer = new SearchServer(null, "local_memory_stub");
-    const memCandidates = await memoryServer.queryCandidates({
-      project_id: "test-proj-26",
-      query: "auth"
-    });
-    assert("Stage 26: SearchServer memory stub fetches correct candidates", memCandidates.length > 0 && memCandidates[0].path.includes("auth.ts"));
 
     const externalServer = new SearchServer(null, "external_stub_only");
     const extCandidates = await externalServer.queryCandidates({

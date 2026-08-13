@@ -1473,7 +1473,13 @@ export interface CreateIncrementalIndexEventDTO {
 // ==========================================
 
 export type RankingStrategy = "keyword_bm25_mvp" | "graph_weighted_mvp" | "hybrid_local_mvp";
-export type SearchServerKind = "local_sql" | "local_memory_stub" | "external_stub_only";
+/**
+ * P06 / Y-P06-012: statik bellek stub modu KALDIRILDI. Uc uydurma dosya
+ * donduruyordu ve bunlarin kullanicinin repo'sunda var olup olmadigi hic
+ * kontrol edilmiyordu. Veritabani yokken retrieval aday UYDURMAZ;
+ * `external_stub_only` bos liste dondurur ve dogru davranis budur.
+ */
+export type SearchServerKind = "local_sql" | "external_stub_only";
 
 export interface RetrievalQueryDTO {
   project_id: string;
