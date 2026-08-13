@@ -1,3 +1,9 @@
+> ⚠️ **SUPERSEDED** — Bu belgedeki durum iddialari (PASS / verified / implemented / complete)
+> 2026-08-13 Truth Audit ile gecersizdir. Guncel olculmus gercek icin bkz.
+> [`docs/audit/2026-08-13-truth-audit/`](docs/audit/2026-08-13-truth-audit/) ve
+> [master plan](docs/Y_FINAL_PRODUCTION_IMPLEMENTATION_MASTER_PLAN.md).
+> Bu banner P20'de (Y-P20-010) celiskiler kapatildiginda kaldirilacaktir.
+
 # Y — AI Agent Context Operating System
 
 Y is a high-performance, security-hardened Context Operating System designed to orchestrate massive project codebases and metadata into compact, model-friendly **50K Token Context Packs** for advanced coding agents.

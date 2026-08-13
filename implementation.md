@@ -1,3 +1,9 @@
+> ⚠️ **SUPERSEDED** — Bu belgedeki durum iddialari (PASS / verified / implemented / complete)
+> 2026-08-13 Truth Audit ile gecersizdir. Guncel olculmus gercek icin bkz.
+> [`docs/audit/2026-08-13-truth-audit/`](docs/audit/2026-08-13-truth-audit/) ve
+> [master plan](docs/Y_FINAL_PRODUCTION_IMPLEMENTATION_MASTER_PLAN.md).
+> Bu banner P20'de (Y-P20-010) celiskiler kapatildiginda kaldirilacaktir.
+
 # Y-OS Kernel Remediation Implementation Plan
 
 Source: `docs/markdown-implementation-audit.md`

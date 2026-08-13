@@ -1,181 +1,250 @@
+# Y — Feature Registry
+#
+# ⚠️  Bu dosya 2026-08-13 Truth Audit ile SIFIRLANMIŞTIR.
+#
+# Önceki sürüm 15 kaydın tamamına aynı test referansını (typecheck +
+# test:deterministic) veriyordu ve statüler doğrulanmamıştı. Bu sürümdeki
+# statüler docs/audit/2026-08-13-truth-audit/ envanterlerinden TÜRETİLİR.
+#
+# Yeniden üret:  npx tsx scripts/audit/rebuild-feature-registry.ts
+#
+# Statü enum'u (master plan §7.1):
+#   MISSING · STUB · SIMULATED · PARTIAL · BACKEND_ONLY · UI_ONLY · BLOCKED · BROKEN · PASS
+#
+# PASS için ZORUNLU (10 koşulun tamamı):
+#   implementation · persistence (gerekiyorsa) · policy (gerekiyorsa)
+#   unit test · integration test · E2E (user-facing ise) · negative test
+#   evidence · commit SHA · verification timestamp
+#
+# Ölçülen gerçek (bu dosya üretildiğinde):
+#   UI nav item        : 113
+#   gerçek API'ye bağlı : 10
+#   fabrikasyon         : 103
+#   API route           : 200
+#   gölgelenmiş route   : 27
+#   PASS kaydı          : 0
+
 - id: Y-00-MISSION-CONTROL
-  category: Mission Control
-  status: SIMULATED
-  ui_routes: ["/chat", "/dashboard", "/active-project", "/system-health", "/budget", "/cost-chart"]
-  services: ["AIMissionControlPanel", "AppShell", "useWorkspace"]
-  tests:
-    unit: ["npm run typecheck"]
-    integration: ["npm run test:deterministic"]
-  known_gaps:
-    - Chat Cockpit operates with dynamic domain simulation
-    - Provider event stream is simulated in UI
-  verified_at: "2026-08-04"
+  category: "Mission Control"
+  status: PARTIAL
+  evidence: null            # PASS için zorunlu — henüz kanıt zinciri yok
+  verified_at: null
+  verified_commit: null
+  ui_routes:
+    total: 6
+    backed_by_api: 1
+    fabricated: 5
+    real: ["/dashboard"]
+    fake: ["/chat", "/active-project", "/system-health", "/budget", "/cost-chart"]
+  closes_in_phases: ["P12", "P13", "P15"]
+  source_of_truth: "docs/audit/2026-08-13-truth-audit/03-ui-inventory.csv"
 
 - id: Y-01-PROJECTS-WORKSPACE
-  category: Projects & Workspace
-  status: PARTIAL
-  ui_routes: ["/projects", "/memberships", "/scoped-paths", "/repo-adapter", "/explorer", "/allowed-paths", "/boundaries"]
-  services: ["ModuleSimulationPanel", "RepoAdapterEngine", "PathTraversalGuard"]
-  tests:
-    unit: ["npm run typecheck"]
-    integration: ["npm run test:deterministic"]
-  known_gaps:
-    - Realpath and symlink guards hardened in repo-adapter
-    - Full remote Git clone operations require production auth
-  verified_at: "2026-08-04"
+  category: "Projects & Workspace"
+  status: SIMULATED
+  evidence: null            # PASS için zorunlu — henüz kanıt zinciri yok
+  verified_at: null
+  verified_commit: null
+  ui_routes:
+    total: 7
+    backed_by_api: 0
+    fabricated: 7
+    real: []
+    fake: ["/projects", "/memberships", "/scoped-paths", "/repo-adapter", "/explorer", "/allowed-paths", "/boundaries"]
+  closes_in_phases: ["P02", "P03", "P15"]
+  source_of_truth: "docs/audit/2026-08-13-truth-audit/03-ui-inventory.csv"
 
 - id: Y-02-CONTEXT-OS
-  category: Context OS
+  category: "Context OS"
   status: PARTIAL
-  ui_routes: ["/index-jobs", "/ctx-objects", "/ctx-items", "/ctx-chunks", "/pack-builder", "/ratios", "/ranking", "/registry", "/export"]
-  services: ["ContextCompactorService", "ContextObjectStoreService"]
-  tests:
-    unit: ["npm run typecheck"]
-    integration: ["npm run test:deterministic"]
-  known_gaps:
-    - Lexical fallback used in place of vector embeddings
-  verified_at: "2026-08-04"
+  evidence: null            # PASS için zorunlu — henüz kanıt zinciri yok
+  verified_at: null
+  verified_commit: null
+  ui_routes:
+    total: 9
+    backed_by_api: 1
+    fabricated: 8
+    real: ["/index-jobs"]
+    fake: ["/ctx-objects", "/ctx-items", "/ctx-chunks", "/pack-builder", "/ratios", "/ranking", "/registry", "/export"]
+  closes_in_phases: ["P04", "P06", "P08", "P09", "P15"]
+  source_of_truth: "docs/audit/2026-08-13-truth-audit/03-ui-inventory.csv"
 
 - id: Y-03-GRAPH-INTELLIGENCE
-  category: Graph Intelligence
+  category: "Graph Intelligence"
   status: PARTIAL
-  ui_routes: ["/impact-analysis", "/ast-map", "/dependency-graph", "/symbols", "/resolver", "/radius", "/incremental-idx", "/recovery"]
-  services: ["ImpactAnalysisPanel", "KnowledgeGraphService"]
-  tests:
-    unit: ["npm run typecheck"]
-    integration: ["npm run test:deterministic"]
-  known_gaps:
-    - Direct dependency traversal implemented; deep recursive graph search stubbed
-  verified_at: "2026-08-04"
+  evidence: null            # PASS için zorunlu — henüz kanıt zinciri yok
+  verified_at: null
+  verified_commit: null
+  ui_routes:
+    total: 8
+    backed_by_api: 1
+    fabricated: 7
+    real: ["/impact-analysis"]
+    fake: ["/ast-map", "/dependency-graph", "/symbols", "/resolver", "/radius", "/incremental-idx", "/recovery"]
+  closes_in_phases: ["P04", "P05", "P15"]
+  source_of_truth: "docs/audit/2026-08-13-truth-audit/03-ui-inventory.csv"
 
 - id: Y-04-ARTIFACT-CAS
-  category: Artifact CAS
+  category: "Artifact / CAS"
   status: PARTIAL
-  ui_routes: ["/artifacts", "/ws-files", "/blobs", "/dedup", "/hash-verify", "/integrity-audit", "/quarantine"]
-  services: ["ArtifactCASService", "ArtifactCenterPanel"]
-  tests:
-    unit: ["npm run typecheck"]
-    integration: ["npm run test:deterministic"]
-  known_gaps:
-    - Local PostgreSQL CAS blob storage active; cloud bucket adapter optional
-  verified_at: "2026-08-04"
+  evidence: null            # PASS için zorunlu — henüz kanıt zinciri yok
+  verified_at: null
+  verified_commit: null
+  ui_routes:
+    total: 7
+    backed_by_api: 1
+    fabricated: 6
+    real: ["/artifacts"]
+    fake: ["/ws-files", "/blobs", "/dedup", "/hash-verify", "/integrity-audit", "/quarantine"]
+  closes_in_phases: ["P14", "P15"]
+  source_of_truth: "docs/audit/2026-08-13-truth-audit/03-ui-inventory.csv"
 
 - id: Y-05-TASK-LIFECYCLE
-  category: Task Lifecycle
+  category: "Task Lifecycle"
   status: PARTIAL
-  ui_routes: ["/file-locks", "/tasks", "/backlog", "/active-tasks", "/verified", "/closed", "/fsm"]
-  services: ["TaskLifecycleService", "FileLockingService"]
-  tests:
-    unit: ["npm run typecheck"]
-    integration: ["npm run test:deterministic"]
-  known_gaps:
-    - FSM state transitions enforced via canonical route
-  verified_at: "2026-08-04"
+  evidence: null            # PASS için zorunlu — henüz kanıt zinciri yok
+  verified_at: null
+  verified_commit: null
+  ui_routes:
+    total: 7
+    backed_by_api: 1
+    fabricated: 6
+    real: ["/file-locks"]
+    fake: ["/tasks", "/backlog", "/active-tasks", "/verified", "/closed", "/fsm"]
+  closes_in_phases: ["P12", "P15"]
+  source_of_truth: "docs/audit/2026-08-13-truth-audit/03-ui-inventory.csv"
 
 - id: Y-06-AGENT-NETWORK
-  category: Agent Network
+  category: "Agent Network"
   status: SIMULATED
-  ui_routes: ["/dispatcher", "/ctx-builder", "/developer", "/qa-agent", "/director", "/checkpoints", "/handoff", "/autochecks"]
-  services: ["AgentDispatcherService", "ContinuationHandoffService"]
-  tests:
-    unit: ["npm run typecheck"]
-    integration: ["npm run test:deterministic"]
-  known_gaps:
-    - Multi-agent orchestration UI simulated
-  verified_at: "2026-08-04"
+  evidence: null            # PASS için zorunlu — henüz kanıt zinciri yok
+  verified_at: null
+  verified_commit: null
+  ui_routes:
+    total: 8
+    backed_by_api: 0
+    fabricated: 8
+    real: []
+    fake: ["/dispatcher", "/ctx-builder", "/developer", "/qa-agent", "/director", "/checkpoints", "/handoff", "/autochecks"]
+  closes_in_phases: ["P11", "P12"]
+  source_of_truth: "docs/audit/2026-08-13-truth-audit/03-ui-inventory.csv"
 
 - id: Y-07-SECURITY-KERNEL
-  category: Security Kernel
-  status: SECURITY_HARDENED
-  ui_routes: ["/security", "/abac-matrix", "/policies", "/human-approval", "/traversal-guard", "/redactor", "/default-deny", "/read-only"]
-  services: ["PermissionKernelService", "SecretRedactorService"]
-  tests:
-    unit: ["npm run typecheck"]
-    integration: ["npm run test:deterministic"]
-  known_gaps:
-    - Fail-closed security policy enforced on DB outage
-    - Secret write hard rejection active in repo-adapter
-  verified_at: "2026-08-04"
+  category: "Security Kernel"
+  status: PARTIAL
+  evidence: null            # PASS için zorunlu — henüz kanıt zinciri yok
+  verified_at: null
+  verified_commit: null
+  ui_routes:
+    total: 8
+    backed_by_api: 1
+    fabricated: 7
+    real: ["/security"]
+    fake: ["/abac-matrix", "/policies", "/human-approval", "/traversal-guard", "/redactor", "/default-deny", "/read-only"]
+  closes_in_phases: ["P02", "P07", "P10", "P17"]
+  source_of_truth: "docs/audit/2026-08-13-truth-audit/03-ui-inventory.csv"
 
 - id: Y-08-EVIDENCE-AUDIT
-  category: Evidence & Audit
+  category: "Evidence / Audit"
   status: PARTIAL
-  ui_routes: ["/evidence", "/events", "/event-store", "/health-gauge", "/corruption", "/ledger", "/signed-logs"]
-  services: ["EvidenceStoreService", "EventStoreService"]
-  tests:
-    unit: ["npm run typecheck"]
-    integration: ["npm run test:deterministic"]
-  known_gaps:
-    - Cryptographic SHA-256 evidence journal active
-  verified_at: "2026-08-04"
+  evidence: null            # PASS için zorunlu — henüz kanıt zinciri yok
+  verified_at: null
+  verified_commit: null
+  ui_routes:
+    total: 7
+    backed_by_api: 2
+    fabricated: 5
+    real: ["/evidence", "/events"]
+    fake: ["/event-store", "/health-gauge", "/corruption", "/ledger", "/signed-logs"]
+  closes_in_phases: ["P14", "P15"]
+  source_of_truth: "docs/audit/2026-08-13-truth-audit/03-ui-inventory.csv"
 
 - id: Y-09-WORKER-RUNTIME
-  category: Worker Runtime
+  category: "Worker Runtime"
   status: PARTIAL
-  ui_routes: ["/workers", "/index-sync", "/git-tracking", "/ast-jobs", "/load", "/telemetry"]
-  services: ["WorkerRuntimeService", "WorkerRuntimeDashboard"]
-  tests:
-    unit: ["npm run typecheck"]
-    integration: ["npm run test:deterministic"]
-  known_gaps:
-    - Express telemetry active; worker thread pool fallback enabled
-  verified_at: "2026-08-04"
+  evidence: null            # PASS için zorunlu — henüz kanıt zinciri yok
+  verified_at: null
+  verified_commit: null
+  ui_routes:
+    total: 6
+    backed_by_api: 1
+    fabricated: 5
+    real: ["/workers"]
+    fake: ["/index-sync", "/git-tracking", "/ast-jobs", "/load", "/telemetry"]
+  closes_in_phases: ["P12", "P18"]
+  source_of_truth: "docs/audit/2026-08-13-truth-audit/03-ui-inventory.csv"
 
 - id: Y-10-DATABASE-MIGRATIONS
-  category: Database & Migrations
-  status: PARTIAL
-  ui_routes: ["/db-status", "/db-pool", "/migrations", "/schema", "/dev-reset", "/tables"]
-  services: ["DatabasePoolManager", "SchemaBrowserService"]
-  tests:
-    unit: ["npm run typecheck"]
-    integration: ["npm run test:deterministic"]
-  known_gaps:
-    - Dual mode active (Canli PostgreSQL & Offline Mock Sandbox)
-  verified_at: "2026-08-04"
+  category: "Database / Migrations"
+  status: SIMULATED
+  evidence: null            # PASS için zorunlu — henüz kanıt zinciri yok
+  verified_at: null
+  verified_commit: null
+  ui_routes:
+    total: 6
+    backed_by_api: 0
+    fabricated: 6
+    real: []
+    fake: ["/db-status", "/db-pool", "/migrations", "/schema", "/dev-reset", "/tables"]
+  closes_in_phases: ["P01", "P19"]
+  source_of_truth: "docs/audit/2026-08-13-truth-audit/03-ui-inventory.csv"
 
 - id: Y-11-PROVIDERS-CONNECTORS
-  category: Providers & Connectors
-  status: PARTIAL
-  ui_routes: ["/model-routing", "/google-sdk", "/saas-sync", "/credentials", "/connectors"]
-  services: ["ModelRoutingService", "GoogleSDKAdapter"]
-  tests:
-    unit: ["npm run typecheck"]
-    integration: ["npm run test:deterministic"]
-  known_gaps:
-    - Google Gemini SDK adapter active; multi-provider routing simulated
-  verified_at: "2026-08-04"
+  category: "Providers / Connectors"
+  status: SIMULATED
+  evidence: null            # PASS için zorunlu — henüz kanıt zinciri yok
+  verified_at: null
+  verified_commit: null
+  ui_routes:
+    total: 5
+    backed_by_api: 0
+    fabricated: 5
+    real: []
+    fake: ["/model-routing", "/google-sdk", "/saas-sync", "/credentials", "/connectors"]
+  closes_in_phases: ["P11", "P19"]
+  source_of_truth: "docs/audit/2026-08-13-truth-audit/03-ui-inventory.csv"
 
 - id: Y-12-QA-VALIDATION
-  category: QA & Validation
+  category: "QA / Validation"
   status: PARTIAL
-  ui_routes: ["/quality-gates", "/test-runner", "/test-det", "/test-db", "/secret-scan", "/debug-gate", "/manual-qa", "/stage-27", "/stage-28", "/stage-29", "/stage-30", "/stage-31", "/stage-32", "/stage-33", "/stage-34", "/stage-35"]
-  services: ["QualityGateService", "ValidationRunner"]
-  tests:
-    unit: ["npm run typecheck"]
-    integration: ["npm run test:deterministic"]
-  known_gaps:
-    - 162 deterministic assertions active
-  verified_at: "2026-08-04"
+  evidence: null            # PASS için zorunlu — henüz kanıt zinciri yok
+  verified_at: null
+  verified_commit: null
+  ui_routes:
+    total: 16
+    backed_by_api: 1
+    fabricated: 15
+    real: ["/quality-gates"]
+    fake: ["/test-runner", "/test-det", "/test-db", "/secret-scan", "/debug-gate", "/manual-qa", "/stage-27", "/stage-28", "/stage-29", "/stage-30", "/stage-31", "/stage-32", "/stage-33", "/stage-34", "/stage-35"]
+  closes_in_phases: ["P14", "P16", "P19"]
+  source_of_truth: "docs/audit/2026-08-13-truth-audit/03-ui-inventory.csv"
 
 - id: Y-13-DOCUMENTATION
-  category: System Documentation
-  status: PASS
-  ui_routes: ["/docs/arch-idx", "/docs/arch-schema", "/docs/kernel-explain", "/docs/execution-plan", "/docs/accessibility", "/docs/quality-gates", "/docs/manual-qa", "/docs/impl-log"]
-  services: ["DocumentationIndex"]
-  tests:
-    unit: ["npm run typecheck"]
-    integration: ["npm run test:deterministic"]
-  known_gaps: []
-  verified_at: "2026-08-04"
+  category: "Documentation"
+  status: SIMULATED
+  evidence: null            # PASS için zorunlu — henüz kanıt zinciri yok
+  verified_at: null
+  verified_commit: null
+  ui_routes:
+    total: 8
+    backed_by_api: 0
+    fabricated: 8
+    real: []
+    fake: ["/docs/arch-idx", "/docs/arch-schema", "/docs/kernel-explain", "/docs/execution-plan", "/docs/accessibility", "/docs/quality-gates", "/docs/manual-qa", "/docs/impl-log"]
+  closes_in_phases: ["P19", "P20"]
+  source_of_truth: "docs/audit/2026-08-13-truth-audit/03-ui-inventory.csv"
 
 - id: Y-14-GOVERNANCE-KERNEL-DEBT
-  category: Governance & Kernel Debt
-  status: PARTIAL
-  ui_routes: ["/gov/awareness", "/gov/debt", "/gov/audit", "/gov/human-review", "/gov/signoff"]
-  services: ["ReleaseSignOffService", "KernelDebtRegister"]
-  tests:
-    unit: ["npm run typecheck"]
-    integration: ["npm run test:deterministic"]
-  known_gaps:
-    - Release sign-off & kernel debt register active
-  verified_at: "2026-08-04"
+  category: "Governance / Kernel Debt"
+  status: SIMULATED
+  evidence: null            # PASS için zorunlu — henüz kanıt zinciri yok
+  verified_at: null
+  verified_commit: null
+  ui_routes:
+    total: 5
+    backed_by_api: 0
+    fabricated: 5
+    real: []
+    fake: ["/gov/awareness", "/gov/debt", "/gov/audit", "/gov/human-review", "/gov/signoff"]
+  closes_in_phases: ["P10", "P17", "P20"]
+  source_of_truth: "docs/audit/2026-08-13-truth-audit/03-ui-inventory.csv"
