@@ -1,27 +1,27 @@
 table,migration_version,defined_at_line,column_count,has_project_id,has_org_id,reads,writes,verdict
-projects,1.0.0-projects-foundation,10,7,false,true,84,50,KEEP
+projects,1.0.0-projects-foundation,10,7,false,true,89,50,KEEP
 memberships,1.0.1-memberships-foundation,10,6,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
 tasks,1.0.2-tasks-foundation,10,13,true,true,102,78,KEEP
-context_items,1.0.3-context-vault-foundation,10,13,true,false,46,30,KEEP + ALTER (needs organization_id)
-context_chunks,1.0.3-context-vault-foundation,27,6,false,false,18,13,KEEP + ALTER (needs organization_id)
+context_items,1.0.3-context-vault-foundation,10,13,true,false,41,28,KEEP + ALTER (needs organization_id)
+context_chunks,1.0.3-context-vault-foundation,27,6,false,false,14,10,KEEP + ALTER (needs organization_id)
 graph_nodes,1.0.4-knowledge-graph-foundation,10,7,true,false,15,10,KEEP + ALTER (needs organization_id)
 graph_edges,1.0.4-knowledge-graph-foundation,21,7,true,false,11,10,KEEP + ALTER (needs organization_id)
 audit_logs,1.0.5-audit-and-telemetry-foundation,10,11,true,true,66,33,KEEP
 artifacts,1.0.6-artifacts-debug-connections,10,8,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
 debug_logs,1.0.6-artifacts-debug-connections,22,9,false,false,1,0,READ-ONLY (never written) -> investigate
 connections,1.0.6-artifacts-debug-connections,35,9,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
-context_packs,1.0.7-context-packs-foundation,10,22,true,false,9,10,KEEP + ALTER (needs organization_id)
-context_summaries,1.0.8-context-summaries-foundation,10,15,true,false,0,1,WRITE-ONLY (never read) -> DROP
+context_packs,1.0.7-context-packs-foundation,10,22,true,false,8,10,KEEP + ALTER (needs organization_id)
+context_summaries,1.0.8-context-summaries-foundation,10,15,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
 durable_memories,1.0.8-context-summaries-foundation,30,11,true,false,0,1,WRITE-ONLY (never read) -> DROP
 task_boundaries,1.0.9-context-boundaries,10,16,true,false,21,22,KEEP + ALTER (needs organization_id)
 boundary_checks,1.0.9-context-boundaries,31,11,true,false,0,1,WRITE-ONLY (never read) -> DROP
 impact_reports,1.1.1-impact-analysis-foundation,10,19,true,false,6,5,KEEP + ALTER (needs organization_id)
 change_simulations,1.1.2-change-simulation-foundation,10,16,true,false,4,3,KEEP + ALTER (needs organization_id)
 agent_memories,1.1.3-agent-memory-foundation,10,16,true,false,15,8,KEEP + ALTER (needs organization_id)
-resume_states,1.1.4-resume-engine-foundation,10,20,true,false,17,9,KEEP + ALTER (needs organization_id)
-resume_schedules,1.1.5-resume-schedules-foundation,10,15,true,false,19,10,KEEP + ALTER (needs organization_id)
-agent_sessions,1.1.7-agent-sessions-foundation,10,15,true,false,23,6,KEEP + ALTER (needs organization_id)
-agent_handoffs,1.1.8-agent-handoffs-foundation,10,18,true,false,13,5,KEEP + ALTER (needs organization_id)
+resume_states,1.1.4-resume-engine-foundation,10,20,true,false,16,9,KEEP + ALTER (needs organization_id)
+resume_schedules,1.1.5-resume-schedules-foundation,10,15,true,false,17,10,KEEP + ALTER (needs organization_id)
+agent_sessions,1.1.7-agent-sessions-foundation,10,15,true,false,22,6,KEEP + ALTER (needs organization_id)
+agent_handoffs,1.1.8-agent-handoffs-foundation,10,18,true,false,10,5,KEEP + ALTER (needs organization_id)
 repo_sources,1.1.9-repo-adapter-foundation,10,8,true,false,6,2,KEEP + ALTER (needs organization_id)
 repo_access_logs,1.1.9-repo-adapter-foundation,22,9,true,false,0,3,WRITE-ONLY (never read) -> DROP
 index_jobs,1.2.0-index-jobs-foundation,10,14,true,false,31,29,KEEP + ALTER (needs organization_id)
@@ -41,9 +41,9 @@ permission_evaluations,1.3.3-permission-kernel-mvp,23,12,true,false,1,2,KEEP + A
 permission_overrides,1.3.3-permission-kernel-mvp,38,11,true,false,0,2,WRITE-ONLY (never read) -> DROP
 cas_blobs,1.3.4-artifact-cas-mvp,10,12,true,false,5,2,KEEP + ALTER (needs organization_id)
 artifact_versions,1.3.4-artifact-cas-mvp,26,21,true,false,14,7,KEEP + ALTER (needs organization_id)
-organizations,2.0.0-organizations,12,7,false,false,0,0,"DEAD (0 read, 0 write) -> DROP"
-users,2.0.1-users,11,8,false,false,0,0,"DEAD (0 read, 0 write) -> DROP"
-org_memberships,2.0.2-org-memberships,8,6,false,true,1,0,READ-ONLY (never written) -> investigate
-project_memberships,2.0.3-project-memberships,12,6,true,false,2,0,READ-ONLY (never written) -> investigate
+organizations,2.0.0-organizations,12,7,false,false,2,0,READ-ONLY (never written) -> investigate
+users,2.0.1-users,11,8,false,false,5,3,KEEP + ALTER (needs organization_id)
+org_memberships,2.0.2-org-memberships,8,6,false,true,5,0,READ-ONLY (never written) -> investigate
+project_memberships,2.0.3-project-memberships,12,6,true,false,9,2,KEEP + ALTER (needs organization_id)
 service_identities,2.0.4-service-identities,11,8,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
 orphaned_memberships,2.0.9-migrate-legacy-memberships,18,7,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"

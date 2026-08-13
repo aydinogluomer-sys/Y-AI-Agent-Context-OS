@@ -1,9 +1,9 @@
 # 06 — Güvenlik Bulguları
 
-> Baseline commit: `8048b21372df9cd2edb5bd11c67572760dfbc397`
+> Baseline commit: `6a88280ac80d61509015ad92bc0cd605144629ff`
 > Sınıflandırma: **P0** = release blocker · **P1** = production-critical · **P2** = kozmetik
 
-Envanterden türeyen ölçüt: 195 route'un **59'i** yalnız
+Envanterden türeyen ölçüt: 195 route'un **36'i** yalnız
 bearer token kontrolünden geçiyor (proje kapsamı doğrulaması yok);
 48 tablonun **42'inde** tenant izolasyon kolonu yok.
 
@@ -18,7 +18,7 @@ bearer token kontrolünden geçiyor (proje kapsamı doğrulaması yok);
 | P0-5 | Permission Kernel `CI=true` iken DB hatasında **statik allow listesine** düşer | `apps/api/src/PermissionKernelService.ts:67-147` | Policy store'u düşür | Allow-by-default | P02 (fallback silinir) | `tests/security/fail-closed.spec.ts` |
 | P0-6 | `enforce()` çağrıları `subject_type:"system"` hard-code ediyor; seed policy `allow / system / * / *` | `EvidenceStoreService.ts:231`, `EventStoreService.ts:205`, `ArtifactCASService.ts:442/513/628/667` | — | Mevcut enforcement noktaları her zaman allow | P02 | `tests/security/fail-closed.spec.ts` |
 | P0-7 | `permissions/evaluate` client'ın `subject` nesnesini spread ediyor | `apps/api/src/index.ts:4402` | `subject_type:"system"` gönder | Allow + sahte audit | P02 | `tests/security/approval-bypass.spec.ts` |
-| P0-8 | 59 route proje kapsamı doğrulaması yapmıyor (`/audit-logs` tüm projelerin logunu döndürüyor) | `02-api-inventory.csv` (guard=bearer-only) | Başka projenin id'si | IDOR / cross-project | P02 | `tests/security/idor.spec.ts` |
+| P0-8 | 36 route proje kapsamı doğrulaması yapmıyor (`/audit-logs` tüm projelerin logunu döndürüyor) | `02-api-inventory.csv` (guard=bearer-only) | Başka projenin id'si | IDOR / cross-project | P02 | `tests/security/idor.spec.ts` |
 | P0-9 | `repo/configure-local` keyfi mutlak `root_path` kabul eder; yapılandırılmamışsa root `"."` = sunucu cwd'si | `apps/api/src/index.ts:4632`, `repo-adapter-service.ts:22-46` | Root'u `/` yap | Keyfi dizin okuma | P03 (yönetilen workspace) | `tests/security/path-guard.spec.ts` |
 | P0-10 | `source_table` SQL'e string interpolation ile giriyor | `ContextObjectStoreService.ts:219` | FROM clause kontrolü | Veri sızıntısı | P09 | regresyon testi |
 | P0-11 | Kaynak kodda **parçalanmış gerçek DB parolası** ve Supabase host'u | `packages/security/src/index.ts:23-25,48` | Git geçmişi okunur | Credential ifşası | P03 (kod) + P17 (rotasyon) | `secret-scan` |
@@ -29,7 +29,7 @@ bearer token kontrolünden geçiyor (proje kapsamı doğrulaması yok);
 
 | # | Bulgu | Konum | Faz |
 |---|---|---|---|
-| P1-1 | 27 route `router.all(["/tasks","/tasks/*"])` tarafından gölgelenmiş; frontend hâlâ çağırıyor | `apps/api/src/index.ts:166` | P12/P15 |
+| P1-1 | 28 route `router.all(["/tasks","/tasks/*"])` tarafından gölgelenmiş; frontend hâlâ çağırıyor | `apps/api/src/index.ts:166` | P12/P15 |
 | P1-2 | Şema↔kod drift'i (5 kalem) gerçek 500'ler üretiyor | `07-schema-drift.md` | P02 |
 | P1-3 | CI E2E'yi kuruyor ama çalıştırmıyor; migration'lar testlerden sonra | `.github/workflows/ci.yml` | P19 |
 | P1-4 | Mock DB production kod yolunda; `ENABLE_MOCK_DB` yerel `.env`'de `true` | `apps/api/src/db.ts:562+` | P19 |

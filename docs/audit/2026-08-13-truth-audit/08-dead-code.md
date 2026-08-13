@@ -8,7 +8,7 @@
 router.all(["/tasks", "/tasks/*"], (req, res) => res.status(410).json({ ... }));
 ```
 
-kendisinden **sonra** kaydedilen **27 route'u** erişilemez kılıyor.
+kendisinden **sonra** kaydedilen **28 route'u** erişilemez kılıyor.
 Tam liste: `02-api-inventory.csv` → `shadowed_by` kolonu dolu satırlar.
 
 Frontend bunlardan bir kısmını hâlâ çağırıyor (`apps/web/src/lib/api/tasks.ts`),

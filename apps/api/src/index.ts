@@ -177,16 +177,29 @@ router.get("/projects", async (req: Request, res: Response, next: NextFunction) 
       return res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "Authentication required." } });
     }
 
-    const pool = db.getPool();
-    let query = "SELECT p.* FROM projects p";
-    const params: unknown[] = [];
-
-    if (principal.organizationId) {
-      params.push(principal.organizationId);
-      query += " WHERE p.organization_id = $1";
+    // [P02 / Y-P02-009] Tenant kapsami ZORUNLU.
+    //
+    // Onceki hali: `if (principal.organizationId)` — yani token org_id
+    // tasimiyorsa WHERE clause'u hic eklenmiyor ve sorgu TUM projeleri
+    // donduruyordu. Ardindan yalnizca token claim'ine dayanan
+    // `principalCanAccessProject` ile filtreleniyordu; o da `projectIds`
+    // icinde "*" gorurse hepsini geciriyordu (P0-4).
+    //
+    // Kanonik karsilik: GET /api/v1/orgs/:orgId/projects (DB-backed uyelik).
+    if (!principal.organizationId) {
+      return res.status(403).json({
+        error: {
+          code: "ORG_SCOPE_REQUIRED",
+          message: "Token organizasyon kapsami tasimiyor; proje listesi verilemez."
+        }
+      });
     }
 
-    const result = await pool.query(query, params);
+    const pool = db.getPool();
+    const result = await pool.query(
+      "SELECT p.* FROM projects p WHERE p.organization_id = $1",
+      [principal.organizationId]
+    );
     const projects = result.rows.filter(p => principalCanAccessProject(principal, p.id));
 
     res.json({ ok: true, projects });
@@ -988,29 +1001,26 @@ router.get("/db/status", async (req: Request, res: Response) => {
 /**
  * 3. Trigger migrations manually
  */
-router.post("/db/migrate", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const result = await db.runMigrations();
-    
-    await auditHelper.logAction(
-      "system",
-      "developer",
-      "SEC",
-      "RUN_MIGRATION",
-      "authorized",
-      { processedVersions: result.processedVersions },
-      "Triggered database architecture migrations sequentially."
-    );
-
-    res.json({
-      success: true,
-      activeSchemaVersion: db.getStatus().activeSchemaVersion,
-      migrated: result.migrated,
-      processedVersions: result.processedVersions,
-    });
-  } catch (err) {
-    next(err);
-  }
+/**
+ * [P02 / Y-P02-009] KAPATILDI.
+ *
+ * POST /db/migrate, HTTP uzerinden ve yalnizca bir bearer token ile
+ * SEMA DEGISTIREN bir islem calistiriyordu. Migration bir deploy adimidir,
+ * bir API yuzeyi degil (ADR-003).
+ *
+ * Yerine: `npm run db:migrate` (CLI) veya deployment pipeline adimi.
+ * Durum sorgusu icin GET /api/db/status acik kalir.
+ */
+router.post("/db/migrate", (req: Request, res: Response) => {
+  res.setHeader("Sunset", "Wed, 31 Dec 2025 23:59:59 GMT");
+  return res.status(410).json({
+    error: {
+      code: "MIGRATION_ENDPOINT_CLOSED",
+      message:
+        "Migration HTTP uzerinden calistirilamaz. Deploy adimi olarak " +
+        "`npm run db:migrate` kullanin (ADR-003)."
+    }
+  });
 });
 
 /**
@@ -1038,25 +1048,25 @@ router.post("/db/migrate", async (req: Request, res: Response, next: NextFunctio
 /**
  * 5. Audit Logs list / query endpoint
  */
-router.get("/audit-logs", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const logs = await auditHelper.getAllLogs();
-    
-    // Log audit log query to protect trackability itself
-    await auditHelper.logAction(
-      "system",
-      "developer",
-      "SEC",
-      "DB_READINESS_CHECK",
-      "authorized",
-      { logsCount: logs.length },
-      "Queried complete system security audit traces."
-    );
-
-    res.json(logs);
-  } catch (err) {
-    next(err);
-  }
+/**
+ * [P02 / Y-P02-009] KAPATILDI — P0-8 (IDOR).
+ *
+ * Onceki hali: tum projelerin audit kaydini donduruyordu.
+ * Kanonik karsilik: GET /api/v1/projects/:projectId/audit
+ *
+ * Legacy yuzey P19'da tamamen silinecek (ADR-001).
+ */
+router.get("/audit-logs", (req: Request, res: Response) => {
+  res.setHeader("Sunset", "Wed, 31 Dec 2025 23:59:59 GMT");
+  res.setHeader("Link", '<GET /api/v1/projects/:projectId/audit>; rel="successor-version"');
+  return res.status(410).json({
+    error: {
+      code: "UNSCOPED_ROUTE_CLOSED",
+      message:
+        "Bu route proje kapsami dogrulamadigi icin kapatildi (P0-8). " +
+        "Kanonik karsilik: GET /api/v1/projects/:projectId/audit"
+    }
+  });
 });
 
 /**
@@ -1078,6 +1088,22 @@ router.get("/projects", async (req: Request, res: Response, next: NextFunction) 
 
 router.post("/projects", async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // [P02 / Y-P02-009] Tenant kapsami ZORUNLU.
+    //
+    // Onceki hali projeyi hicbir organizasyona baglamadan olusturuyordu.
+    // 0041 migration'i `projects.organization_id`'yi NOT NULL yaptigi icin
+    // bu handler artik sessizce basarisiz olurdu; daha da onemlisi, org'a
+    // bagli olmayan bir proje tenant izolasyonunun disinda kalir.
+    const principal = (req as Request & { authPrincipal: ApiAuthPrincipal }).authPrincipal;
+    if (!principal?.organizationId) {
+      return res.status(403).json({
+        error: {
+          code: "ORG_SCOPE_REQUIRED",
+          message: "Token organizasyon kapsami tasimiyor; proje olusturulamaz."
+        }
+      });
+    }
+
     const body = req.body as CreateProjectDTO;
     if (!body.name) {
       return res.status(400).json({ error: "Missing required project 'name' parameter." });
@@ -1089,9 +1115,9 @@ router.post("/projects", async (req: Request, res: Response, next: NextFunction)
     const metadataJson = body.metadataJson || {};
 
     const insertQuery = `
-      INSERT INTO projects (id, name, description, team_id, metadata_json, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-      RETURNING id, name, description, team_id as "teamId", metadata_json as "metadataJson", created_at as "createdAt", updated_at as "updatedAt";
+      INSERT INTO projects (id, name, description, team_id, metadata_json, organization_id, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+      RETURNING id, name, description, team_id as "teamId", metadata_json as "metadataJson", organization_id as "organizationId", created_at as "createdAt", updated_at as "updatedAt";
     `;
 
     const result = await queryDb(insertQuery, [
@@ -1099,7 +1125,8 @@ router.post("/projects", async (req: Request, res: Response, next: NextFunction)
       body.name,
       description,
       teamId,
-      JSON.stringify(metadataJson)
+      JSON.stringify(metadataJson),
+      principal.organizationId
     ]);
 
     const createdProject: ProjectDTO = result.rows[0];
@@ -3077,173 +3104,50 @@ router.get("/projects/:id/context-items/:contextItemId", requireProjectScope, as
  * PATCH /context-items/:contextItemId
  * Allows manual refinement / override of context parameters, source types, or raw contents.
  */
-router.patch("/context-items/:contextItemId", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { contextItemId } = req.params;
-    const { source_type, metadata, content } = req.body;
-
-    const selectSql = `SELECT * FROM context_items WHERE id = $1;`;
-    const checkResult = await queryDb(selectSql, [contextItemId]);
-    if (checkResult.rowCount === 0) {
-      return res.status(404).json({ error: "Context item not found." });
+/**
+ * [P02 / Y-P02-009] KAPATILDI — P0-8 (IDOR).
+ *
+ * Onceki hali: kaynagin projesi dogrulanmiyordu.
+ * Kanonik karsilik: PATCH /api/v1/projects/:projectId/context-items/:id
+ *
+ * Legacy yuzey P19'da tamamen silinecek (ADR-001).
+ */
+router.patch("/context-items/:contextItemId", (req: Request, res: Response) => {
+  res.setHeader("Sunset", "Wed, 31 Dec 2025 23:59:59 GMT");
+  res.setHeader("Link", '<PATCH /api/v1/projects/:projectId/context-items/:id>; rel="successor-version"');
+  return res.status(410).json({
+    error: {
+      code: "UNSCOPED_ROUTE_CLOSED",
+      message:
+        "Bu route proje kapsami dogrulamadigi icin kapatildi (P0-8). " +
+        "Kanonik karsilik: PATCH /api/v1/projects/:projectId/context-items/:id"
     }
-
-    const currentItem = checkResult.rows[0];
-    const projectId = currentItem.project_id;
-
-    // Validate type overrides
-    let finalSourceType = currentItem.source_type;
-    if (source_type) {
-      const supportedTypes = new Set([
-        "code", "markdown", "test", "prompt", "agent_session", "git_history", 
-        "api_doc", "ux_spec", "design_spec", "decision_log", "task_history", 
-        "connected_tool_data", "external_repo_reference"
-      ]);
-      if (!supportedTypes.has(source_type)) {
-        return res.status(400).json({ error: `Unsupported Context Vault source type: '${source_type}'` });
-      }
-      finalSourceType = source_type;
-    }
-
-    let finalChecksum = currentItem.checksum;
-    let finalTokenCount = currentItem.token_count;
-    let chunksCount = 0;
-
-    if (content !== undefined) {
-      if (typeof content !== "string") {
-        return res.status(400).json({ error: "Content parameter must be a string format." });
-      }
-
-      // Protection Check for credentials scan
-      if (detectSecrets(content)) {
-        await auditHelper.logAction(
-          projectId,
-          "User-Aydinoglu",
-          "SEC",
-          "REJECTED_UNSAFE",
-          "denied_untrusted",
-          { contextItemId, path_or_uri: currentItem.source_uri },
-          "Submitted update payload content contains sensitive exposed raw credentials.",
-          contextItemId
-        );
-        return res.status(400).json({ 
-          error: "Context modification denied: Payload contains sensitive raw credentials or secret patterns." 
-        });
-      }
-
-      finalChecksum = calculateChecksum(content);
-      finalTokenCount = estimateTokens(content);
-
-      // Re-chunk content cleanly
-      await queryDb(`DELETE FROM context_chunks WHERE context_item_id = $1;`, [contextItemId]);
-      const newChunks = chunkContent(content);
-      chunksCount = newChunks.length;
-      
-      for (const chunk of newChunks) {
-        const chunkId = newId("ctx_chunk");
-        await queryDb(`
-          INSERT INTO context_chunks (id, context_item_id, chunk_index, content, token_count, embedding_id)
-          VALUES ($1, $2, $3, $4, $5, NULL);
-        `, [chunkId, contextItemId, chunk.chunkIndex, chunk.content, chunk.tokenCount]);
-      }
-
-      await auditHelper.logAction(
-        projectId,
-        "User-Aydinoglu",
-        "CTX",
-        "COMPLETED_CHUNKING",
-        "authorized",
-        { contextItemId, chunksCount, tokenCount: finalTokenCount },
-        `Re-chunked contents successfully for modified item '${currentItem.source_uri}'.`,
-        contextItemId
-      );
-    }
-
-    const currentMetadata = typeof currentItem.metadata_json === "string" 
-      ? JSON.parse(currentItem.metadata_json) 
-      : currentItem.metadata_json;
-
-    const mergedMetadata = {
-      ...(currentMetadata || {}),
-      ...(metadata || {})
-    };
-
-    const updateSql = `
-      UPDATE context_items
-      SET source_type = $1, checksum = $2, content_hash = $3, token_count = $4, metadata_json = $5, updated_at = NOW()
-      WHERE id = $6
-      RETURNING id, project_id as "projectId", source_type as "sourceType", source_uri as "sourceUri", checksum, version, content_hash as "contentHash", token_count as "tokenCount", confidence, freshness_status as "freshnessStatus", metadata_json as "metadataJson", created_at as "createdAt", updated_at as "updatedAt";
-    `;
-
-    const updateResult = await queryDb(updateSql, [
-      finalSourceType,
-      finalChecksum,
-      finalChecksum,
-      finalTokenCount,
-      JSON.stringify(mergedMetadata),
-      contextItemId
-    ]);
-
-    await auditHelper.logAction(
-      projectId,
-      "User-Aydinoglu",
-      "CTX",
-      "UPDATE_CONTEXT_ITEM",
-      "authorized",
-      { contextItemId },
-      `Context vault item '${currentItem.source_uri}' parameters successfully patched.`,
-      contextItemId
-    );
-
-    res.json({
-      item: updateResult.rows[0],
-      chunksCount: chunksCount || undefined
-    });
-  } catch (err) {
-    next(err);
-  }
+  });
 });
 
 /**
  * DELETE /context-items/:contextItemId
  * Deletes Context Item and all nested chunks.
  */
-router.delete("/context-items/:contextItemId", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { contextItemId } = req.params;
-
-    const selectSql = `SELECT id, project_id, source_uri FROM context_items WHERE id = $1;`;
-    const checkResult = await queryDb(selectSql, [contextItemId]);
-    if (checkResult.rowCount === 0) {
-      return res.status(404).json({ error: "Context item not found." });
+/**
+ * [P02 / Y-P02-009] KAPATILDI — P0-8 (IDOR).
+ *
+ * Onceki hali: kaynagin projesi dogrulanmiyordu.
+ * Kanonik karsilik: DELETE /api/v1/projects/:projectId/context-items/:id
+ *
+ * Legacy yuzey P19'da tamamen silinecek (ADR-001).
+ */
+router.delete("/context-items/:contextItemId", (req: Request, res: Response) => {
+  res.setHeader("Sunset", "Wed, 31 Dec 2025 23:59:59 GMT");
+  res.setHeader("Link", '<DELETE /api/v1/projects/:projectId/context-items/:id>; rel="successor-version"');
+  return res.status(410).json({
+    error: {
+      code: "UNSCOPED_ROUTE_CLOSED",
+      message:
+        "Bu route proje kapsami dogrulamadigi icin kapatildi (P0-8). " +
+        "Kanonik karsilik: DELETE /api/v1/projects/:projectId/context-items/:id"
     }
-
-    const currentItem = checkResult.rows[0];
-    const projectId = currentItem.project_id;
-    const uri = currentItem.source_uri;
-
-    // Explicitly cascade delete chunks for defense in depth
-    await queryDb(`DELETE FROM context_chunks WHERE context_item_id = $1;`, [contextItemId]);
-    await queryDb(`DELETE FROM context_items WHERE id = $1;`, [contextItemId]);
-
-    await auditHelper.logAction(
-      projectId,
-      "User-Aydinoglu",
-      "CTX",
-      "DELETE_CONTEXT_ITEM",
-      "authorized",
-      { contextItemId, uri },
-      `Context vault file '${uri}' successfully decoupled and purged from DB store.`,
-      contextItemId
-    );
-
-    res.json({ 
-      success: true, 
-      message: `Context file '${uri}' deleted successfully.` 
-    });
-  } catch (err) {
-    next(err);
-  }
+  });
 });
 
 /**
@@ -3404,33 +3308,25 @@ const getRetrievalRankingService = (): RetrievalRankingService => {
  * Compatibility: POST /context/isolated-retrieve
  * Compiles custom search strategies, executes lexical similarity & graph weights, and respects token budgets.
  */
-router.post("/context/isolated-retrieve", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { project_id, query } = req.body;
-    
-    if (!project_id) {
-      return res.status(400).json({ error: "Missing required 'project_id' field in request body." });
+/**
+ * [P02 / Y-P02-009] KAPATILDI — P0-8 (IDOR).
+ *
+ * Onceki hali: project_id GOVDEDEN aliniyordu.
+ * Kanonik karsilik: POST /api/v1/projects/:projectId/context/compile
+ *
+ * Legacy yuzey P19'da tamamen silinecek (ADR-001).
+ */
+router.post("/context/isolated-retrieve", (req: Request, res: Response) => {
+  res.setHeader("Sunset", "Wed, 31 Dec 2025 23:59:59 GMT");
+  res.setHeader("Link", '<POST /api/v1/projects/:projectId/context/compile>; rel="successor-version"');
+  return res.status(410).json({
+    error: {
+      code: "UNSCOPED_ROUTE_CLOSED",
+      message:
+        "Bu route proje kapsami dogrulamadigi icin kapatildi (P0-8). " +
+        "Kanonik karsilik: POST /api/v1/projects/:projectId/context/compile"
     }
-    if (!query || typeof query !== "string") {
-      return res.status(400).json({ error: "Missing required or invalid 'query' field in request body." });
-    }
-
-    const rankingService = getRetrievalRankingService();
-    const result = await rankingService.queryAndRankDirect(req.body, "User-Aydinoglu", req.ip || "127.0.0.1");
-
-    res.json(result);
-  } catch (err: any) {
-    if (err.code === "NOT_FOUND") {
-      return res.status(404).json({ error: err.message });
-    }
-    if (err.code === "CONTEXT_BOUNDARY_VIOLATION" || err.code === "SECRET_LEAK_PREVENTED") {
-      return res.status(400).json({ error: err.message });
-    }
-    if (err.code === "UNAUTHORIZED" || err.code === "PERMISSION_DENIED") {
-      return res.status(403).json({ error: err.message });
-    }
-    next(err);
-  }
+  });
 });
 
 /**
@@ -4008,75 +3904,25 @@ router.get("/projects/:id/context-packs", requireProjectScope, async (req: Reque
  * POST /context-items/:id/summarize
  * CTX-038: Summarizes a single long document, storing it in context_summaries
  */
-router.post("/context-items/:id/summarize", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const contextItemId = req.params.id;
-
-    // Fetch context item with content (or retrieve sequential chunk contents)
-    const itemSql = `SELECT id, project_id, source_type, source_uri FROM context_items WHERE id = $1;`;
-    const itemRes = await queryDb(itemSql, [contextItemId]);
-    if (itemRes.rowCount === 0) {
-      return res.status(404).json({ error: `Context item not found: ${contextItemId}` });
+/**
+ * [P02 / Y-P02-009] KAPATILDI — P0-8 (IDOR).
+ *
+ * Onceki hali: kaynagin projesi dogrulanmiyordu.
+ * Kanonik karsilik: POST /api/v1/projects/:projectId/context-items/:id/summarize
+ *
+ * Legacy yuzey P19'da tamamen silinecek (ADR-001).
+ */
+router.post("/context-items/:id/summarize", (req: Request, res: Response) => {
+  res.setHeader("Sunset", "Wed, 31 Dec 2025 23:59:59 GMT");
+  res.setHeader("Link", '<POST /api/v1/projects/:projectId/context-items/:id/summarize>; rel="successor-version"');
+  return res.status(410).json({
+    error: {
+      code: "UNSCOPED_ROUTE_CLOSED",
+      message:
+        "Bu route proje kapsami dogrulamadigi icin kapatildi (P0-8). " +
+        "Kanonik karsilik: POST /api/v1/projects/:projectId/context-items/:id/summarize"
     }
-    const itemRow = itemRes.rows[0];
-
-    const chunksSql = `SELECT id, content, token_count FROM context_chunks WHERE context_item_id = $1 ORDER BY chunk_index ASC;`;
-    const chunksRes = await queryDb(chunksSql, [contextItemId]);
-    const chunks = chunksRes.rows;
-
-    const fullContent = chunks.map(c => c.content).join("\n");
-    const summaryResult = compressDocument(fullContent, contextItemId, itemRow.source_type, chunks.map(c => c.id));
-
-    // Save/Persist summary in context_summaries table
-    const summaryId = `sum_${crypto.randomBytes(6).toString("hex")}`;
-    const insertSummarySql = `
-      INSERT INTO context_summaries (
-        id, project_id, context_item_id, summary_type, summary, key_points, source_chunk_ids,
-        original_token_count, compressed_token_count, compression_ratio, confidence, metadata_json, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
-      ON CONFLICT (id) DO UPDATE SET
-        summary = EXCLUDED.summary,
-        key_points = EXCLUDED.key_points,
-        updated_at = NOW();
-    `;
-
-    await queryDb(insertSummarySql, [
-      summaryId,
-      itemRow.project_id,
-      contextItemId,
-      "document",
-      summaryResult.summary,
-      JSON.stringify(summaryResult.key_points),
-      JSON.stringify(summaryResult.source_chunk_ids),
-      summaryResult.original_token_count,
-      summaryResult.compressed_token_count,
-      summaryResult.compression_ratio,
-      summaryResult.confidence,
-      JSON.stringify(summaryResult.metadata)
-    ]);
-
-    // Audit context summary generation (No secrets included, Redaction check passed!)
-    await auditHelper.logAction(
-      itemRow.project_id,
-      "User-Aydinoglu",
-      "CTX",
-      "CONTEXT_SUMMARY_GENERATED" as any,
-      "authorized",
-      { 
-        context_item_id: contextItemId, 
-        summary_id: summaryId,
-        compression_ratio: summaryResult.compression_ratio 
-      },
-      `Generated deterministic summary for context item: '${contextItemId}'`
-    );
-
-    res.status(201).json({
-      summaryId,
-      ...summaryResult
-    });
-  } catch (err) {
-    next(err);
-  }
+  });
 });
 
 /**
@@ -4673,101 +4519,25 @@ router.post("/tasks/:id/compressed-pack", async (req: Request, res: Response, ne
  * CTX-042: Fully rehydrates specific summarized documents or omitted chunks when requested.
  * Enforces authorization boundary scope, checks and denies secret leaks, and logs operations.
  */
-router.post("/context-packs/:id/rehydrate", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const packId = req.params.id;
-    const { path_or_uri } = req.body;
-
-    if (!path_or_uri) {
-      return res.status(400).json({ error: "Missing required body parameter: path_or_uri" });
+/**
+ * [P02 / Y-P02-009] KAPATILDI — P0-8 (IDOR).
+ *
+ * Onceki hali: kaynagin projesi dogrulanmiyordu.
+ * Kanonik karsilik: GET /api/v1/runs/:runId/context/manifest
+ *
+ * Legacy yuzey P19'da tamamen silinecek (ADR-001).
+ */
+router.post("/context-packs/:id/rehydrate", (req: Request, res: Response) => {
+  res.setHeader("Sunset", "Wed, 31 Dec 2025 23:59:59 GMT");
+  res.setHeader("Link", '<GET /api/v1/runs/:runId/context/manifest>; rel="successor-version"');
+  return res.status(410).json({
+    error: {
+      code: "UNSCOPED_ROUTE_CLOSED",
+      message:
+        "Bu route proje kapsami dogrulamadigi icin kapatildi (P0-8). " +
+        "Kanonik karsilik: GET /api/v1/runs/:runId/context/manifest"
     }
-
-    // 1. Fetch target context pack to verify project boundary
-    const packRes = await queryDb("SELECT project_id, task_id, primary_files, related_docs, related_files FROM context_packs WHERE id = $1", [packId]);
-    if (packRes.rowCount === 0) {
-      // Rehydration denial logging
-      await auditHelper.logAction(
-        "system",
-        "User-Aydinoglu",
-        "CTX",
-        "REHYDRATION_DENIED" as any,
-        "denied_untrusted",
-        { context_pack_id: packId, requested_path: path_or_uri },
-        `Rehydration request blocked: context pack not found with ID '${packId}'`
-      );
-      return res.status(404).json({ error: `Context pack not found with id: ${packId}` });
-    }
-    const packRow = packRes.rows[0];
-    const projectId = packRow.project_id;
-
-    // Evaluate workspace boundary validation
-    const authScope = evaluateAuthorizationScope("developer", "read", true);
-    if (!authScope.authorized) {
-      await auditHelper.logAction(
-        projectId,
-        "User-Aydinoglu",
-        "CTX",
-        "REHYDRATION_DENIED" as any,
-        "denied_untrusted",
-        { context_pack_id: packId, requested_path: path_or_uri },
-        `Rehydration request denied: user is not authorized within project context boundary.`
-      );
-      return res.status(403).json({ error: "Access denied. Action violates authorization boundary project policies." });
-    }
-
-    // 2. Query original context chunks
-    const chunkSql = `
-      SELECT cc.id, cc.chunk_index, cc.content, cc.token_count
-      FROM context_chunks cc
-      JOIN context_items ci ON cc.context_item_id = ci.id
-      WHERE ci.project_id = $1 AND ci.source_uri = $2
-      ORDER BY cc.chunk_index ASC;
-    `;
-    const chunkRes = await queryDb(chunkSql, [projectId, path_or_uri]);
-    if (chunkRes.rowCount === 0) {
-      return res.status(404).json({ error: `Original source item content not found for path: ${path_or_uri} in scope project: ${projectId}` });
-    }
-
-    const rawContent = chunkRes.rows.map(r => r.content).join("\n");
-
-    // Prohibit secret leakage in rehydration content
-    const containsSecrets = detectSecrets(rawContent);
-    if (containsSecrets) {
-      await auditHelper.logAction(
-        projectId,
-        "User-Aydinoglu",
-        "CTX",
-        "REHYDRATION_DENIED" as any,
-        "denied_untrusted",
-        { context_pack_id: packId, requested_path: path_or_uri, reason: "UNSAFE_CREDENTIALS" },
-        `Rehydration blocked for path '${path_or_uri}': Unsafe credentials or connection parameters detected!`
-      );
-      return res.status(400).json({ error: "Rehydration blocked: file contains unredacted API keys, postgres secrets, or raw connection strings." });
-    }
-
-    // Apply standard redaction routine to output content before returning
-    const safeContent = redactSecretLeaks(rawContent);
-
-    // Log/Audit successful rehydration
-    await auditHelper.logAction(
-      projectId,
-      "User-Aydinoglu",
-      "CTX",
-      "CONTEXT_PACK_REHYDRATED" as any,
-      "authorized",
-      { context_pack_id: packId, rehydrated_path: path_or_uri, content_bytes: safeContent.length },
-      `Rehydrated full contextual content for path '${path_or_uri}' under pack ID '${packId}'`
-    );
-
-    res.json({
-      context_pack_id: packId,
-      path_or_uri,
-      content: safeContent,
-      original_token_count: estimateTokens(rawContent)
-    });
-  } catch (err) {
-    next(err);
-  }
+  });
 });
 
 /**
@@ -5721,21 +5491,25 @@ router.post("/tasks/:id/resume-payload", async (req: Request, res: Response, nex
   }, res, next);
 });
 
-router.patch("/resume-states/:resumeStateId", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const resumeStateId = req.params.resumeStateId;
-    const dbPool = db.getPool();
-    const checkRes = await dbPool.query("SELECT project_id FROM resume_states WHERE id = $1 LIMIT 1;", [resumeStateId]);
-    if (checkRes.rowCount === 0) {
-      res.status(404).json({ error: { code: "NOT_FOUND", message: `Resume State ${resumeStateId} not found.` } });
-      return;
+/**
+ * [P02 / Y-P02-009] KAPATILDI — P0-8 (IDOR).
+ *
+ * Onceki hali: kaynagin projesi dogrulanmiyordu.
+ * Kanonik karsilik: P12 run runtime
+ *
+ * Legacy yuzey P19'da tamamen silinecek (ADR-001).
+ */
+router.patch("/resume-states/:resumeStateId", (req: Request, res: Response) => {
+  res.setHeader("Sunset", "Wed, 31 Dec 2025 23:59:59 GMT");
+  res.setHeader("Link", '<P12 run runtime>; rel="successor-version"');
+  return res.status(410).json({
+    error: {
+      code: "UNSCOPED_ROUTE_CLOSED",
+      message:
+        "Bu route proje kapsami dogrulamadigi icin kapatildi (P0-8). " +
+        "Kanonik karsilik: P12 run runtime"
     }
-    const projectId = checkRes.rows[0].project_id;
-    const result = await getResumeService().updateResumeState(projectId, resumeStateId, req.body, "User-Aydinoglu", req.ip || "127.0.0.1");
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
+  });
 });
 
 // 28. POST /tasks/:id/resume-schedule
@@ -5805,43 +5579,47 @@ router.post("/projects/:id/resume-queue/requeue-ready", requireProjectScope, asy
 });
 
 // 32. PATCH /resume-schedules/:scheduleId
-router.patch("/resume-schedules/:scheduleId", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const scheduleId = req.params.scheduleId;
-    const dbPool = db.getPool();
-    const checkRes = await dbPool.query("SELECT project_id FROM resume_schedules WHERE id = $1 LIMIT 1;", [scheduleId]);
-    if (checkRes.rowCount === 0) {
-      res.status(404).json({ error: { code: "NOT_FOUND", message: `Resume Schedule ${scheduleId} not found.` } });
-      return;
+/**
+ * [P02 / Y-P02-009] KAPATILDI — P0-8 (IDOR).
+ *
+ * Onceki hali: kaynagin projesi dogrulanmiyordu.
+ * Kanonik karsilik: P12 run runtime
+ *
+ * Legacy yuzey P19'da tamamen silinecek (ADR-001).
+ */
+router.patch("/resume-schedules/:scheduleId", (req: Request, res: Response) => {
+  res.setHeader("Sunset", "Wed, 31 Dec 2025 23:59:59 GMT");
+  res.setHeader("Link", '<P12 run runtime>; rel="successor-version"');
+  return res.status(410).json({
+    error: {
+      code: "UNSCOPED_ROUTE_CLOSED",
+      message:
+        "Bu route proje kapsami dogrulamadigi icin kapatildi (P0-8). " +
+        "Kanonik karsilik: P12 run runtime"
     }
-    const projectId = checkRes.rows[0].project_id;
-    const resumeService = getResumeService();
-    const result = await resumeService.updateResumeSchedule(projectId, scheduleId, req.body, "User-Aydinoglu", req.ip || "127.0.0.1");
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
+  });
 });
 
 // 33. DELETE /resume-schedules/:scheduleId
-router.delete("/resume-schedules/:scheduleId", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const scheduleId = req.params.scheduleId;
-    const dbPool = db.getPool();
-    const checkRes = await dbPool.query("SELECT project_id FROM resume_schedules WHERE id = $1 LIMIT 1;", [scheduleId]);
-    if (checkRes.rowCount === 0) {
-      res.status(404).json({ error: { code: "NOT_FOUND", message: `Resume Schedule ${scheduleId} not found.` } });
-      return;
+/**
+ * [P02 / Y-P02-009] KAPATILDI — P0-8 (IDOR).
+ *
+ * Onceki hali: kaynagin projesi dogrulanmiyordu.
+ * Kanonik karsilik: P12 run runtime
+ *
+ * Legacy yuzey P19'da tamamen silinecek (ADR-001).
+ */
+router.delete("/resume-schedules/:scheduleId", (req: Request, res: Response) => {
+  res.setHeader("Sunset", "Wed, 31 Dec 2025 23:59:59 GMT");
+  res.setHeader("Link", '<P12 run runtime>; rel="successor-version"');
+  return res.status(410).json({
+    error: {
+      code: "UNSCOPED_ROUTE_CLOSED",
+      message:
+        "Bu route proje kapsami dogrulamadigi icin kapatildi (P0-8). " +
+        "Kanonik karsilik: P12 run runtime"
     }
-    const projectId = checkRes.rows[0].project_id;
-    const resumeService = getResumeService();
-    
-    const result = await resumeService.cancelResumeSchedule(projectId, scheduleId, "User-Aydinoglu", req.ip || "127.0.0.1");
-    
-    res.json({ success: true, message: `Schedule ${scheduleId} cancelled successfully.`, schedule: result });
-  } catch (err) {
-    next(err);
-  }
+  });
 });
 
 const getRecoveryService = (): AgentSessionRecoveryService => {
@@ -5886,22 +5664,25 @@ router.post("/tasks/:id/session-recovery-payload", async (req: Request, res: Res
 });
 
 // 38. PATCH /agent-sessions/:agentSessionId
-router.patch("/agent-sessions/:agentSessionId", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const agentSessionId = req.params.agentSessionId;
-    const dbPool = db.getPool();
-    const checkRes = await dbPool.query("SELECT project_id FROM agent_sessions WHERE id = $1 LIMIT 1;", [agentSessionId]);
-    if (checkRes.rowCount === 0) {
-      res.status(404).json({ error: { code: "NOT_FOUND", message: `Agent Session ${agentSessionId} not found.` } });
-      return;
+/**
+ * [P02 / Y-P02-009] KAPATILDI — P0-8 (IDOR).
+ *
+ * Onceki hali: kaynagin projesi dogrulanmiyordu.
+ * Kanonik karsilik: P12 run runtime
+ *
+ * Legacy yuzey P19'da tamamen silinecek (ADR-001).
+ */
+router.patch("/agent-sessions/:agentSessionId", (req: Request, res: Response) => {
+  res.setHeader("Sunset", "Wed, 31 Dec 2025 23:59:59 GMT");
+  res.setHeader("Link", '<P12 run runtime>; rel="successor-version"');
+  return res.status(410).json({
+    error: {
+      code: "UNSCOPED_ROUTE_CLOSED",
+      message:
+        "Bu route proje kapsami dogrulamadigi icin kapatildi (P0-8). " +
+        "Kanonik karsilik: P12 run runtime"
     }
-    const projectId = checkRes.rows[0].project_id;
-    const recoveryService = getRecoveryService();
-    const result = await recoveryService.updateAgentSession(projectId, agentSessionId, req.body, "User-Aydinoglu", req.ip || "127.0.0.1");
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
+  });
 });
 
 // 39. POST /tasks/:id/task-state-fallback
@@ -5945,60 +5726,69 @@ router.get("/tasks/:id/handoffs/latest", async (req: Request, res: Response, nex
 });
 
 // 43. GET /handoffs/:handoffId
-router.get("/handoffs/:handoffId", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const handoffId = req.params.handoffId;
-    const dbPool = db.getPool();
-    const checkRes = await dbPool.query("SELECT project_id FROM agent_handoffs WHERE id = $1 LIMIT 1;", [handoffId]);
-    if (checkRes.rowCount === 0) {
-      res.status(404).json({ error: { code: "NOT_FOUND", message: `Handoff ${handoffId} not found.` } });
-      return;
+/**
+ * [P02 / Y-P02-009] KAPATILDI — P0-8 (IDOR).
+ *
+ * Onceki hali: kaynagin projesi dogrulanmiyordu.
+ * Kanonik karsilik: GET /api/v1/runs/:runId/timeline
+ *
+ * Legacy yuzey P19'da tamamen silinecek (ADR-001).
+ */
+router.get("/handoffs/:handoffId", (req: Request, res: Response) => {
+  res.setHeader("Sunset", "Wed, 31 Dec 2025 23:59:59 GMT");
+  res.setHeader("Link", '<GET /api/v1/runs/:runId/timeline>; rel="successor-version"');
+  return res.status(410).json({
+    error: {
+      code: "UNSCOPED_ROUTE_CLOSED",
+      message:
+        "Bu route proje kapsami dogrulamadigi icin kapatildi (P0-8). " +
+        "Kanonik karsilik: GET /api/v1/runs/:runId/timeline"
     }
-    const projectId = checkRes.rows[0].project_id;
-    const handoffService = getHandoffService();
-    const result = await handoffService.getHandoff(projectId, handoffId, "User-Aydinoglu");
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
+  });
 });
 
 // 44. PATCH /handoffs/:handoffId
-router.patch("/handoffs/:handoffId", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const handoffId = req.params.handoffId;
-    const dbPool = db.getPool();
-    const checkRes = await dbPool.query("SELECT project_id FROM agent_handoffs WHERE id = $1 LIMIT 1;", [handoffId]);
-    if (checkRes.rowCount === 0) {
-      res.status(404).json({ error: { code: "NOT_FOUND", message: `Handoff ${handoffId} not found.` } });
-      return;
+/**
+ * [P02 / Y-P02-009] KAPATILDI — P0-8 (IDOR).
+ *
+ * Onceki hali: kaynagin projesi dogrulanmiyordu.
+ * Kanonik karsilik: P12 run runtime
+ *
+ * Legacy yuzey P19'da tamamen silinecek (ADR-001).
+ */
+router.patch("/handoffs/:handoffId", (req: Request, res: Response) => {
+  res.setHeader("Sunset", "Wed, 31 Dec 2025 23:59:59 GMT");
+  res.setHeader("Link", '<P12 run runtime>; rel="successor-version"');
+  return res.status(410).json({
+    error: {
+      code: "UNSCOPED_ROUTE_CLOSED",
+      message:
+        "Bu route proje kapsami dogrulamadigi icin kapatildi (P0-8). " +
+        "Kanonik karsilik: P12 run runtime"
     }
-    const projectId = checkRes.rows[0].project_id;
-    const handoffService = getHandoffService();
-    const result = await handoffService.updateHandoff(projectId, handoffId, req.body, "User-Aydinoglu", req.ip || "127.0.0.1");
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
+  });
 });
 
 // 45. POST /handoffs/:handoffId/validate
-router.post("/handoffs/:handoffId/validate", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const handoffId = req.params.handoffId;
-    const dbPool = db.getPool();
-    const checkRes = await dbPool.query("SELECT project_id FROM agent_handoffs WHERE id = $1 LIMIT 1;", [handoffId]);
-    if (checkRes.rowCount === 0) {
-      res.status(404).json({ error: { code: "NOT_FOUND", message: `Handoff ${handoffId} not found.` } });
-      return;
+/**
+ * [P02 / Y-P02-009] KAPATILDI — P0-8 (IDOR).
+ *
+ * Onceki hali: kaynagin projesi dogrulanmiyordu.
+ * Kanonik karsilik: P12 run runtime
+ *
+ * Legacy yuzey P19'da tamamen silinecek (ADR-001).
+ */
+router.post("/handoffs/:handoffId/validate", (req: Request, res: Response) => {
+  res.setHeader("Sunset", "Wed, 31 Dec 2025 23:59:59 GMT");
+  res.setHeader("Link", '<P12 run runtime>; rel="successor-version"');
+  return res.status(410).json({
+    error: {
+      code: "UNSCOPED_ROUTE_CLOSED",
+      message:
+        "Bu route proje kapsami dogrulamadigi icin kapatildi (P0-8). " +
+        "Kanonik karsilik: P12 run runtime"
     }
-    const projectId = checkRes.rows[0].project_id;
-    const handoffService = getHandoffService();
-    const result = await handoffService.validateHandoff(projectId, handoffId, "User-Aydinoglu", req.ip || "127.0.0.1");
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
+  });
 });
 
 const getAgentTimelineService = (): AgentTimelineService => {

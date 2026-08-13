@@ -21,8 +21,8 @@ seviyesinde mümkün değil.
 
 | Sınıf | Tablolar |
 |---|---|
-| DEAD (0 okuma, 0 yazma) | `memberships`, `artifacts`, `connections`, `organizations`, `users`, `service_identities`, `orphaned_memberships` |
-| WRITE-ONLY (hiç okunmuyor) | `context_summaries`, `durable_memories`, `boundary_checks`, `repo_access_logs`, `permission_overrides` |
+| DEAD (0 okuma, 0 yazma) | `memberships`, `artifacts`, `connections`, `context_summaries`, `service_identities`, `orphaned_memberships` |
+| WRITE-ONLY (hiç okunmuyor) | `durable_memories`, `boundary_checks`, `repo_access_logs`, `permission_overrides` |
 
 > Not: `schema_migrations` runner tarafından `db.ts` içinden kullanılır
 > (tarama `db.ts`'i hariç tuttuğu için DEAD görünür) — yanlış pozitiftir.

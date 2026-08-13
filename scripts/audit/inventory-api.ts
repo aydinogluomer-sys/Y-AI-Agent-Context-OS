@@ -47,10 +47,43 @@ function pathToMatcher(p: string): RegExp {
   return new RegExp(`^${escaped}$`);
 }
 
+/**
+ * Route'un KENDİ gövdesini döndürür (kayıt satırından parantez dengesi
+ * kapanana kadar). Sabit satır penceresi kullanmak komşu route'un
+ * middleware'ini bu route'a atfetmeye yol açıyordu — güvenlik envanterinde
+ * yanlış pozitif demektir.
+ */
+function routeBody(lines: string[], startIdx: number): string {
+  let depth = 0;
+  let started = false;
+  const out: string[] = [];
+
+  for (let i = startIdx; i < Math.min(startIdx + 400, lines.length); i++) {
+    out.push(lines[i]);
+    for (const ch of lines[i]) {
+      if (ch === "(") {
+        depth++;
+        started = true;
+      } else if (ch === ")") depth--;
+    }
+    if (started && depth === 0) break;
+  }
+  return out.join(" ");
+}
+
 function classifyGuard(lines: string[], startIdx: number): string {
-  const window = lines.slice(startIdx, Math.min(startIdx + 4, lines.length)).join(" ");
-  if (/requireProjectScope/.test(window)) return "requireProjectScope";
-  if (/principalCanAccessProject/.test(window)) return "principalCanAccessProject";
+  const body = routeBody(lines, startIdx);
+
+  // P02'de kapatilan route'lar: 410 donuyorlar, artik acik degiller.
+  if (/UNSCOPED_ROUTE_CLOSED|LEGACY_ROUTE_DEPRECATED|MIGRATION_ENDPOINT_CLOSED/.test(body)) {
+    return "closed-410";
+  }
+
+  if (/requireProjectScope/.test(body)) return "requireProjectScope";
+  if (/principalCanAccessProject/.test(body)) return "principalCanAccessProject";
+  // Tenant kapsami zorunlu kilan ama proje uyeligi istemeyen route'lar
+  // (or. organizasyon duzeyinde liste).
+  if (/ORG_SCOPE_REQUIRED/.test(body)) return "org-scoped";
   return "bearer-only";
 }
 
@@ -70,6 +103,8 @@ function classifyVerdict(routePath: string, guard: string, shadowedBy: string): 
 export function collectRoutes(): RouteRecord[] {
   const records: RouteRecord[] = [];
   const blockers: { pattern: RegExp; source: string; methodAll: boolean }[] = [];
+  /** method+path -> ilk kayit yeri. Express ilkini kullanir. */
+  const firstRegistration = new Map<string, string>();
 
   for (const file of [API_INDEX, SERVER_TS]) {
     const lines = readLines(file);
@@ -89,6 +124,17 @@ export function collectRoutes(): RouteRecord[] {
             break;
           }
         }
+
+        // Aynı method+path daha önce kaydedildiyse Express İLKİNİ kullanır;
+        // bu kayıt ölüdür. P00'da `GET /projects` iki kez kayıtlıydı ve
+        // ikincisi hiç çalışmıyordu — envanterde bu görünmüyordu.
+        if (!shadowedBy) {
+          const key = `${method} ${p}`;
+          const earlier = firstRegistration.get(key);
+          if (earlier) shadowedBy = `${earlier} (ayni path daha once kayitli)`;
+          else firstRegistration.set(key, `${rel(file)}:${i + 1}`);
+        }
+
         const guard = classifyGuard(lines, i);
         records.push({
           method,
