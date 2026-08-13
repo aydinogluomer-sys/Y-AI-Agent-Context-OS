@@ -3,6 +3,23 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// P03 / Y-P03-002 — Path guvenligi (T-03 traversal, T-04 symlink escape).
+// Onceden packages/core/src/repo-adapter.ts icindeydi; Context Firewall (P07),
+// Change Firewall (P10) ve quality gate sandbox'i (P14) da ayni korumayi
+// kullanacagi icin ayri modul. Kopyalanan guvenlik kodu, sapan guvenlik kodudur.
+export {
+  PathGuard,
+  isPathAllowed,
+  isBinaryBuffer,
+  DENIED_BASENAMES,
+  DENIED_EXTENSIONS,
+  DENIED_DIRECTORIES,
+  type PathCheck,
+  type PathRejectionReason,
+  type PathGuardOptions
+} from "./path-guard/index";
+
+
 // SEC Module - Secret redaction and credential protection bounds
 
 export const SECRET_PATTERNS = [
