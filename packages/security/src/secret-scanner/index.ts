@@ -133,8 +133,11 @@ const RULES: Rule[] = [
   {
     // KEY = "değer"  /  "password": "değer"  /  TOKEN: değer
     kind: "assignment",
+    // Deger yakalamasi backtick'te de durur: markdown/kod yorumlarinda
+    // `password = NEW.password` gibi ifadeler kapanis backtick'ini
+    // degerin parcasi sanip eslesmeyi bozuyordu.
     pattern:
-      /\b((?:[A-Za-z0-9_-]*(?:API[_-]?KEY|SECRET|PASSWORD|PASSWD|PASSCODE|TOKEN|CREDENTIAL|PRIVATE[_-]?KEY)))\b(\s*["']?\s*[:=]\s*["']?)([^\s"',;)]{6,})/gi,
+      /\b((?:[A-Za-z0-9_-]*(?:API[_-]?KEY|SECRET|PASSWORD|PASSWD|PASSCODE|TOKEN|CREDENTIAL|PRIVATE[_-]?KEY)))\b(\s*["'`]?\s*[:=]\s*["'`]?)([^\s"'`,;)]{6,})/gi,
     group: 3,
     replacement: (_m, key, sep) => `${key}${sep}[REDACTED_SECRET]`
   }
@@ -158,6 +161,14 @@ export function looksLikeRealSecretValue(value: string): boolean {
   // Kod referansi: process.env.X, config.foo, this.bar, fn(), ${...}
   if (/^(?:process\.env|import\.meta|globalThis|window|self|config|options|params|opts|this)\b/.test(value)) return false;
   if (/^\$\{/.test(value) || /\(\)$/.test(value)) return false;
+
+  // SQL kolon referansi: `contains_secret = EXCLUDED.contains_secret`,
+  // `password = NEW.password`, `token = t.token`. Bir kolonun BASKA BIR
+  // KOLONA atanmasi sir degildir — deger tasimaz, ad tasir.
+  if (/^(?:EXCLUDED|NEW|OLD|[A-Za-z_][A-Za-z0-9_]*)\.[A-Za-z_][A-Za-z0-9_]*$/.test(value)) return false;
+
+  // SQL parametre yer tutucusu: $1, $12
+  if (/^\$\d+$/.test(value)) return false;
 
   // Tip anotasyonu: `password: string`
   if (/^(?:string|number|boolean|any|unknown|null|undefined|true|false)$/i.test(value)) return false;

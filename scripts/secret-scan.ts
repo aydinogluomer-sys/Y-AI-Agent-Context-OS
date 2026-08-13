@@ -65,6 +65,10 @@ const SKIP_FILES = new Set(["pnpm-lock.yaml", "package-lock.json"]);
  * düzeltilmelidir.
  */
 const SELF_REFERENTIAL = new Set([
+  // Sahte kimlik bilgisi ureticileri. Sir tespitini test eden HER test
+  // buradan import eder; boylece sir-benzeri veri TEK bir dosyada kalir
+  // ve bu liste yeni testlerle BUYUMEZ.
+  "packages/security/src/secret-scanner/test-fixtures.ts",
   "packages/security/src/secret-scanner/secret-scanner.test.ts",
   "docs/audit/secret-scan-baseline.json"
 ]);

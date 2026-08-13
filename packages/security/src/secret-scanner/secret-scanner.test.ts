@@ -13,23 +13,37 @@ import {
   containsSecret,
   shannonEntropy
 } from "./index";
+import {
+  fakeConnectionString,
+  fakeGitHubToken,
+  fakeGitLabToken,
+  fakeAwsKey,
+  fakeGoogleApiKey,
+  fakeOpenAiKey,
+  fakeAnthropicKey,
+  fakeSlackToken,
+  fakeJwt,
+  fakePrivateKeyBlock,
+  fakeOpaqueSecret
+} from "./test-fixtures";
 
-/** Test verisi üreticileri — sabit sır literal'i yok. */
+/**
+ * Test verileri merkezi fixture modulunden gelir.
+ *
+ * Sir-benzeri veri TEK bir dosyada toplandi ki tarayicinin
+ * self-referential listesi her yeni testle buyumesin.
+ */
 const fake = {
-  pgUrl: (pass: string) => `postgres` + `ql://appuser:${pass}@db.example.com:5432/appdb`,
-  ghToken: () => "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
-  awsKey: () => "AKIA" + "IOSFODNN7EXAMPLE",
-  googleKey: () => "AIza" + "SyD1234567890abcdefghijklmnopqrstuv", // AIza + 35
-  openaiKey: () => "sk-" + "proj-" + "abcdefghijklmnopqrstuvwxyz012345",
-  anthropicKey: () => "sk-ant-" + "api03-abcdefghijklmnopqrstuvwxyz0123",
-  slackToken: () => "xoxb-" + "123456789012-1234567890123-abcdefghijklmnopqrst",
-  gitlabToken: () => "glpat-" + "abcdefghij1234567890",
-  jwt: () =>
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
-    "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4ifQ." +
-    "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-  pem: () =>
-    "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA1234567890abcdef\n-----END RSA PRIVATE KEY-----"
+  pgUrl: fakeConnectionString,
+  ghToken: fakeGitHubToken,
+  awsKey: fakeAwsKey,
+  googleKey: fakeGoogleApiKey,
+  openaiKey: fakeOpenAiKey,
+  anthropicKey: fakeAnthropicKey,
+  slackToken: fakeSlackToken,
+  gitlabToken: fakeGitLabToken,
+  jwt: fakeJwt,
+  pem: fakePrivateKeyBlock
 };
 
 describe("kaynak hijyeni — P0-11 regresyonu", () => {
@@ -86,7 +100,7 @@ describe("scanForSecrets — tespit", () => {
   });
 
   it("atama biçimindeki sırrı bulur", () => {
-    expect(scanForSecrets('API_KEY = "aB3xK9mQ7pL2vN5r"').some((f) => f.kind === "assignment")).toBe(true);
+    expect(scanForSecrets(`API_KEY = "${fakeOpaqueSecret()}"`).some((f) => f.kind === "assignment")).toBe(true);
     expect(scanForSecrets('{"password": "Tr0ub4dor&3xKq"}').some((f) => f.kind === "assignment")).toBe(true);
   });
 
@@ -108,11 +122,21 @@ describe("scanForSecrets — tespit", () => {
     }
   });
 
+  it("SQL kolon referansını sır saymaz", () => {
+    // Bu false positive'i gate kendi kodumda yakaladi:
+    // `contains_secret = EXCLUDED.contains_secret` bir UPSERT ifadesidir,
+    // deger degil AD tasir.
+    expect(scanForSecrets("contains_secret = EXCLUDED.contains_secret")).toEqual([]);
+    expect(scanForSecrets("password = NEW.password")).toEqual([]);
+    expect(scanForSecrets("token = t.token")).toEqual([]);
+    expect(scanForSecrets("api_key = $1")).toEqual([]);
+  });
+
   it("çok kısa değerleri sır saymaz (eşik: 12 karakter)", () => {
     // Kisa degerler pratikte gercek sir degil; esigi dusurmek yanlis
     // pozitifi patlatiyor. Esik bilincli bir tercihtir ve burada kilitlenir.
     expect(scanForSecrets('PASSWORD = "kisa123"')).toEqual([]);
-    expect(scanForSecrets('API_KEY = "aB3xK9mQ7pL2vN5r"').length).toBeGreaterThan(0);
+    expect(scanForSecrets(`API_KEY = "${fakeOpaqueSecret()}"`).length).toBeGreaterThan(0);
   });
 
   it("Bearer header'ı bulur", () => {

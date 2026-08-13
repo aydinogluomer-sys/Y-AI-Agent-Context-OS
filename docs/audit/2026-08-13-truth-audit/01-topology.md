@@ -1,6 +1,6 @@
 # 01 — Fiziksel Topoloji
 
-> Baseline commit: `a7b39aefffc149ed987d56a025f20ec6049cda8e`
+> Baseline commit: `028a92669c3db8042f5a4a4b1a46a8d87c4368e8`
 
 ## Çalışma zamanı topolojisi
 
@@ -11,7 +11,7 @@
 | `apps/api` | **Server değil** — yalnız `apiRouter` + `apiReady` export eder | `apps/api/src/index.ts` |
 | API router | **6806 satır**, tek `Router()`, 195 route inline | `apps/api/src/index.ts` |
 | Web app | **971 satır** tek component, router yok | `apps/web/src/App.tsx` |
-| Şema | **Hiç `.sql` dosyası yok** (52 adet) — 1105 satırlık `db.ts` içinde inline string | `apps/api/src/db.ts` |
+| Şema | **Hiç `.sql` dosyası yok** (55 adet) — 1105 satırlık `db.ts` içinde inline string | `apps/api/src/db.ts` |
 | Graph paketi | 3038 satır tek dosya | `packages/graph/src/index.ts` |
 
 ## Workspace paketleri
@@ -20,13 +20,13 @@
 |---|---:|---:|---|
 | `packages/agents` | 7 | 4488 | wired (1 importer) |
 | `packages/context` | 4 | 3162 | wired (1 importer) |
-| `packages/core` | 14 | 4892 | wired (1 importer) |
+| `packages/core` | 29 | 8757 | wired (1 importer) |
 | `packages/db` | 4 | 481 | wired (1 importer) |
 | `packages/graph` | 1 | 3038 | wired (1 importer) |
 | `packages/node-domexception` | 0 | 0 | **ORPHANED (0 importer)** |
 | `packages/providers` | 1 | 170 | **ORPHANED (0 importer)** |
-| `packages/security` | 5 | 1134 | wired (29 importer) |
-| `packages/shared` | 10 | 3290 | wired (45 importer) |
+| `packages/security` | 6 | 1253 | wired (30 importer) |
+| `packages/shared` | 10 | 3290 | wired (47 importer) |
 
 ## Sonuç
 

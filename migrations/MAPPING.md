@@ -76,5 +76,8 @@ migrate edilmiş veritabanları yeniden çalıştırılmaz.
 | 0050 | `0050_index_jobs_snapshot.sql` | `2.1.4-index-jobs-snapshot` | yeni | var |
 | 0051 | `0051_repo_access_audit.sql` | `2.1.5-repo-access-audit` | yeni | var |
 | 0052 | `0052_migrate_repo_sources.sql` | `2.1.6-migrate-repo-sources` | yeni | var |
+| 0053 | `0053_symbols.sql` | `2.2.0-symbols` | yeni | var |
+| 0054 | `0054_chunks.sql` | `2.2.1-chunks` | yeni | var |
+| 0055 | `0055_parser_versions.sql` | `2.2.2-parser-versions` | yeni | var |
 
-Toplam: **52** migration (35 göç + 17 yeni).
+Toplam: **55** migration (35 göç + 20 yeni).

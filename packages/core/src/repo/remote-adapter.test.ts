@@ -25,6 +25,7 @@ import {
 } from "./remote-adapter";
 import { AdapterError, isWritable } from "./adapter";
 import { GitSecurityError } from "../git/git-cli";
+import { fakeOpaqueSecret } from "@y/security/secret-scanner/test-fixtures";
 
 const workdir = path.join(os.tmpdir(), "y-remote-adapter-test");
 
@@ -285,13 +286,14 @@ describe("verifyRemoteAccess — HTTP durum sınıflandırması", { timeout: 30_
   });
 
   it("token'ı Authorization header'ında taşır, URL'e GÖMMEZ", async () => {
+    const token = fakeOpaqueSecret();
     fx.respond(200, { default_branch: "main" });
-    await adapter(async () => "gizli-token-degeri").verify();
+    await adapter(async () => token).verify();
 
     const headers = fx.lastHeaders();
-    expect(headers.authorization).toBe("Bearer gizli-token-degeri");
+    expect(headers.authorization).toBe(`Bearer ${token}`);
     // URL'de token izi olmamali.
-    expect(url).not.toContain("gizli-token");
+    expect(url).not.toContain(token);
   });
 
   it("boş token'ı AUTH_FAILED ile reddeder", async () => {

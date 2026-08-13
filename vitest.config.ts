@@ -25,6 +25,8 @@ export default defineConfig({
       "@y/graph": path.resolve(root, "packages/graph/src/index.ts"),
       "@y/agents": path.resolve(root, "packages/agents/src/index.ts"),
       "@y/providers": path.resolve(root, "packages/providers/src/index.ts"),
+      // Subpath alias, tam eslesmeden ONCE gelmeli.
+      "@y/security/": path.resolve(root, "packages/security/src") + "/",
       "@y/security": path.resolve(root, "packages/security/src/index.ts"),
       "@y/api": path.resolve(root, "apps/api/src"),
       "@y/web": path.resolve(root, "apps/web/src"),

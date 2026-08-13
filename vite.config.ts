@@ -19,6 +19,7 @@ export default defineConfig(() => {
         '@y/graph': path.resolve(projectRoot, 'packages/graph/src/index.ts'),
         '@y/agents': path.resolve(projectRoot, 'packages/agents/src/index.ts'),
         '@y/providers': path.resolve(projectRoot, 'packages/providers/src/index.ts'),
+        '@y/security/': path.resolve(projectRoot, 'packages/security/src') + '/',
         '@y/security': path.resolve(projectRoot, 'packages/security/src/index.ts'),
         '@y/web': path.resolve(projectRoot, 'apps/web/src'),
         '@y/api': path.resolve(projectRoot, 'apps/api/src'),

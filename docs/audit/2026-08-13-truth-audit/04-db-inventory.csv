@@ -49,6 +49,9 @@ service_identities,2.0.4-service-identities,11,8,false,true,0,0,"DEAD (0 read, 0
 orphaned_memberships,2.0.9-migrate-legacy-memberships,18,7,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
 repositories,2.1.0-repositories,12,11,true,true,0,0,"DEAD (0 read, 0 write) -> DROP"
 repository_connections,2.1.1-repository-connections,11,7,false,false,0,0,"DEAD (0 read, 0 write) -> DROP"
-repository_snapshots,2.1.2-repository-snapshots,11,10,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
-files,2.1.3-files,11,15,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
+repository_snapshots,2.1.2-repository-snapshots,11,10,false,true,2,5,KEEP
+files,2.1.3-files,11,15,false,true,0,4,WRITE-ONLY (never read) -> DROP
 orphaned_repo_sources,2.1.6-migrate-repo-sources,16,5,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
+symbols,2.2.0-symbols,15,20,false,true,1,3,KEEP
+chunks,2.2.1-chunks,16,21,false,true,1,3,KEEP
+parser_versions,2.2.2-parser-versions,13,5,false,false,0,2,WRITE-ONLY (never read) -> DROP

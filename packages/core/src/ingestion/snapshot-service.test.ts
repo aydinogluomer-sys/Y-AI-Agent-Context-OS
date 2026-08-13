@@ -9,6 +9,7 @@
 import { describe, it, expect } from "vitest";
 import { SnapshotService, detectLanguage, type SnapshotDb } from "./snapshot-service";
 import { AdapterError, type AdapterCapabilities, type FileEntry, type RepositoryAdapter } from "../repo/adapter";
+import { fakeSourceWithSecret } from "@y/security/secret-scanner/test-fixtures";
 
 /** Yazılan satırları kaydeden dürüst sahte DB. */
 function createDb(options: { readySnapshot?: boolean } = {}) {
@@ -242,7 +243,7 @@ describe("SnapshotService — sınıflandırma", () => {
     const adapter = createAdapter({
       files: [entry({ path: "config.ts" }), entry({ path: "clean.ts" })],
       contents: {
-        "config.ts": 'const t = "ghp_' + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8" + '";',
+        "config.ts": fakeSourceWithSecret(),
         "clean.ts": "export const a = 1;"
       }
     });

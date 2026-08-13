@@ -89,3 +89,32 @@ export {
   type IngestOptions,
   type SnapshotDb
 } from "./ingestion/snapshot-service";
+
+// ==========================================
+// P04 — Static analysis & symbol intelligence (ADR-007, ADR-020, ADR-021)
+// ==========================================
+
+export {
+  computeConfidence,
+  ParserTimeoutError,
+  type LanguageParser,
+  type ParsedSymbol,
+  type ParsedImport,
+  type ParseResult,
+  type ParseOptions,
+  type ParseDiagnostic,
+  type SymbolType
+} from "./parsers/types";
+
+export { ParserRegistry, createDefaultRegistry } from "./parsers/registry";
+export { TypeScriptParser } from "./parsers/typescript-parser";
+export { TreeSitterParser, GRAMMAR_FILES } from "./parsers/tree-sitter-parser";
+export { StructuralParser } from "./parsers/structural-parser";
+export { chunkBySymbols, estimateTokens, type Chunk, type ChunkOptions } from "./parsers/symbol-chunker";
+export {
+  SymbolIndexer,
+  type IndexResult,
+  type IndexOptions,
+  type FileToIndex,
+  type IndexerDb
+} from "./parsers/symbol-indexer";

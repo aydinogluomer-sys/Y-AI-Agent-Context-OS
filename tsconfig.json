@@ -43,6 +43,9 @@
       "@y/security": [
         "./packages/security/src/index.ts"
       ],
+      "@y/security/*": [
+        "./packages/security/src/*"
+      ],
       "@y/web/*": [
         "./apps/web/src/*"
       ],
