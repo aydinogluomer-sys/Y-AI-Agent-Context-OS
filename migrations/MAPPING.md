@@ -79,5 +79,7 @@ migrate edilmiş veritabanları yeniden çalıştırılmaz.
 | 0053 | `0053_symbols.sql` | `2.2.0-symbols` | yeni | var |
 | 0054 | `0054_chunks.sql` | `2.2.1-chunks` | yeni | var |
 | 0055 | `0055_parser_versions.sql` | `2.2.2-parser-versions` | yeni | var |
+| 0056 | `0056_symbol_invalidations.sql` | `2.2.3-symbol-invalidations` | yeni | var |
+| 0057 | `0057_legacy_chunk_migration_audit.sql` | `2.2.4-legacy-chunk-audit` | yeni | var |
 
-Toplam: **55** migration (35 göç + 20 yeni).
+Toplam: **57** migration (35 göç + 22 yeni).

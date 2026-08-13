@@ -257,3 +257,153 @@ pnpm --filter @y/db run test:migrations:upgrade
 ```
 
 **`SymbolRecord` sözleşmesi bu gate'te donar** — P05 buna bağımlıdır.
+
+---
+
+## Uygulama Kaydı (2026-08-14)
+
+Bu bölüm fazın **gerçekte ne yapıldığını** kaydeder. Plandan sapmalar
+gizlenmez; her sapmanın sebebi ve hangi koşulda kapanacağı yazılır.
+
+### Tamamlanan görevler
+
+| Görev | Durum | Kanıt |
+|---|---|---|
+| Y-P04-001 registry + tipler | Tamam | `packages/core/src/parsers/{types,registry}.ts` |
+| Y-P04-002 TypeScript parser | Tamam | `typescript-parser.ts`; `parseDatabaseTables` sabit tablo listesi kaldırıldı |
+| Y-P04-003 ölçülen confidence | Tamam | `computeConfidence`; sabit `0.95`/`0.6` yok |
+| Y-P04-004/005 tree-sitter dilleri | Tamam (15 dil) | `tree-sitter-parser.ts`, WASM grammar'lar |
+| Y-P04-006 dil tespiti | Tamam | `detectLanguage`; `.py` artık `javascript` değil |
+| Y-P04-007 `symbols` + indexer | Tamam | migration `0053`, `symbol-indexer.ts`, 14 alan testi |
+| Y-P04-008 symbol-aware chunking | Tamam | `symbol-chunker.ts`, migration `0054` |
+| Y-P04-009 index worker rewrite | Tamam | `workers/index-worker.ts` + 20 test |
+| Y-P04-010 incremental index | Tamam | `invalidation.ts`, migration `0056`, ölçüm testi |
+| Y-P04-011 `parser_versions` | Tamam | migration `0055` |
+| Y-P04-012 migration'lar | Kısmen | aşağıya bakınız |
+
+### Migration numaralandırması
+
+Plan `0053`–`0060` aralığını öngörüyordu. Gerçekte:
+
+| Plan | Gerçek | Not |
+|---|---|---|
+| 0053 symbols | `0053_symbols.sql` | — |
+| 0054 chunks | `0054_chunks.sql` | — |
+| 0055 files + parse alanları | — | `0049_files.sql` bu kolonlarla doğdu; ayrı migration gereksiz |
+| 0056 symbol_invalidations | `0056_symbol_invalidations.sql` | — |
+| 0057 index_jobs + phase | — | `0050_index_jobs_snapshot.sql` `job_phase`'i zaten eklemişti |
+| 0058 parser_versions | `0055_parser_versions.sql` | — |
+| 0059 veri göçü | `0057_legacy_chunk_migration_audit.sql` | satır kopyalanmadı, aşağıya bakınız |
+| 0060 context_chunks DROP | **ERTELENDİ** | aşağıya bakınız |
+
+### Sapma 1 — `context_chunks` → `chunks` veri göçü satır kopyalamıyor
+
+İki tablo aynı şeyi tutmuyor. `context_chunks` satırlarında `snapshot_id`,
+`path`, satır/bayt offset'i ve sembol bağı **yok**; bu satırlar repo
+dosyalarına değil, yüklenmiş dokümanlara (`context_items`) ait.
+
+Yeni `chunks` tablosunun zorunlu alanlarını doldurmak için olmayan bir
+snapshot uydurmak, olmayan bir bayt offset'i hesaplamak ve fragment'ı var
+olmayan bir dosyaya bağlamak gerekirdi. Master plan §7 bunu yasaklar:
+**yanlış provenance, provenance'ın hiç olmamasından tehlikelidir** — çünkü
+sorgulanmaz.
+
+Bunun yerine kanonik `chunks` içeriği gerçek kaynaktan yeniden üretilir
+(P03 snapshot → P04 index worker). `0057` migration'ı kararı ve göç anındaki
+satır sayılarını kaydeder; böylece cutover'da "eski satırlara ne oldu?"
+sorusu yanıtlanabilir.
+
+### Sapma 2 — `context_chunks` DROP'u P06'ya ertelendi
+
+Legacy retrieval yüzeyi (`apps/api/src/index.ts`, `packages/context`,
+`packages/agents`) tabloyu **hâlâ okuyup yazıyor**. ADR-001 paralel kanonik
+yüzey + cutover diyor: tablo, okuyucuları kanonik yüzeye geçtikten sonra
+düşer. Bugün DROP etmek çalışan sistemi bozardı.
+
+**Kapanma koşulu:** P06 retrieval cutover'ı tamamlandığında ayrı bir
+migration ile DROP.
+
+### Sapma 3 — `chunkContent` silinmedi, satır sınırına taşındı
+
+Plan `packages/context/src/index.ts:317-344`'ün silinmesini öngörüyordu.
+Fonksiyonun tüketicisi legacy doküman yolu (`context_items`); sembol tabanlı
+chunker ise parse sonucu ister ve dokümanların sembolü yoktur. Ayrıca o
+chunker taşan sembolleri **örtüşmeyle** böler; örtüşme, bu fonksiyonun
+legacy doğrulamalarca kontrol edilen "parçaların birleşimi = kaynak"
+sözleşmesini bozardı.
+
+Yapılan: sabit karakter dilimi **satır sınırına** taşındı (artık satır
+ortasından kesmiyor), fonksiyon `@deprecated` işaretlendi ve kanonik
+karşılığa yönlendirildi. Sözleşme korundu; `chunk-content.test.ts` bunu
+9 testle kilitliyor.
+
+**Kapanma koşulu:** P06 cutover'ında fonksiyon kaldırılır.
+
+### Sapma 4 — `scripts/validate-phase-7-runtime-contracts.ts` kırpıldı
+
+Script şunu PASS sayıyordu:
+
+```ts
+assert.deepEqual(workerResult, { claimed: true, jobId: "job-a", processedFiles: 1 });
+assert.match(calls[2].url, /\/job-a\/complete$/);
+```
+
+Yani "worker bir dosyayı okudu ve `/complete` çağırdı" başarı sayılıyordu —
+P00'un false-green tanımının kendisi. Blok kaldırıldı; worker sözleşmesi
+`workers/index-worker.test.ts`'teki 20 gerçek testle kilitlendi.
+
+### Yan düzeltme — API envanteri verdict'i
+
+`closed-410` guard'lı route'lar "REVIEW (unscoped)" kovasında sayılıyordu.
+Kapatılmış bir route'un erişim yüzeyi yoktur; bunları o kovada tutmak
+gerçekten açık unscoped route sayısını **24 gösteriyordu, gerçeği 7**.
+`CLOSED (410)` verdict'i eklendi.
+
+### Kabul kriterlerinin durumu
+
+| # | Kriter | Durum | Kanıt |
+|---|---|---|---|
+| 1 | 9 dil parser + doğru dil tespiti | Evet (15 dil) | `parsers.test.ts` |
+| 2 | `symbols` 14 alanla doluyor | Evet | `symbol-indexer.test.ts` "14 zorunlu alanın tamamını yazar" |
+| 3 | Chunk sınırı = symbol sınırı | Evet | `symbol-chunker.test.ts` |
+| 4 | Worker gerçek iş yapıyor; kanıtsız `completed` olamıyor | Evet | `index-worker.test.ts` "negatif: kanıtsız tamamlanamaz" |
+| 5 | Tek dosya değişimi < %1 iş | Evet | `invalidation.test.ts` 10.000 dosyada 6 dosya |
+| 6 | Confidence ölçülüyor | Evet | `computeConfidence` + bozuk kaynak testi |
+| 7 | `parseDatabaseTables` sabit listeye bağlı değil | Evet | `typescript-parser.ts` |
+| 8 | `context_chunks` → `chunks` göçü | KISMİ | Sapma 1 ve 2 |
+
+### Ölçüm — artımlı index
+
+`invalidation.test.ts` "kabul kriteri ölçümü":
+
+```text
+toplam dosya            : 10.000
+değişen dosya           : 1
+bağımlı (import eden)   : 5
+yeniden ayrıştırılan    : 6
+kopyalanan              : 9.994
+workRatio               : 0,0006   (kriter: < 0,01)
+```
+
+### Gate sonuçları
+
+```text
+typecheck (loose + strict)   0 hata
+vitest                       528 passed | 4 skipped (532)
+build                        OK
+secret-scan                  0 yeni bulgu (baseline 86 -> 84)
+drift (verify-inventories)   8/8 kontrol geçti
+test:phase7                  PASS
+```
+
+### Bu fazda kapatılmayanlar
+
+- **Gerçek Postgres'e karşı integration testi.** Tüm DB testleri sorgu
+  şeklini ve parametreleri doğrulayan sahte DB ile yazıldı. Şema uyumu
+  P19'da testcontainers ile doğrulanacak. Bugünkü testler "SQL doğru mu"
+  değil, "doğru SQL yazılıyor mu" sorusunu yanıtlıyor — bu ayrım
+  kayıtlıdır.
+- **`tests/e2e/index-repo.spec.ts`.** P03'ün e2e'si gibi P19 entegrasyon
+  paketine bırakıldı.
+- **`GET /api/v1/.../index-status`'un canlı doğrulaması.** Route ve
+  repository katmanı test edilmiş durumda; uçtan uca çağrı P19'da.

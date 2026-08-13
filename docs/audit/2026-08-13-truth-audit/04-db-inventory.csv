@@ -1,7 +1,7 @@
 table,migration_version,defined_at_line,column_count,has_project_id,has_org_id,reads,writes,verdict
 projects,1.0.0-projects-foundation,10,7,false,true,89,50,KEEP
 memberships,1.0.1-memberships-foundation,10,6,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
-tasks,1.0.2-tasks-foundation,10,13,true,true,102,78,KEEP
+tasks,1.0.2-tasks-foundation,10,13,true,true,101,78,KEEP
 context_items,1.0.3-context-vault-foundation,10,13,true,false,41,28,KEEP + ALTER (needs organization_id)
 context_chunks,1.0.3-context-vault-foundation,27,6,false,false,14,10,KEEP + ALTER (needs organization_id)
 graph_nodes,1.0.4-knowledge-graph-foundation,10,7,true,false,15,10,KEEP + ALTER (needs organization_id)
@@ -24,7 +24,7 @@ agent_sessions,1.1.7-agent-sessions-foundation,10,15,true,false,22,6,KEEP + ALTE
 agent_handoffs,1.1.8-agent-handoffs-foundation,10,18,true,false,10,5,KEEP + ALTER (needs organization_id)
 repo_sources,1.1.9-repo-adapter-foundation,10,8,true,false,6,2,KEEP + ALTER (needs organization_id)
 repo_access_logs,1.1.9-repo-adapter-foundation,22,9,true,false,0,3,WRITE-ONLY (never read) -> DROP
-index_jobs,1.2.0-index-jobs-foundation,10,14,true,false,31,29,KEEP + ALTER (needs organization_id)
+index_jobs,1.2.0-index-jobs-foundation,10,14,true,false,34,35,KEEP + ALTER (needs organization_id)
 incremental_index_events,1.2.3-incremental-index-pipeline,10,14,true,false,7,3,KEEP + ALTER (needs organization_id)
 task_status_history,1.2.4-task-lifecycle-history,10,12,true,false,24,17,KEEP + ALTER (needs organization_id)
 quality_gate_runs,1.2.7-quality-gate-orchestrator,10,12,true,false,5,8,KEEP + ALTER (needs organization_id)
@@ -44,14 +44,16 @@ artifact_versions,1.3.4-artifact-cas-mvp,26,21,true,false,14,7,KEEP + ALTER (nee
 organizations,2.0.0-organizations,12,7,false,false,2,0,READ-ONLY (never written) -> investigate
 users,2.0.1-users,11,8,false,false,5,3,KEEP + ALTER (needs organization_id)
 org_memberships,2.0.2-org-memberships,8,6,false,true,5,0,READ-ONLY (never written) -> investigate
-project_memberships,2.0.3-project-memberships,12,6,true,false,9,2,KEEP + ALTER (needs organization_id)
+project_memberships,2.0.3-project-memberships,12,6,true,false,10,2,KEEP + ALTER (needs organization_id)
 service_identities,2.0.4-service-identities,11,8,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
 orphaned_memberships,2.0.9-migrate-legacy-memberships,18,7,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
-repositories,2.1.0-repositories,12,11,true,true,0,0,"DEAD (0 read, 0 write) -> DROP"
+repositories,2.1.0-repositories,12,11,true,true,2,0,READ-ONLY (never written) -> investigate
 repository_connections,2.1.1-repository-connections,11,7,false,false,0,0,"DEAD (0 read, 0 write) -> DROP"
-repository_snapshots,2.1.2-repository-snapshots,11,10,false,true,2,5,KEEP
-files,2.1.3-files,11,15,false,true,0,4,WRITE-ONLY (never read) -> DROP
+repository_snapshots,2.1.2-repository-snapshots,11,10,false,true,11,5,KEEP
+files,2.1.3-files,11,15,false,true,11,6,KEEP
 orphaned_repo_sources,2.1.6-migrate-repo-sources,16,5,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
-symbols,2.2.0-symbols,15,20,false,true,1,3,KEEP
-chunks,2.2.1-chunks,16,21,false,true,1,3,KEEP
-parser_versions,2.2.2-parser-versions,13,5,false,false,0,2,WRITE-ONLY (never read) -> DROP
+symbols,2.2.0-symbols,15,20,false,true,17,8,KEEP
+chunks,2.2.1-chunks,16,21,false,true,7,6,KEEP
+parser_versions,2.2.2-parser-versions,13,5,false,false,5,2,KEEP + ALTER (needs organization_id)
+symbol_invalidations,2.2.3-symbol-invalidations,20,11,false,true,0,2,WRITE-ONLY (never read) -> DROP
+legacy_chunk_migration_audit,2.2.4-legacy-chunk-audit,45,7,false,false,0,0,"DEAD (0 read, 0 write) -> DROP"

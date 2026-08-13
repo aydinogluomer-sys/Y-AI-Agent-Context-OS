@@ -36,7 +36,15 @@ export default defineConfig({
   test: {
     globals: false,
     environment: "node",
-    include: ["packages/**/*.test.ts", "apps/**/*.test.ts", "scripts/**/*.test.ts", "tests/unit/**/*.test.ts"],
+    include: [
+      "packages/**/*.test.ts",
+      "apps/**/*.test.ts",
+      "scripts/**/*.test.ts",
+      // P04: worker'lar da test edilir. Eskiden kapsam disindaydilar ve
+      // "dosya say, basarili raporla" davranisi bu yuzden gorulmedi.
+      "workers/**/*.test.ts",
+      "tests/unit/**/*.test.ts"
+    ],
     exclude: ["**/node_modules/**", "**/dist/**", "tests/e2e/**"],
     reporters: ["default"],
     // Bir testin sessizce hiç çalışmaması, geçmesinden farksız görünmesin.

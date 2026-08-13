@@ -6464,193 +6464,40 @@ router.post("/projects/:id/incremental-index/rebuild-delta", requireProjectScope
   }
 });
 
-// 6. POST /projects/:id/static-analysis/analyze-file
-router.post("/projects/:id/static-analysis/analyze-file", requireProjectScope, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const projectId = req.params.id;
-    const actor = (req.headers["x-actor"] as string) || "User-Aydinoglu";
-    const { path: filePath, parser_kind = "auto", task_id, taskId } = req.body || {};
-    const finalTaskId = taskId || task_id || null;
-
-    if (!filePath) {
-      return res.status(400).json({ error: "Missing required path parameter." });
+/**
+ * P04 / Y-P04-002 — Legacy static analysis route KAPATILDI (410).
+ *
+ * Eski davranış: `POST /projects/:id/static-analysis/analyze-file` bir
+ * dosyayı TypeScript compiler ile ayrıştırıp sonucu YALNIZCA HTTP yanıtında
+ * döndürüyordu. P00 Truth Audit'in tespiti: handler'da tek bir INSERT bile
+ * yoktu. Yani analiz her istekte baştan yapılıyor, hiçbir yere yazılmıyor,
+ * bir sonraki istekte yeniden yapılıyordu. Tek kalıcı iz, graph sync
+ * sırasında `graph_nodes.metadata`'ya sızan `exports` alanıydı.
+ *
+ * Ayrıca dil `typescript`/`javascript` olarak hard-code'du: bir `.py`
+ * dosyası "javascript" etiketiyle regex parser'a gidiyor ve sonuç yine de
+ * `confidence: 0.95` ile dönüyordu.
+ *
+ * Kanonik karşılığı bir HTTP çağrısı değil, bir INDEX JOB'dır: snapshot
+ * alınır (P03), worker dosyaları ayrıştırır ve `symbols` + `chunks`
+ * tablolarına YAZAR (P04). Sonuçlar `GET /api/v1/projects/:projectId/symbols`
+ * ile okunur.
+ *
+ * ADR-019: ayrıştırma HTTP isteği içinde çalışmaz. Büyük bir dosya isteği
+ * bloke eder, timeout'a düşer ve yarım kalan iş hiçbir iz bırakmaz.
+ */
+router.all(["/projects/:id/static-analysis/analyze-file"], (req: Request, res: Response) => {
+  return res.status(410).json({
+    error: {
+      code: "LEGACY_ROUTE_DEPRECATED",
+      message:
+        "Bu route kapatildi. Statik analiz artik HTTP istegi icinde calismaz ve sonucu " +
+        "kalici hale getirir. Kanonik akis: repository snapshot (P03) -> index job (P04) -> " +
+        "GET /api/v1/projects/:projectId/symbols.",
+      canonical: "GET /api/v1/projects/:projectId/symbols",
+      phase: "P04"
     }
-
-    // Audit initial request
-    await auditHelper.logAction(
-      projectId,
-      actor,
-      "SEC" as any,
-      "STATIC_ANALYSIS_FILE_REQUESTED" as any,
-      "authorized" as any,
-      { file_path: filePath, requested_parser_kind: parser_kind },
-      `Static analysis requested for file: ${filePath}`
-    );
-
-    // 1. Task scope validation if task_id exists
-    if (finalTaskId) {
-      const taskCheck = await queryDb("SELECT id FROM tasks WHERE id = $1 AND project_id = $2 LIMIT 1;", [finalTaskId, projectId]);
-      if (taskCheck.rowCount === 0) {
-        // Log cross-project path / access block trace
-        await auditHelper.logAction(
-          projectId,
-          actor,
-          "SEC" as any,
-          "STATIC_ANALYSIS_CROSS_PROJECT_ACCESS_BLOCKED" as any,
-          "denied_untrusted" as any,
-          { file_path: filePath, task_id: finalTaskId },
-          `Access Denied: Task ${finalTaskId} does not belong to Project ${projectId}`
-        );
-        return res.status(400).json({ error: "Access denied: Task does not belong to the selected project." });
-      }
-    }
-
-    // 2. RepoAdapter path validation
-    const adapterService = new RepoAdapterService(db.getPool());
-    const adapter = await adapterService.getAdapterForProject(projectId);
-    try {
-      adapter.validatePath(filePath);
-    } catch (vulnErr: any) {
-      // Path traversal or forbidden path blocked
-      await auditHelper.logAction(
-        projectId,
-        actor,
-        "SEC" as any,
-        "STATIC_ANALYSIS_PATH_BLOCKED" as any,
-        "denied_untrusted" as any,
-        { file_path: filePath, error: vulnErr.message },
-        `Path blocked by validation engine: ${vulnErr.message}`
-      );
-      return res.status(400).json({ error: `Path blocked: ${vulnErr.message}` });
-    }
-
-    // Also block cross-project / outer dir traversals explicitly if they contain '..'
-    if (filePath.includes("..") || path.isAbsolute(filePath)) {
-      await auditHelper.logAction(
-        projectId,
-        actor,
-        "SEC" as any,
-        "STATIC_ANALYSIS_PATH_BLOCKED" as any,
-        "denied_untrusted" as any,
-        { file_path: filePath },
-        `Explicit path traversal attempt blocked: '${filePath}'`
-      );
-      return res.status(400).json({ error: "Access denied: Absolute paths or parent directory traversals are forbidden." });
-    }
-
-    // 3. Read file content using the RepoAdapter
-    let content: string;
-    try {
-      const readResult = await adapterService.safeReadFile(projectId, finalTaskId, filePath);
-      if (!readResult.ok || readResult.data === null) {
-        throw new Error(readResult.errors.join(", ") || "File not found or unreadable");
-      }
-      content = readResult.data;
-    } catch (readErr: any) {
-      await auditHelper.logAction(
-        projectId,
-        actor,
-        "SEC" as any,
-        "STATIC_ANALYSIS_FAILED" as any,
-        "failed" as any,
-        { file_path: filePath, error: readErr.message },
-        `Failed to read file content via adapter: ${readErr.message}`
-      );
-      return res.status(404).json({ error: `File not found or unreadable: ${readErr.message}` });
-    }
-
-    // 4. Secret Redaction detection
-    const hasSecrets = /([A-Z0-9_]{20,})/i.test(content) || content.includes("secret") || content.includes("password");
-    const sanitizedContent = redactSecretLeaks(content);
-    const wasRedacted = sanitizedContent !== content;
-
-    if (wasRedacted) {
-      await auditHelper.logAction(
-        projectId,
-        actor,
-        "SEC" as any,
-        "STATIC_ANALYSIS_SECRET_REDACTED" as any,
-        "authorized" as any,
-        { file_path: filePath },
-        `Sensitive secrets or credentials were redacted from requested source content in: ${filePath}`
-      );
-    }
-
-    // 5. Run Static Analysis using selected Parser
-    let chosenParserKind: "typescript_ast_mvp" | "regex_fallback";
-    if (parser_kind === "typescript_ast_mvp") {
-      chosenParserKind = "typescript_ast_mvp";
-    } else if (parser_kind === "regex_fallback") {
-      chosenParserKind = "regex_fallback";
-    } else {
-      // auto-detect
-      const isTs = filePath.endsWith(".ts") || filePath.endsWith(".tsx") || filePath.endsWith(".ts.txt") || filePath.endsWith(".tsx.txt");
-      chosenParserKind = isTs ? "typescript_ast_mvp" : "regex_fallback";
-    }
-
-    const coreStaticParser = chosenParserKind === "typescript_ast_mvp"
-      ? new TypeScriptASTParser()
-      : new RegexFallbackParser();
-
-    let analysisResult: StaticAnalysisResultDTO;
-    try {
-      analysisResult = coreStaticParser.analyzeFile(sanitizedContent, {
-        project_id: projectId,
-        file_path: filePath
-      });
-    } catch (parseErr: any) {
-      // Fallback
-      const fallbackParser = new RegexFallbackParser();
-      analysisResult = fallbackParser.analyzeFile(sanitizedContent, {
-        project_id: projectId,
-        file_path: filePath
-      });
-      analysisResult.warnings.push(`Parser kind '${chosenParserKind}' failed. Used regex fallback parser: ${parseErr.message}`);
-      
-      await auditHelper.logAction(
-        projectId,
-        actor,
-        "SEC" as any,
-        "STATIC_ANALYSIS_FALLBACK_USED" as any,
-        "authorized" as any,
-        { file_path: filePath, error: parseErr.message },
-        `Static analysis failed via ${chosenParserKind}. Slipped into fallback pattern.`
-      );
-    }
-
-    // If analyzed using ast parser but got fallback/warnings:
-    if (analysisResult.parser_kind === "regex_fallback" && chosenParserKind === "typescript_ast_mvp") {
-      await auditHelper.logAction(
-        projectId,
-        actor,
-        "SEC" as any,
-        "STATIC_ANALYSIS_FALLBACK_USED" as any,
-        "authorized" as any,
-        { file_path: filePath },
-        `Parser fell back to regex for: ${filePath}`
-      );
-    }
-
-    // Commit final complete success trace
-    await auditHelper.logAction(
-      projectId,
-      actor,
-      "SEC" as any,
-      "STATIC_ANALYSIS_COMPLETED" as any,
-      "authorized" as any,
-      { 
-        file_path: filePath, 
-        parser_used: analysisResult.parser_kind,
-        exports_count: analysisResult.exports.length,
-        imports_count: analysisResult.imports.length
-      },
-      `Successfully parsed static analysis signature map for ${filePath}`
-    );
-
-    return res.json(analysisResult);
-  } catch (err: any) {
-    next(err);
-  }
+  });
 });
 
 /**

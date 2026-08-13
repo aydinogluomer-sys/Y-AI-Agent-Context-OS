@@ -118,3 +118,13 @@ export {
   type FileToIndex,
   type IndexerDb
 } from "./parsers/symbol-indexer";
+export {
+  IncrementalIndexPlanner,
+  resolveImportCandidates,
+  type IncrementalPlan,
+  type InvalidationDb,
+  type InvalidationReason,
+  type InvalidationRecord,
+  type PlanParams,
+  type PlannerOptions
+} from "./parsers/invalidation";

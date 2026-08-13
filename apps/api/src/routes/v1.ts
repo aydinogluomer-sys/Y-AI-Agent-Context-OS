@@ -18,6 +18,7 @@ import { orgRoleAtLeast, type ProjectRole } from "@y/shared";
 import { authnMiddleware, type AuthnConfig, type AuthenticatedRequest } from "../middleware/authn";
 import { requireProjectScope, type ScopedRequest } from "../middleware/authz";
 import { IdentityRepository, type Db } from "../domain/identity/user-repository";
+import { SymbolRepository } from "../domain/symbols/symbol-repository";
 
 export interface V1Dependencies {
   db: Db;
@@ -38,6 +39,7 @@ const PROJECT_ROLES: readonly ProjectRole[] = ["maintainer", "developer", "revie
 export function createV1Router(deps: V1Dependencies): Router {
   const router = Router();
   const identity = new IdentityRepository(deps.db);
+  const symbols = new SymbolRepository(deps.db);
 
   // Tüm /api/v1 yüzeyi kimlik doğrulaması ister. İstisna yok:
   // sağlık probe'ları /api/v1 altında değil, kök seviyededir.
@@ -158,7 +160,72 @@ export function createV1Router(deps: V1Dependencies): Router {
     })
   );
 
+  // --- Semboller ve index durumu (P04) ------------------------------------
+
+  /**
+   * Legacy karşılığı `POST /projects/:id/static-analysis/analyze-file`'dı ve
+   * her istekte yeniden ayrıştırıp sonucu hiçbir yere yazmıyordu. Burada
+   * okunan şey, index worker'ın KALICI hale getirdiği sonuçtur.
+   */
+  router.get(
+    "/projects/:projectId/symbols",
+    requireProjectScope(deps.db, { minimumRole: "viewer" }),
+    wrap(async (req, res) => {
+      const scope = (req as ScopedRequest).projectScope;
+      const limit = parseIntOrNull(req.query.limit);
+      const offset = parseIntOrNull(req.query.offset);
+
+      if (limit !== null && (Number.isNaN(limit) || limit < 1)) {
+        res.status(400).json({ error: { code: "INVALID_LIMIT", message: "limit pozitif bir sayi olmali." } });
+        return;
+      }
+
+      const result = await symbols.listSymbols({
+        organizationId: scope.orgId,
+        projectId: scope.projectId,
+        repositoryId: stringOrUndefined(req.query.repositoryId),
+        path: stringOrUndefined(req.query.path),
+        name: stringOrUndefined(req.query.name),
+        symbolType: stringOrUndefined(req.query.type),
+        limit: limit ?? undefined,
+        offset: offset ?? undefined
+      });
+
+      if (result.snapshotId === null) {
+        // Boş liste ile "hazır snapshot yok" AYNI ŞEY DEĞİLDİR. Ayırmazsak
+        // index hiç çalışmamış bir proje "0 sembol bulundu" gibi görünür.
+        res.status(409).json({
+          error: {
+            code: "NO_READY_SNAPSHOT",
+            message: "Bu projede hazir bir repository snapshot yok. Once ingestion calistirilmali."
+          }
+        });
+        return;
+      }
+
+      res.json({ snapshotId: result.snapshotId, symbols: result.symbols, count: result.symbols.length });
+    })
+  );
+
+  router.get(
+    "/projects/:projectId/repositories/:repositoryId/index-status",
+    requireProjectScope(deps.db, { minimumRole: "viewer" }),
+    wrap(async (req, res) => {
+      const scope = (req as ScopedRequest).projectScope;
+      res.json(await symbols.indexStatus(scope.orgId, scope.projectId, req.params.repositoryId));
+    })
+  );
+
   return router;
+}
+
+function stringOrUndefined(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function parseIntOrNull(value: unknown): number | null {
+  if (typeof value !== "string" || value.length === 0) return null;
+  return Number.parseInt(value, 10);
 }
 
 /** Org rolü yeterliliğini kontrol eden yardımcı (org-kapsamlı route'lar için). */

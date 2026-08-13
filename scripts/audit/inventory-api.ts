@@ -89,6 +89,10 @@ function classifyGuard(lines: string[], startIdx: number): string {
 
 function classifyVerdict(routePath: string, guard: string, shadowedBy: string): string {
   if (shadowedBy) return "DELETE (shadowed/dead)";
+  // Kapatilmis route'lar (410) "gozden gecirilecek unscoped route" DEGILDIR:
+  // erisim yuzeyi yok. Bunlari REVIEW kovasinda tutmak, gercekten acik olan
+  // unscoped route sayisini oldugundan buyuk gosteriyordu (P04 duzeltmesi).
+  if (guard === "closed-410") return "CLOSED (410)";
   if (/^\/auth\/dev-session$/.test(routePath)) return "DELETE (P0-1)";
   if (/^\/db\/configure$/.test(routePath)) return "DELETE (P0-2)";
   if (/^\/config\/inspect$/.test(routePath)) return "REPLACE (admin health)";

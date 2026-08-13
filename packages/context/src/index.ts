@@ -312,34 +312,80 @@ export interface ChunkResult {
 }
 
 /**
- * Phase 1 deterministic text chunking algorithm
+ * LEGACY doküman chunking'i (`context_items` → `context_chunks`).
+ *
+ * @deprecated Kanonik chunking `@y/core`'daki `chunkBySymbols`'dur:
+ * chunk sınırı = symbol sınırı (ADR-020) ve sonuç `chunks` tablosuna
+ * `symbol_id` FK'siyle yazılır. Bu fonksiyon yalnızca legacy context vault
+ * yolunu (yüklenen dokümanlar) ayakta tutar ve P06 retrieval cutover'ında
+ * kaldırılacaktır.
+ *
+ * P00 BULGUSU VE BURADA DÜZELTİLEN KISIM
+ *   Eski hali sabit genişlikte KARAKTER dilimi alıyordu:
+ *
+ *       for (let i = 0; i < content.length; i += charsPerChunk)
+ *         content.slice(i, i + charsPerChunk)
+ *
+ *   Bu, satırın — çoğu zaman kelimenin — tam ortasından kesiyordu. Bir
+ *   fragment'ın ne olduğu söylenemez hale geliyor, retrieval yarım
+ *   ifadeler döndürüyordu.
+ *
+ *   Yeni hali SATIR SINIRINDA keser. Sözleşme korunur: parçaların
+ *   birleşimi kaynağın birebir aynısıdır (örtüşme yok, boşluk yok) —
+ *   legacy doğrulama bunu zaten kontrol ediyordu ve kontrol geçerli kalır.
+ *
+ * NEDEN sembol tabanlı chunker buraya BAĞLANMADI
+ *   Sembol tabanlı chunker bir parse sonucu ister; `context_items` ise
+ *   repo dosyası değil, yüklenmiş dokümandır (PDF metni, wiki sayfası).
+ *   Sembolü yoktur. Ayrıca o chunker taşan sembolleri örtüşmeyle böler;
+ *   örtüşme, bu fonksiyonun birebir yeniden birleşme sözleşmesini bozardı.
  */
 export function chunkContent(
   content: string,
   maxTokensPerChunk = 1000
 ): ChunkResult[] {
   if (!content) return [];
-  
+
   const charsPerToken = 4;
   const charsPerChunk = maxTokensPerChunk * charsPerToken;
-  
+
   const chunks: ChunkResult[] = [];
-  let index = 0;
-  
-  for (let i = 0; i < content.length; i += charsPerChunk) {
-    const chunkText = content.slice(i, i + charsPerChunk);
-    const tokenEst = Math.ceil(chunkText.length / charsPerToken);
-    const checksum = crypto.createHash("sha256").update(chunkText).digest("hex");
-    
+  const push = (text: string): void => {
     chunks.push({
-      chunkIndex: index,
-      content: chunkText,
-      tokenCount: tokenEst,
-      checksum
+      chunkIndex: chunks.length,
+      content: text,
+      tokenCount: Math.ceil(text.length / charsPerToken),
+      checksum: crypto.createHash("sha256").update(text).digest("hex")
     });
-    index++;
+  };
+
+  // Satır sonlarını KORUYARAK böl; birleşim kaynağa birebir eşit kalmalı.
+  const lines = content.split(/(?<=\n)/);
+  let buffer = "";
+
+  for (const line of lines) {
+    // Tek başına bütçeden büyük satır: bölünmek zorunda. Minified bir
+    // dosyanın tamamı tek satır olabilir ve sınırsız chunk üretilemez.
+    if (line.length > charsPerChunk) {
+      if (buffer.length > 0) {
+        push(buffer);
+        buffer = "";
+      }
+      for (let i = 0; i < line.length; i += charsPerChunk) {
+        push(line.slice(i, i + charsPerChunk));
+      }
+      continue;
+    }
+
+    if (buffer.length + line.length > charsPerChunk && buffer.length > 0) {
+      push(buffer);
+      buffer = "";
+    }
+    buffer += line;
   }
-  
+
+  if (buffer.length > 0) push(buffer);
+
   return chunks;
 }
 

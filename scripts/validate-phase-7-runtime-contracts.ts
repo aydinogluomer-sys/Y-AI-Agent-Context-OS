@@ -9,8 +9,7 @@ import {
   LocalFilesystemRepoAdapter,
   ReadOnlyGitHubRepoAdapter,
 } from "../packages/core/src/repo-adapter";
-import { IndexWorker } from "../workers/index-worker";
-import type { IndexJobDTO } from "@y/shared";
+import { fakeConnectionString } from "@y/security/secret-scanner/test-fixtures";
 
 const fakeProvider: ModelProvider = {
   id: "fake-local",
@@ -53,10 +52,12 @@ assert.equal((await gemini.connect()).status, "not_configured");
 const localRepo = new LocalFilesystemRepoAdapter(process.cwd());
 assert.equal(localRepo.getCapabilities().operations.contentDiff, true);
 assert.equal(localRepo.getCapabilities().operations.commit, false);
+// Sahte kimlik bilgileri TEK yerde uretilir; boylece sir tarayicisinin
+// muafiyet listesi her yeni test dosyasiyla buyumez (P03 karari).
 const diff = await localRepo.getDiff({
   path: "src/config.ts",
-  baseContent: "DATABASE_URL=postgresql://user:secret@localhost/db",
-  targetContent: "DATABASE_URL=postgresql://user:new-secret@localhost/db",
+  baseContent: `DATABASE_URL=${fakeConnectionString("secret")}`,
+  targetContent: `DATABASE_URL=${fakeConnectionString("new-secret")}`,
 });
 assert.equal(diff.ok, true);
 assert.doesNotMatch(diff.data || "", /user:(?:secret|new-secret)@/);
@@ -73,63 +74,27 @@ assert.equal((await github.getDiff({
   targetContent: "b",
 })).ok, false);
 
-const claimedJob: IndexJobDTO = {
-  id: "job-a",
-  projectId: "project-a",
-  taskId: null,
-  jobType: "file_delta_scan",
-  status: "processing",
-  priority: "medium",
-  adapterKind: "local_filesystem",
-  rootPathRedacted: ".",
-  requestedPaths: ["src/index.ts"],
-  metadataJson: {},
-  attempts: 1,
-  maxAttempts: 3,
-  lockedAt: new Date().toISOString(),
-  lockedBy: "worker-a",
-  startedAt: new Date().toISOString(),
-  completedAt: null,
-  failedAt: null,
-  errorRedacted: null,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
-
-const calls: Array<{ url: string; init?: RequestInit }> = [];
-const fetchImpl = async (input: URL | RequestInfo, init?: RequestInit) => {
-  const url = String(input);
-  calls.push({ url, init });
-  const payload = url.endsWith("/claim-next")
-    ? claimedJob
-    : url.includes("/repo/file?")
-      ? { ok: true, content: "export {}" }
-      : claimedJob;
-  return new Response(JSON.stringify(payload), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-};
-
-const worker = new IndexWorker({
-  apiBaseUrl: "http://localhost:3000",
-  projectId: "project-a",
-  workerId: "worker-a",
-  bearerToken: "test-token",
-  fetchImpl,
-});
-const workerResult = await worker.runOnce();
-assert.deepEqual(workerResult, {
-  claimed: true,
-  jobId: "job-a",
-  processedFiles: 1,
-});
-assert.equal(calls.length, 3);
-assert.match(calls[2].url, /\/job-a\/complete$/);
-assert.equal(
-  (calls[0].init?.headers as Record<string, string>).Authorization,
-  "Bearer test-token",
-);
+// P04 / Y-P04-009 — Index worker sözleşmesi bu script'ten ÇIKARILDI.
+//
+// Buradaki eski blok tam olarak şunu doğruluyordu:
+//
+//     assert.deepEqual(workerResult, { claimed: true, jobId: "job-a", processedFiles: 1 });
+//     assert.match(calls[2].url, /\/job-a\/complete$/);
+//
+// Yani "worker bir dosyayı OKUDU ve /complete çağırdı" davranışı PASS
+// sayılıyordu. Hiçbir sembol, hiçbir chunk, hiçbir satır yazılmıyordu.
+// Bu assertion seti, P00 Truth Audit'in "false green" tanımının kendisiydi:
+// script yeşil kalırken worker hiçbir iş yapmıyordu.
+//
+// Yeni worker veritabanına yazar ve yazım kanıtı olmadan job'ı `completed`
+// işaretlemez. Sözleşmesi 20 gerçek test ile kilitlenmiştir:
+//
+//     workers/index-worker.test.ts
+//
+// Özellikle "negatif: kanıtsız tamamlanamaz" bölümü, eski davranışın geri
+// gelmesi hâlinde kırmızıya döner. Bir HTTP çağrı sayısını doğrulayan bu
+// script ile aynı iddiayı iki yerde tutmanın anlamı yok; tekrar eden ama
+// zayıf olan taraf kaldırıldı.
 
 const serverSource = await readFile(
   new URL("../server.ts", import.meta.url),
@@ -138,4 +103,4 @@ const serverSource = await readFile(
 assert.doesNotMatch(serverSource, /from\s+["']@google\/genai["']/);
 assert.match(serverSource, /createDefaultProviderRegistry/);
 
-console.log("Phase 7 provider/repo/worker contracts: PASS");
+console.log("Phase 7 provider/repo contracts: PASS (worker: workers/index-worker.test.ts)");
