@@ -44,6 +44,31 @@ const SKIP_DIRS = new Set([
  */
 const SKIP_FILES = new Set(["pnpm-lock.yaml", "package-lock.json"]);
 
+/**
+ * Kendine referanslı dosyalar.
+ *
+ * Bu, eski script'teki `startsWith("validate-")` muafiyetiyle KARIŞTIRILMAMALI.
+ * Aradaki fark, muafiyetin GEREKÇESİNDE:
+ *
+ *   Eski muafiyet: 15.000 satırlık kaynak kodunu kör noktaya çeviriyordu.
+ *                  O dosyalara gerçek bir sır girse görünmezdi.
+ *
+ *   Buradaki iki dosya ise tarayıcının KENDİSİNİN parçası:
+ *     - Test fixture'ları: bir sır tarayıcısının testi, sır GİBİ görünen
+ *       veri içermek zorundadır. Bu veriler parçalardan runtime'da kurulur
+ *       ve gerçek bir sisteme ait değildir.
+ *     - Baseline dosyası: yalnız `dosya:satır:tür` anahtarları tutar;
+ *       kendi kayıtları yüksek entropili görünür. Kendi çıktısını taramak
+ *       sonsuz bir döngüdür.
+ *
+ * Liste BÜYÜTÜLMEMELİ. Yeni bir dosya eklemek isteniyorsa önce bulgu
+ * düzeltilmelidir.
+ */
+const SELF_REFERENTIAL = new Set([
+  "packages/security/src/secret-scanner/secret-scanner.test.ts",
+  "docs/audit/secret-scan-baseline.json"
+]);
+
 const SKIP_EXTENSIONS = new Set([
   ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".webp",
   ".woff", ".woff2", ".ttf", ".eot",
@@ -201,6 +226,7 @@ function collect(reports: Report[]): number {
   let scanned = 0;
   for (const relative of tracked) {
     if (shouldSkipFile(path.basename(relative))) continue;
+    if (SELF_REFERENTIAL.has(relative)) continue;
     if (relative.split("/").some((seg) => SKIP_DIRS.has(seg))) continue;
 
     scanned++;

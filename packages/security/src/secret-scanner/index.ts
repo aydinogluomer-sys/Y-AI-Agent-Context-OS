@@ -67,7 +67,10 @@ const RULES: Rule[] = [
     replacement: () => "[REDACTED_PRIVATE_KEY]"
   },
   {
-    // postgres://user:password@host/db  (ve mysql, mongodb, redis, amqp)
+    // Sema://kullanici:parola@host/db bicimindeki baglanti dizeleri
+    // (postgres, mysql, mongodb, redis, amqp). Ornek YAZILMIYOR: kendi
+    // kuralimiza takilan bir yorum satiri, tarayiciyi kendi kaynaginda
+    // bulgu uretmeye zorlar.
     kind: "connection_string",
     pattern: /\b((?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|amqp|rediss):\/\/)([^:@\s/]+):([^@\s/]+)@/gi,
     group: 3,
