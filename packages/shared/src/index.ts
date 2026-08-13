@@ -11,6 +11,9 @@
 // tüm kimlikler buradan gelir.
 export { newId, newSortableId, isValidId } from "./ids";
 
+// Kanonik domain sozlesmeleri (P02-P20 bunlarin uzerine yazar).
+export * from "./domain";
+
 // ==========================================
 // 1. Shared Error Types
 // ==========================================
