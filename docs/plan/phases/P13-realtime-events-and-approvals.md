@@ -255,3 +255,49 @@ pnpm run test:integration -- tests/integration/sse
 pnpm run test:e2e -- tests/e2e/live-run.spec.ts
 pnpm run test:security -- tests/security/sse-auth.spec.ts
 ```
+
+---
+
+## Uygulama Kaydı (2026-08-14)
+
+| Görev | Durum | Kanıt |
+|---|---|---|
+| SSE altyapısı | Tamam | `apps/api/src/realtime/sse.ts` + 20 test |
+| `Last-Event-ID` desteği | Tamam | doğrulama dahil (enjeksiyon testi) |
+| Heartbeat | Tamam | 15s, proxy timeout'unun altında |
+| Uydurma hash'lerin silinmesi | Tamam | `App.tsx` + `AIMissionControlPanel.tsx` |
+| Route bağlantısı ve UI tüketimi | **YAPILMADI** | run yürütme P12'de bağlanmadı |
+| Onay akışı canlı bildirimi | **YAPILMADI** | aynı sebep |
+
+### Kararlar
+
+**SSE, WebSocket değil.** Akış tek yönlü. WebSocket çift yönlü bir kanal
+kurar; bedeli ayrı protokol, proxy uyumsuzlukları, kendi yeniden
+bağlanma mantığı ve ayrı kimlik doğrulama yüzeyi. SSE sıradan HTTP'dir:
+mevcut authn, rate limiter ve proxy yapılandırması olduğu gibi çalışır.
+
+**At-least-once, exactly-once değil.** Kopma sonrası `Last-Event-ID`'den
+devam edilir; bir olay iki kez gelebilir, kaybolmaz. Exactly-once vaadi
+vermek yanlış olurdu — TCP kopması ile olayın yazılması arasındaki yarış
+sunucu tarafında çözülemez.
+
+**Polling, LISTEN/NOTIFY değil — ve bu bir ödünleşim olarak yazıldı.**
+NOTIFY her akış için ayrı bağlantı tutmayı gerektirir; 100 açık akış =
+100 bağlantı, ki bu havuzu tüketir.
+
+### Uydurma hash'ler silindi
+
+- `App.tsx`: `"sha256-" + Math.random()...` üretiliyor ve "SHA-256
+  imzasıyla adli audit günlüğüne işlendi" diye sunuluyordu.
+- `AIMissionControlPanel.tsx`: hard-code bir SHA-256. Sabit bir hash her
+  çalıştırmada aynı çıkar — yani hiçbir şeyin özeti değildir.
+
+İkisi de kaldırıldı; adımlar açıkça **SİMÜLASYON** olarak işaretlendi.
+Bu ekranlar P15'te tamamen yeniden yazılacak.
+
+### Gate
+
+```text
+typecheck 0 · vitest 1099 passed | 4 skipped · build OK
+secret-scan 0 yeni · drift 8/8
+```

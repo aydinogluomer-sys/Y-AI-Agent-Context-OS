@@ -369,14 +369,25 @@ export default function App() {
     updateSteps(currentSteps);
 
     // Step 4: Forensic Audit Ledger
+    //
+    // P13 / P00 bulgusu: burada UYDURMA bir hash uretiliyordu:
+    //   "sha256-" + Math.random().toString(16)...
+    // ve kullaniciya "SHA-256 imzasiyla adli audit gunlugune islendi"
+    // diye sunuluyordu. Hicbir sey hash'lenmiyor, hicbir yere
+    // yazilmiyordu. Uydurma bir kanit, kanit olmamasindan tehlikelidir:
+    // kullanici ona guvenir.
+    //
+    // Bu ekran P15'te tamamen yeniden yazilacak. O gune kadar hash
+    // ALANI URETILMIYOR ve adim acikca SIMULASYON olarak isaretleniyor.
     await delay(400);
-    const hash = "sha256-" + Math.random().toString(16).substring(2, 10) + Math.random().toString(16).substring(2, 10);
-    
+
     currentSteps.push({
       name: "Forensic Audit Ledger",
-      status: "success",
-      detail: "İşlem kaydı ve motor durum geçişi SHA-256 imzasıyla adli audit günlüğüne işlendi.",
-      hash
+      status: "simulated",
+      detail:
+        "SIMULASYON — bu ekran gercek audit ledger'a bagli degil. Gercek kanit " +
+        "zinciri sunucu tarafinda uretilir (evidence_records) ve bu arayuz P15'te " +
+        "ona baglanacaktir."
     });
 
     // Generate domain & context-aware dynamic response text

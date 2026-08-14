@@ -105,5 +105,6 @@ migrate edilmiş veritabanları yeniden çalıştırılmaz.
 | 0079 | `0079_runs.sql` | `2.8.0-runs` | yeni | var |
 | 0080 | `0080_run_events.sql` | `2.8.1-run-events` | yeni | var |
 | 0081 | `0081_jobs.sql` | `2.8.2-jobs` | yeni | var |
+| 0082 | `0082_evidence_chain.sql` | `2.9.0-evidence-chain` | yeni | var |
 
-Toplam: **81** migration (35 göç + 46 yeni).
+Toplam: **82** migration (35 göç + 47 yeni).

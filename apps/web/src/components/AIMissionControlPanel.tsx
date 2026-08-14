@@ -172,8 +172,11 @@ export function AIMissionControlPanel({
         logs: [
           () => `[SİSTEM] AST bağımlılık haritası sentezleniyor...`,
           () => `[SİSTEM] Kanıt kaydı içeriği oluşturuluyor...`,
-          () => `[SİSTEM] Kanıt özeti kaydedildi: sha256-4c46fbe8ad26b9f4bde9e64a132de689f41de60db26ef7f4fa11de602da2e4b3.`,
-          () => `[SİSTEM] Aktarım paketi imzalandı ve mühürlendi. Aktif döngü tamamlandı.`
+          // P13 / P00 bulgusu: burada HARD-CODE bir SHA-256 basiliyordu ve
+          // "kanit ozeti kaydedildi" diye sunuluyordu. Sabit bir hash, her
+          // calistirmada ayni cikar — yani hicbir seyin ozeti degildir.
+          () => `[SIMULASYON] Bu panel gercek kanit zincirine bagli degil; ozet URETILMIYOR.`,
+          () => `[SIMULASYON] Gercek kanit zinciri sunucuda uretilir (P14) ve bu arayuz P15'te ona baglanir.`
         ]
       }
     ];

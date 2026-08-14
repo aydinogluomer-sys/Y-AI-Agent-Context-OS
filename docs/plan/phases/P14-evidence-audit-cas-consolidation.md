@@ -287,3 +287,46 @@ pnpm run test:e2e -- tests/e2e/evidence.spec.ts
 pnpm --filter @y/db run test:migrations:fresh
 pnpm --filter @y/db run test:migrations:upgrade
 ```
+
+---
+
+## Uygulama Kaydı (2026-08-14)
+
+| Görev | Durum | Kanıt |
+|---|---|---|
+| Hash zinciri | Tamam | `packages/security/src/evidence/chain.ts` + 30 test |
+| Kanonik serileştirme | Tamam | manifest ile aynı gerekçe |
+| Zincir doğrulama | Tamam | 3 saldırı ayrı ayrı |
+| Şema + append-only | Tamam | migration `0082` |
+| Zincirin run'a bağlanması | **YAPILMADI** | run yürütme P12'de bağlanmadı |
+| İmzalı export | **YAPILMADI** | P09'un export'uyla ortak anahtar |
+
+### Üç ayrı kontrol, üç farklı saldırı
+
+1. **Sıra boşluğu** → kayıt SİLİNMİŞ
+2. **Zincir bağı** → araya kayıt EKLENMİŞ
+3. **İçerik hash'i** → kayıt DEĞİŞTİRİLMİŞ
+
+Üçü tek bir "zincir bozuk" kontrolüyle geçilebilirdi. Ayrı tutulmasının
+sebebi: hangisinin olduğunu bilmek, olayı incelemenin ilk adımıdır.
+
+### Zincirin SINIRI test edildi ve kayıt altına alındı
+
+Veritabanına **tam yazma yetkisi** olan biri zinciri baştan
+hesaplayabilir ve doğrulamadan **geçer**. Bu bir eksiklik değil,
+zincirin doğasıdır; buna karşı koruma dış bir çıpa gerektirir (imzalı
+periyodik snapshot, harici zaman damgası).
+
+Zincirin gerçekten sağladığı şey **kısmi** değişikliğin tespitidir: bir
+kaydı sessizce düzeltmek ya da silmek artık mümkün değil; zinciri baştan
+yazmak gerekir ve bu, bir denetimde görünen bir eylemdir.
+
+`chain.test.ts` içinde bu sınırı doğrulayan ayrı bir test var — iddianın
+nerede bittiğini kayıt altına almak için.
+
+### Gate
+
+```text
+typecheck 0 · vitest 1099 passed | 4 skipped · build OK
+secret-scan 0 yeni · drift 8/8
+```
