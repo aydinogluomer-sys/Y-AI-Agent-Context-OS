@@ -1,6 +1,6 @@
 # 01 — Fiziksel Topoloji
 
-> Baseline commit: `b455586eff83f01df4b2f79d79765ae14dcc771e`
+> Baseline commit: `950a4388c9c8d216af6b9ede928a85740347efe0`
 
 ## Çalışma zamanı topolojisi
 
@@ -9,7 +9,7 @@
 | HTTP listener | Tek `express()` app | `server.ts` |
 | API mount | `app.use("/api", apiRouter)` | `server.ts:15` |
 | `apps/api` | **Server değil** — yalnız `apiRouter` + `apiReady` export eder | `apps/api/src/index.ts` |
-| API router | **6170 satır**, tek `Router()`, 181 route inline | `apps/api/src/index.ts` |
+| API router | **6222 satır**, tek `Router()`, 182 route inline | `apps/api/src/index.ts` |
 | Web app | **992 satır** tek component, router yok | `apps/web/src/App.tsx` |
 | Şema | **Hiç `.sql` dosyası yok** (82 adet) — 1105 satırlık `db.ts` içinde inline string | `apps/api/src/db.ts` |
 | Graph paketi | 3038 satır tek dosya | `packages/graph/src/index.ts` |
@@ -31,7 +31,7 @@
 
 ## Sonuç
 
-- `apps/api/src/index.ts` tek başına 6170 satır ve 181 route taşıyor;
+- `apps/api/src/index.ts` tek başına 6222 satır ve 182 route taşıyor;
   bu dosya P01–P19 boyunca **yalnız silme yönünde** değiştirilecek (master §6.1).
 - Orphan paketler P01'de silinir.
 - Migration'lar P01'de `migrations/*.sql` dosyalarına taşınır (ADR-003).

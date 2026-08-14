@@ -1,8 +1,8 @@
 rule,severity,file,line,text
 permissive-fallback,P0,apps/api/src/db.ts,590,"if (process.env.ENABLE_MOCK_DB !== ""true"") {"
 permissive-fallback,P0,apps/api/src/db.ts,591,"throw new Error(""Mock database mode requires ENABLE_MOCK_DB=true."");"
-permissive-fallback,P0,apps/api/src/index.ts,88,"const isMockDbEnabled = process.env.ENABLE_MOCK_DB === ""true"" &&"
-skip-then-pass,P0,apps/api/src/index.ts,526,"sysLogger.info(""Skipping mock data pre-seeding as mock database mode is inactive."");"
+permissive-fallback,P0,apps/api/src/index.ts,89,"const isMockDbEnabled = process.env.ENABLE_MOCK_DB === ""true"" &&"
+skip-then-pass,P0,apps/api/src/index.ts,537,"sysLogger.info(""Skipping mock data pre-seeding as mock database mode is inactive."");"
 permissive-fallback,P0,apps/api/src/startup-policy.ts,7,"env.ALLOW_OFFLINE_API_BOOT === ""true"""
 simulation-generator,P0,apps/web/src/lib/api/ai.ts,132,export function createLocalAiSimulation(
 embedded-secret,P0,packages/security/src/secret-scanner/secret-scanner.test.ts,58,"expect(source).not.toContain(""obfuscatedSecretParts"");"

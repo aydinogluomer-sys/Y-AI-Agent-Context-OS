@@ -1,9 +1,9 @@
 # 06 — Güvenlik Bulguları
 
-> Baseline commit: `b455586eff83f01df4b2f79d79765ae14dcc771e`
+> Baseline commit: `950a4388c9c8d216af6b9ede928a85740347efe0`
 > Sınıflandırma: **P0** = release blocker · **P1** = production-critical · **P2** = kozmetik
 
-Envanterden türeyen ölçüt: 181 route'un **34'i** yalnız
+Envanterden türeyen ölçüt: 182 route'un **35'i** yalnız
 bearer token kontrolünden geçiyor (proje kapsamı doğrulaması yok);
 76 tablonun **43'inde** tenant izolasyon kolonu yok.
 
@@ -18,7 +18,7 @@ bearer token kontrolünden geçiyor (proje kapsamı doğrulaması yok);
 | P0-5 | Permission Kernel `CI=true` iken DB hatasında **statik allow listesine** düşer | `apps/api/src/PermissionKernelService.ts:67-147` | Policy store'u düşür | Allow-by-default | P02 (fallback silinir) | `tests/security/fail-closed.spec.ts` |
 | P0-6 | `enforce()` çağrıları `subject_type:"system"` hard-code ediyor; seed policy `allow / system / * / *` | `EvidenceStoreService.ts:231`, `EventStoreService.ts:205`, `ArtifactCASService.ts:442/513/628/667` | — | Mevcut enforcement noktaları her zaman allow | P02 | `tests/security/fail-closed.spec.ts` |
 | P0-7 | `permissions/evaluate` client'ın `subject` nesnesini spread ediyor | `apps/api/src/index.ts:4402` | `subject_type:"system"` gönder | Allow + sahte audit | P02 | `tests/security/approval-bypass.spec.ts` |
-| P0-8 | 34 route proje kapsamı doğrulaması yapmıyor (`/audit-logs` tüm projelerin logunu döndürüyor) | `02-api-inventory.csv` (guard=bearer-only) | Başka projenin id'si | IDOR / cross-project | P02 | `tests/security/idor.spec.ts` |
+| P0-8 | 35 route proje kapsamı doğrulaması yapmıyor (`/audit-logs` tüm projelerin logunu döndürüyor) | `02-api-inventory.csv` (guard=bearer-only) | Başka projenin id'si | IDOR / cross-project | P02 | `tests/security/idor.spec.ts` |
 | P0-9 | `repo/configure-local` keyfi mutlak `root_path` kabul eder; yapılandırılmamışsa root `"."` = sunucu cwd'si | `apps/api/src/index.ts:4632`, `repo-adapter-service.ts:22-46` | Root'u `/` yap | Keyfi dizin okuma | P03 (yönetilen workspace) | `tests/security/path-guard.spec.ts` |
 | P0-10 | `source_table` SQL'e string interpolation ile giriyor | `ContextObjectStoreService.ts:219` | FROM clause kontrolü | Veri sızıntısı | P09 | regresyon testi |
 | P0-11 | Kaynak kodda **parçalanmış gerçek DB parolası** ve Supabase host'u | `packages/security/src/index.ts:23-25,48` | Git geçmişi okunur | Credential ifşası | P03 (kod) + P17 (rotasyon) | `secret-scan` |

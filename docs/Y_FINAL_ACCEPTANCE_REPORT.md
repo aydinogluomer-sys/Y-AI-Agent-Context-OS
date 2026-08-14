@@ -13,8 +13,8 @@ belgeye de uygulanır: bir madde tamam değilse **TAMAM DEĞİL** yazar.
 
 | Ölçüm | Değer | Kaynak |
 |---|---|---|
-| Birim/sözleşme testi | **1106 passed, 4 skipped** | `vitest run` |
-| Test dosyası | 43 | `vitest run` |
+| Birim/sözleşme testi | **1145 passed, 4 skipped** | `vitest run` |
+| Test dosyası | 44 | `vitest run` |
 | Typecheck | **0 hata** (loose + strict) | `npm run typecheck` |
 | Build | **OK** | `npm run build` |
 | Migration | **82** (35 göç + 47 yeni) | `migrations/*.sql` |
@@ -50,7 +50,7 @@ Gate zinciri tek komutla çalışır: `npm run gate:all`.
 | P15 UI konsolidasyon | ⚠️ **KISMİ** | Dürüstlük değişmezi kuruldu; **IA yeniden yazımı yapılmadı** |
 | P16 Benchmark | ⚠️ **KISMİ** | Uydurma metrikler silindi; **ölçüm harness'ı yok** |
 | P17 Security hardening | ✅ | False-green çırçır gate'i CI'a bağlandı |
-| P18 Observability | ❌ **YAPILMADI** | — |
+| P18 Observability | ⚠️ **KISMİ** | Bağımlılık bazlı hazırlık probe'u + metrik defteri; **tracing ve yük ölçümü yok** |
 | P19 CI/CD | ✅ | 5 dürüstlük gate'i CI'da |
 | P20 Kabul | ✅ | Bu belge |
 
@@ -142,7 +142,7 @@ Bu bölüm rapor içindeki en önemli bölümdür.
 | İş | Ölçek |
 |---|---|
 | P15 IA yeniden yazımı | ~14.500 satır ön yüz, 113 → 6 yüzey, react-router, tipli client |
-| P18 Observability | Tracing, metrik toplama, dashboard |
+| P18 tracing + yük ölçümü | OpenTelemetry bagimliligi + gercek yuk |
 
 ### 6.4 Canlı Postgres gerektirdiği için ertelenenler (P19)
 

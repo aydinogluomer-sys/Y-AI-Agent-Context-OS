@@ -292,3 +292,64 @@ tsx scripts/perf/measure.ts --report
 ```
 
 Ek zorunluluk: **backup/restore tatbikatı yapılmış** ve kanıtı belgede.
+
+---
+
+## Uygulama Kaydı (2026-08-14)
+
+| Görev | Durum | Kanıt |
+|---|---|---|
+| Bağımlılık bazlı `/readyz` | Tamam | `observability/health.ts` + 6 probe |
+| Metrik kayıt defteri + `/metrics` | Tamam | `observability/metrics.ts`, 14 metrik |
+| Probe zaman aşımı ve paralellik | Tamam | 39 test |
+| OpenTelemetry tracing | **YAPILMADI** | ek bağımlılık; kapsam kararı |
+| Dayanıklılık senaryoları | **YAPILMADI** | canlı ortam gerektiriyor (P19) |
+| Performans ölçümü | **YAPILMADI** | gerçek yük gerektiriyor |
+
+### En önemli düzeltme — `/readyz` artık bağımlılık bazlı
+
+P00'da her bileşenin durumu tek bir `dbHealthy` değişkeninden
+türetiliyordu:
+
+```ts
+worker_runtime: { status: dbHealthy ? "healthy" : "degraded" },
+evidence_store: { status: dbHealthy ? "healthy" : "offline" },
+event_store:    { status: dbHealthy ? "healthy" : "offline" },
+cas_storage:    { status: dbHealthy ? "healthy" : "offline" }
+```
+
+Beş "bileşen" tek bir şeyi ölçüyordu. Kuyruk tıkalı, worker'lar ölü,
+policy store boş ya da index bozuk olsa bile `readyz` **"ready"**
+diyordu. `permission_kernel` ise sabitti — hiçbir şey kontrol
+etmiyordu.
+
+Artık altı bileşen kendi sorgusunu çalıştırıyor, kendi gecikmesini
+raporluyor ve zaman aşımıyla korunuyor.
+
+### Kararlar
+
+**`healthz` ≠ `readyz`.** Liveness bağımlılık kontrol etmez; DB'ye bakan
+bir liveness probe, DB kısa süre yavaşladığında tüm süreçleri yeniden
+başlatır ve kesintiyi büyütür.
+
+**`degraded` ayrı bir durumdur ve 200 döner.** Kısmi çalışan bir sistemi
+503 ile tamamen kapatmak aşırı tepki olurdu.
+
+**Probe'lar paralel.** Sıralı çalıştırmak süreyi bileşen sayısıyla
+çarpardı: 6 × 3sn = 18sn, ki bu her load balancer probe'unun zaman
+aşımını aşar.
+
+**Policy store boşsa `degraded`** — P02'nin fail-closed kararıyla aynı
+hatta: yetki kararı verilemeyen bir sistem trafik almamalıdır.
+
+### Metrik kayıt defteri bir NİYET BEYANI DEĞİL
+
+14 metrik tanımlı ama **hiçbiri henüz toplanmıyor**. `unmeasured()` bunu
+görünür kılar ve `/metrics` çıktısı hangi metriklerin toplanmadığını
+açıkça listeler.
+
+Ölçülmemiş metrik **çıktıda görünmez**: sıfırla basmak "ölçtük ve sıfır
+çıktı" demek olurdu — P16'da sildiğimiz hatanın aynısı.
+
+Bilinmeyen bir metrik adı sessizce kabul edilmez: adı yanlış yazılmış
+bir metrik, sessizce kabul edilirse çıktıda hiç görünmez.

@@ -37,6 +37,7 @@ import {
   PermissionDeniedError, newId } from "@y/shared";
 import { evaluatePlatformReadiness, RepoAdapterService, LocalFilesystemRepoAdapter, ReadOnlyGitHubRepoAdapter, IndexJobService, IncrementalIndexService, TypeScriptASTParser, RegexFallbackParser, StaticAnalysisResultDTO } from "@y/core";
 import { PermissionKernelService } from "./PermissionKernelService";
+import { MetricsRegistry } from "./observability/metrics";
 import { 
   classifyContextSource, 
   calculateChecksum, 
@@ -354,6 +355,16 @@ async function queryDb(sql: string, params: unknown[] = []): Promise<any> {
   const pool = db.getPool();
   return pool.query(sql, params);
 }
+
+/**
+ * P18 / Y-P18-003 — Surec omru boyunca tek metrik kayit defteri.
+ *
+ * Modul duzeyinde tutulmasi bilincli: metrikler surecin durumudur,
+ * istegin degil. Her istekte yeni bir defter yaratmak, hicbir sayacin
+ * birikmemesi demek olurdu — P01'de rate limiter'da yasanan hatanin
+ * aynisi.
+ */
+const metricsRegistry = new MetricsRegistry();
 
 const permissionKernelService = new PermissionKernelService(
   queryDb,
@@ -862,31 +873,72 @@ router.get("/healthz", async (req: Request, res: Response) => {
 /**
  * 1c. Readiness Probe Endpoint (/readyz) - Audit P1-05 & P1-10
  */
+/**
+ * P18 / Y-P18-001 — BAĞIMLILIK BAZLI hazırlık probe'u.
+ *
+ * ESKİ HALİ (P00 bulgusu)
+ *   Her bileşenin durumu `dbHealthy` değişkeninden TÜRETİLİYORDU:
+ *
+ *     worker_runtime: { status: dbHealthy ? "healthy" : "degraded" },
+ *     evidence_store: { status: dbHealthy ? "healthy" : "offline" },
+ *     event_store:    { status: dbHealthy ? "healthy" : "offline" },
+ *     cas_storage:    { status: dbHealthy ? "healthy" : "offline" }
+ *
+ *   Yani beş "bileşen" tek bir şeyi ölçüyordu. Kuyruk tıkalı,
+ *   worker'lar ölü, policy store boş ya da index bozuk olsa bile
+ *   `readyz` "ready" diyordu.
+ *
+ *   `permission_kernel: { status: "fail_closed_protected", active: true }`
+ *   ise SABİTTİ — hiçbir şeyi kontrol etmiyordu.
+ *
+ * YENİ HALİ
+ *   Her bileşen KENDİ sorgusunu çalıştırır, kendi gecikmesini raporlar
+ *   ve zaman aşımıyla korunur. Probe'lar paralel koşar: sıralı
+ *   çalıştırmak, süreyi bileşen sayısıyla çarpardı.
+ */
 router.get("/readyz", async (req: Request, res: Response) => {
-  const dbStatus = db.getStatus();
-  const dbHealthy = dbStatus.connected && dbStatus.database_mode !== "unavailable";
-  const isReady = dbHealthy;
+  const { checkReadiness, defaultChecks, statusCodeFor } = await import("./observability/health");
 
-  res.status(isReady ? 200 : 503).json({
-    status: isReady ? "ready" : "degraded",
+  const report = await checkReadiness(defaultChecks({ query: queryDb }));
+
+  res.status(statusCodeFor(report.status)).json({
+    status: report.status,
     environment: config.environment,
-    components: {
-      api: { status: "healthy" },
-      database: { 
-        status: dbHealthy ? "healthy" : "offline", 
-        mode: dbStatus.database_mode,
-        dialect: dbStatus.dialect
-      },
-      migrations: { status: dbStatus.migrations_applied ? "healthy" : (dbHealthy ? "pending" : "offline") },
-      worker_runtime: { status: dbHealthy ? "healthy" : "degraded" },
-      permission_kernel: { status: "fail_closed_protected", active: true },
-      evidence_store: { status: dbHealthy ? "healthy" : "offline" },
-      event_store: { status: dbHealthy ? "healthy" : "offline" },
-      cas_storage: { status: dbHealthy ? "healthy" : "offline" }
-    },
-    timestamp: new Date().toISOString()
+    components: report.components,
+    durationMs: report.durationMs,
+    timestamp: report.checkedAt
   });
 });
+
+/**
+ * P18 / Y-P18-003 — Prometheus metrikleri.
+ *
+ * ÖLÇÜLMEYEN METRİK GÖRÜNMEZ. Kayıt defterinde 14 metrik tanımlı ama
+ * bir metrik hiç gözlem almadıysa çıktıda yer almaz — sıfırla basmak
+ * "ölçtük ve sıfır çıktı" demek olurdu.
+ *
+ * `unmeasured` alanı hangi metriklerin HENÜZ TOPLANMADIĞINI açıkça
+ * listeler. Bu, gözlemlenebilirlik iddiasının nerede bittiğini
+ * gösterir.
+ */
+router.get("/metrics", async (req: Request, res: Response) => {
+  const rendered = metricsRegistry.render();
+  const unmeasured = metricsRegistry.unmeasured();
+
+  if (req.query.format === "json") {
+    res.json({ measured: rendered.length > 0, unmeasured, body: rendered });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
+  res.send(
+    rendered +
+      (unmeasured.length > 0
+        ? `# NOT: ${unmeasured.length} metrik tanimli ama HENUZ TOPLANMIYOR: ${unmeasured.join(", ")}\n`
+        : "")
+  );
+});
+
 
 /**
  * 2. Get DB Status endpoint
