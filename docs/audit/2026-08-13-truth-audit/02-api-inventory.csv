@@ -180,6 +180,6 @@ GET,/projects/:id/artifacts/:artifactId,apps/api/src/index.ts,6147,requireProjec
 GET,/projects/:id/artifacts/:artifactId/history,apps/api/src/index.ts,6159,requireProjectScope,,CHANGE (move to /api/v1)
 POST,/projects/:id/artifacts/:artifactId/archive,apps/api/src/index.ts,6172,requireProjectScope,,CHANGE (move to /api/v1)
 POST,/projects/:id/artifacts/:artifactId/quarantine,apps/api/src/index.ts,6184,requireProjectScope,,CHANGE (move to /api/v1)
-GET,/providers/health,apps/api/src/index.ts,6214,bearer-only,,REVIEW (unscoped)
+GET,/providers/health,apps/api/src/index.ts,6235,bearer-only,,REVIEW (unscoped)
 POST,/api/simulate-task,server.ts,43,bearer-only,,REVIEW (unscoped)
 GET,*,server.ts,315,bearer-only,,REVIEW (unscoped)

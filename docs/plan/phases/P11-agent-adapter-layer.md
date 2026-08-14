@@ -275,3 +275,114 @@ pnpm run test:e2e -- tests/e2e/agent-adapter.spec.ts
 ```
 
 **`AgentAdapter` sözleşmesi bu gate'te donar** — P12 buna bağımlıdır.
+
+---
+
+## Uygulama Kaydı (2026-08-14)
+
+### Tamamlanan görevler
+
+| Görev | Durum | Kanıt |
+|---|---|---|
+| Y-P11-001 `AgentAdapter` sözleşmesi | Tamam | `packages/adapters/src/types.ts` |
+| Y-P11-002 Claude Code adapter | Kısmi | sözleşme + yetenek + probe hazır; **oturum başlatma bağlanmadı** |
+| Y-P11-003 Codex adapter | Kısmi | aynı durum |
+| Y-P11-004 gerçek health probe | Tamam | `probedNetwork` alanı yalanı imkânsız kılar |
+| Y-P11-005 capability negotiation | Tamam | `source` alanı bilginin nereden geldiğini söyler |
+| Adapter registry | Tamam | `AdapterRegistry` + 5 test |
+| Legacy `/providers/health` düzeltmesi | Tamam | env kontrolü yerine adapter probe'ları |
+
+### Karar 1 — SDK bağımlılıkları KURULMADI ve bu bilinçli
+
+`@anthropic-ai/claude-agent-sdk` ve `openai` paketleri eklenmedi.
+`start()` çağrıları **açıkça `NOT_IMPLEMENTED`** fırlatıyor.
+
+Sebep: çalışır bir kimlik bilgisi ve ağ erişimi olmadan bir entegrasyon
+**doğrulanamaz**. Doğrulanamayan bir entegrasyonu "tamam" işaretlemek,
+P00'da kapattığımız kalıbın kendisidir — üstelik en kritik yerinde:
+agent runtime'ında.
+
+Alternatif, SDK'yı ekleyip `start()` içine çağrıyı yazmak ve test
+etmemekti. O kod "var" görünürdü ama ilk gerçek çalıştırmada
+kırılırdı — ve kırıldığında kimse onun hiç test edilmediğini
+bilmezdi.
+
+**Bugün yazılmış olan gerçek şeyler:** sözleşme (dondu), yetenek
+bildirimi, sağlık probe'u, olay modeli, girdi doğrulaması, registry.
+Eksik olan tek şey `start()` gövdesi ve SDK bağımlılığı.
+
+### Karar 2 — Sahte oturum ASLA döndürülmez
+
+P00'daki agent runtime `POST .../runs` çağrısında dört olay yazıp
+`status: "completed"` dönüyordu; hiçbir şey çalıştırmıyordu.
+
+Bu fazdaki hiçbir kod yolu sahte bir oturum üretmez:
+- `UnconfiguredAdapter.start()` → hata, gerekçesiyle
+- `ClaudeCodeAdapter.start()` → hata, gerekçesiyle
+- `events()` → **boş akış** (uydurma olay değil)
+
+### Karar 3 — `probedNetwork` alanı yalanı imkânsız kılar
+
+P00'daki `/api/providers/health` kendini "Live LLM Provider Connectivity
+Probes" diye tanıtıyordu ama yalnız `process.env` varlığına bakıyordu.
+Üstelik döndürdüğü model kimlikleri registry'dekiyle uyuşmuyordu —
+sabitler iki yerde ayrı yazılıydı ve biri güncellenirken diğeri
+unutulmuştu.
+
+"Anahtar var" ile "sağlayıcı erişilebilir" **aynı şey değildir**. Yanlış
+bir anahtar, süresi dolmuş bir anahtar, erişilemeyen bir servis: hepsi
+"configured" görünürdü.
+
+Yeni `HealthResult` her yanıtta `probedNetwork` taşır. Ağa çıkılmadıysa
+`false` döner ve çağıran, sonucun bir bağlantı kanıtı **olmadığını**
+bilir. Model kimlikleri artık route'ta yazılı değil; adapter'lar kendi
+yeteneklerini bildirir.
+
+### Karar 4 — Bilinmeyen değerler TAHMİN EDİLMEZ
+
+`rateLimit.declaredBy: "unknown"` ve `requestsPerMinute: null`:
+sağlayıcılar bu değerleri programatik bildirmiyor. Uydurma bir rate
+limit, rate limiter'ı yanlış bir sayıyla besler.
+
+`capabilities.source` üç değer alır: `declared` (API'den okundu),
+`configured` (operatör yazdı), `assumed` (varsayıldı). Claude Code ve
+Codex bugün `configured`: context limitleri dokümantasyondan geliyor,
+API'den değil — ve bu **söyleniyor**.
+
+### Karar 5 — İki adapter'ın yapısal olarak aynı olması KASITLI
+
+Farklar yeteneklerde (MCP desteği, araç kümesi, context limiti),
+yapıda değil. İki adapter'ın yapısal olarak farklılaşması, soyutlamanın
+sızdırdığının işaretidir (ADR-042).
+
+### Kabul kriterlerinin durumu
+
+| Kriter | Durum | Not |
+|---|---|---|
+| Vendor-neutral sözleşme | Evet | dondu |
+| Capability negotiation | Evet | `source` alanıyla |
+| Gerçek health probe | Evet | `probedNetwork` |
+| Manifest zorunlu (ADR-043) | Evet | `assertStartInput` |
+| Boundary zorunlu | Evet | `assertStartInput` |
+| Sahte oturum yok | Evet | tüm yollar hata veriyor |
+| Claude Code oturumu çalışıyor | **HAYIR** | SDK bağlanmadı |
+| Codex oturumu çalışıyor | **HAYIR** | SDK bağlanmadı |
+
+### Gate sonuçları
+
+```text
+typecheck (loose + strict)   0 hata
+vitest                       1019 passed | 4 skipped (1023)
+build                        OK
+secret-scan                  0 yeni bulgu
+drift (verify-inventories)   8/8 kontrol geçti
+```
+
+### Bu fazda kapatılmayanlar
+
+- **SDK wire-up.** Yukarıda gerekçesi yazılı. Kapanma koşulu: çalışır
+  kimlik bilgisi + ağ erişimi + entegrasyon testi.
+- **`agent_sessions` şeması ve run bağı** — P12 ile ortak migration
+  bloğu.
+- **İkinci sınıf entegrasyonlar** (Copilot, Cursor, generic MCP) — faz
+  dosyası bunları zaten "P11'de implemente edilmez" diye işaretliyor.

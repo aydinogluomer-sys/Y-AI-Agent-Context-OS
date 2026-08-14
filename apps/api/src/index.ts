@@ -6211,18 +6211,44 @@ router.use((err: any, req: Request, res: Response, next: NextFunction) => {
 /**
  * Item 3 — Live LLM Provider Connectivity Probes (Gemini, Claude, OpenAI)
  */
+/**
+ * P11 / Y-P11-004 — Saglayici sagligi.
+ *
+ * P00 Truth Audit: bu route "Live LLM Provider Connectivity Probes" diye
+ * belgelenmisti ama YALNIZ ortam degiskenlerinin varligina bakiyordu.
+ * Hicbir ag cagrisi yoktu. Ustelik dondurdugu model kimlikleri
+ * registry'dekiyle uyusmuyordu (biri 2.5, digeri 3.5 yaziyordu) — yani
+ * sabitler iki yerde ayri ayri yaziliydi ve biri guncellenirken digeri
+ * unutulmustu.
+ *
+ * "Anahtar var" ile "saglayici erisilebilir" AYNI SEY DEGILDIR. Yanlis
+ * bir anahtar, suresi dolmus bir anahtar ya da erisilemeyen bir servis
+ * hepsi "configured" gorunurdu.
+ *
+ * Yeni davranis: probedNetwork alani her yanitta bulunur ve YALANI
+ * IMKANSIZ KILAR. Aga cikilmadiysa false doner ve cagiran, sonucun bir
+ * baglanti kaniti OLMADIGINI bilir.
+ *
+ * Model kimlikleri artik burada YAZILI DEGIL: adapter'lar kendi
+ * yeteneklerini bildirir (ADR-045).
+ */
 router.get("/providers/health", async (req: Request, res: Response) => {
-  const geminiKey = process.env.GEMINI_API_KEY;
-  const openAiKey = process.env.OPENAI_API_KEY;
-  const claudeKey = process.env.ANTHROPIC_API_KEY;
+  const { AdapterRegistry, ClaudeCodeAdapter, CodexAdapter, claudeCodeConfigFromEnv, codexConfigFromEnv } =
+    await import("@y/adapters");
 
-  const providers = {
-    gemini: { status: geminiKey ? "configured" : "not_configured", model: "gemini-2.5-flash" },
-    openai: { status: openAiKey ? "configured" : "not_configured", model: "gpt-4o" },
-    anthropic: { status: claudeKey ? "configured" : "not_configured", model: "claude-3-5-sonnet" },
-  };
+  const registry = new AdapterRegistry()
+    .register(new ClaudeCodeAdapter(claudeCodeConfigFromEnv(process.env)))
+    .register(new CodexAdapter(codexConfigFromEnv(process.env)));
 
-  res.json({ ok: true, timestamp: new Date().toISOString(), providers });
+  const adapters = await registry.health();
+
+  res.json({
+    ok: true,
+    timestamp: new Date().toISOString(),
+    // Hicbir adapter aga cikmadiysa bu ACIKCA gorunur.
+    anyNetworkProbe: adapters.some((a) => a.probedNetwork),
+    adapters
+  });
 });
 
 export const apiRouter = router;

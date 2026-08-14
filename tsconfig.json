@@ -46,6 +46,9 @@
       "@y/graph/*": [
         "./packages/graph/src/*"
       ],
+      "@y/adapters": [
+        "./packages/adapters/src/index.ts"
+      ],
       "@y/security/*": [
         "./packages/security/src/*"
       ],

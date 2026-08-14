@@ -21,6 +21,7 @@ export default defineConfig(() => {
         // Subpath alias, tam eslesmeden ONCE gelmeli.
         '@y/graph/': path.resolve(projectRoot, 'packages/graph/src') + '/',
         '@y/graph': path.resolve(projectRoot, 'packages/graph/src/index.ts'),
+        '@y/adapters': path.resolve(projectRoot, 'packages/adapters/src/index.ts'),
         '@y/security/': path.resolve(projectRoot, 'packages/security/src') + '/',
         '@y/security': path.resolve(projectRoot, 'packages/security/src/index.ts'),
         '@y/web': path.resolve(projectRoot, 'apps/web/src'),
