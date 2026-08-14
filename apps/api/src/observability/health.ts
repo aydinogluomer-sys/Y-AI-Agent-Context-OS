@@ -295,14 +295,149 @@ export function indexCheck(db: ProbeDb): HealthCheck {
   };
 }
 
+/**
+ * Graph sağlığı (spec §27: "graph health").
+ *
+ * Sembol var ama düğüm yoksa `degraded`: graph worker'ı geride kalmış
+ * demektir. Retrieval çalışmaya devam eder ama **graph genişletmesi
+ * sessizce boş döner** — ve sonuç, hiç bağımlılığı olmayan bir kod tabanı
+ * gibi görünür. Bunu `ok` saymak, eksik context'in sebebini gizler.
+ */
+export function graphCheck(db: ProbeDb): HealthCheck {
+  return {
+    name: "graph",
+    required: false,
+    async probe() {
+      const result = await db.query(
+        `SELECT
+           (SELECT COUNT(*)::int FROM graph_nodes) AS nodes,
+           (SELECT COUNT(*)::int FROM graph_edges) AS edges,
+           (SELECT COUNT(*)::int FROM symbols)    AS symbols;`
+      );
+      const row = result.rows[0] ?? {};
+      const nodes = Number(row.nodes ?? 0);
+      const edges = Number(row.edges ?? 0);
+      const symbols = Number(row.symbols ?? 0);
+
+      if (symbols > 0 && nodes === 0) {
+        return {
+          status: "degraded",
+          message:
+            `${symbols} sembol var ama graph dugumu yok; graph worker'i geride. ` +
+            "Graph genisletmesi bos donecek."
+        };
+      }
+      return { status: "ok", message: `${nodes} dugum, ${edges} kenar.` };
+    }
+  };
+}
+
+/**
+ * Event store sağlığı (spec §27: "event health").
+ *
+ * Olaylar yayının (P13 SSE) ve durum geçişi kaydının (ADR-048) kaynağıdır.
+ * Yazılamıyorsa run'lar ilerler ama **hiçbir geçiş kaydedilmez** — kanıt
+ * zinciri sessizce boşalır.
+ *
+ * Probe yalnız OKUR. Sağlık kontrolünün yan etkisi olmamalıdır: yazan bir
+ * probe, sistem sağlıklı olduğu sürece veri üretmeye devam eder ve
+ * ölçtüğü şeyi kirletir.
+ */
+export function eventStoreCheck(db: ProbeDb): HealthCheck {
+  return {
+    name: "event_store",
+    required: true,
+    async probe() {
+      const result = await db.query(
+        "SELECT COUNT(*)::int AS count, MAX(created_at) AS latest FROM run_events;"
+      );
+      const row = result.rows[0] ?? {};
+      const count = Number(row.count ?? 0);
+      return {
+        status: "ok",
+        message:
+          count === 0
+            ? "Olay yok (henuz run calismamis)."
+            : `${count} olay, son kayit ${String(row.latest)}.`
+      };
+    }
+  };
+}
+
+/**
+ * CAS sağlığı (spec §27: "CAS health").
+ *
+ * Blob deposu yazılamıyorsa artifact ve evidence üretilemez. Probe
+ * yalnız okur (bkz. `eventStoreCheck` gerekçesi).
+ */
+export function casCheck(db: ProbeDb): HealthCheck {
+  return {
+    name: "cas",
+    required: true,
+    async probe() {
+      const result = await db.query("SELECT COUNT(*)::int AS count FROM cas_blobs;");
+      const count = Number(result.rows[0]?.count ?? 0);
+      return { status: "ok", message: `${count} blob.` };
+    }
+  };
+}
+
+/**
+ * Sağlayıcı sağlığı (spec §27: "provider health").
+ *
+ * ## Bu probe AĞA ÇIKMAZ ve bu bilinçlidir
+ *
+ * Readiness probe'u her çağrıldığında dış bir sağlayıcıya istek atmak iki
+ * ayrı zarar üretir: her load balancer yoklaması bir sağlayıcı kotası
+ * harcar, ve sağlayıcının yavaşlaması Y'nin readiness'ını düşürür — yani
+ * dış bir servis, iç bir sistemi trafikten düşürebilir hâle gelir.
+ *
+ * Probe bunun yerine **yapılandırmayı** raporlar: kaç adapter kayıtlı ve
+ * hangisinin kimlik bilgisi var. Gerçek ağ yoklaması `adapter.health()`
+ * içindedir ve sonucu `probedNetwork: true` taşır (ADR-045).
+ *
+ * Bugün hiçbir adapter'ın kimlik bilgisi yok; bu yüzden durum
+ * `degraded` — ve bu, sistemin gerçeğidir: agent çalıştırılamaz.
+ */
+export function providerCheck(configuredAdapters: readonly string[]): HealthCheck {
+  return {
+    name: "provider",
+    required: false,
+    async probe() {
+      if (configuredAdapters.length === 0) {
+        return {
+          status: "degraded",
+          message:
+            "Hicbir agent adapter'i yapilandirilmamis; agent calistirilamaz. " +
+            "Bu probe AGA CIKMAZ (bkz. providerCheck gerekcesi)."
+        };
+      }
+      return {
+        status: "ok",
+        message: `${configuredAdapters.length} adapter yapilandirilmis: ${configuredAdapters.join(", ")}.`
+      };
+    }
+  };
+}
+
 /** Varsayılan bağımlılık kümesi. */
-export function defaultChecks(db: ProbeDb): HealthCheck[] {
+export function defaultChecks(
+  db: ProbeDb,
+  configuredAdapters: readonly string[] = []
+): HealthCheck[] {
   return [
     databaseCheck(db),
     policyStoreCheck(db),
     evidenceChainCheck(db),
     queueCheck(db),
     workerCheck(db),
-    indexCheck(db)
+    indexCheck(db),
+    // [P17 / A6] spec §27'nin ayrica istedigi dort bilesen. Eksik
+    // olduklarinda readyz "ready" diyordu; simdi kendi sorgularini
+    // calistiriyorlar.
+    graphCheck(db),
+    eventStoreCheck(db),
+    casCheck(db),
+    providerCheck(configuredAdapters)
   ];
 }

@@ -24,6 +24,10 @@ import {
   queueCheck,
   statusCodeFor,
   workerCheck,
+  graphCheck,
+  eventStoreCheck,
+  casCheck,
+  providerCheck,
   type ComponentHealth,
   type HealthCheck,
   type ProbeDb
@@ -152,8 +156,30 @@ describe("checkReadiness — probe'lar PARALEL", () => {
       "FROM symbols": [{ count: 100 }]
     });
 
+    // [P17 / A6] Bilesen sayisi 6 -> 10: spec §27'nin ayrica istedigi
+    // graph, event_store, cas ve provider probe'lari eklendi.
     const report = await checkReadiness(defaultChecks(db));
-    expect(report.components.length).toBe(6);
+    expect(report.components.length).toBe(10);
+
+    // Adapter YAPILANDIRILMAMIS oldugu icin sistem `degraded`. Bu bir
+    // test kolayligi degil, SISTEMIN GERCEGI: agent calistirilamaz.
+    expect(report.status).toBe("degraded");
+    const provider = report.components.find((c) => c.name === "provider");
+    expect(provider?.status).toBe("degraded");
+  });
+
+  it("adapter yapılandırılmışsa tüm bileşenler OK", async () => {
+    const db = createDb({
+      "SELECT 1": [{ "?column?": 1 }],
+      "FROM policy_rules": [{ count: 5 }],
+      "FROM evidence_chain": [{ head: 3 }],
+      "status = 'queued'": [{ count: 2 }],
+      "lease_expires_at < NOW()": [{ count: 0 }],
+      "FROM symbols": [{ count: 100 }],
+      "FROM graph_nodes": [{ nodes: 50, edges: 90, symbols: 100 }]
+    });
+
+    const report = await checkReadiness(defaultChecks(db, ["claude-code"]));
     expect(report.status).toBe("ok");
   });
 
@@ -257,6 +283,95 @@ describe("bağımlılık probe'ları", () => {
 });
 
 // --- Metrikler -------------------------------------------------------------
+
+describe("A6 — spec §27'nin eksik dört probe'u", () => {
+  it("defaultChecks ON bileşen döndürür", () => {
+    const names = defaultChecks(createDb()).map((c) => c.name);
+    expect(names).toEqual([
+      "database",
+      "policy_store",
+      "evidence_chain",
+      "queue",
+      "workers",
+      "index",
+      "graph",
+      "event_store",
+      "cas",
+      "provider"
+    ]);
+  });
+
+  it("graph: sembol var ama düğüm yoksa DEGRADED", async () => {
+    // Graph worker'i geride kaldiginda retrieval calisir ama graph
+    // genisletmesi SESSIZCE bos doner ve sonuc, hic bagimliligi olmayan
+    // bir kod tabani gibi gorunur.
+    const db = createDb({ "FROM graph_nodes": [{ nodes: 0, edges: 0, symbols: 1200 }] });
+    const result = await graphCheck(db).probe();
+    expect(result.status).toBe("degraded");
+    expect(result.message).toContain("graph worker");
+  });
+
+  it("graph: düğüm varsa OK", async () => {
+    const db = createDb({ "FROM graph_nodes": [{ nodes: 500, edges: 900, symbols: 1200 }] });
+    const result = await graphCheck(db).probe();
+    expect(result.status).toBe("ok");
+    expect(result.message).toContain("500");
+  });
+
+  it("graph: hiç sembol yoksa degraded DEĞİL", async () => {
+    // Bos bir kurulumda graph'in bos olmasi bir ariza degildir.
+    const db = createDb({ "FROM graph_nodes": [{ nodes: 0, edges: 0, symbols: 0 }] });
+    expect((await graphCheck(db).probe()).status).toBe("ok");
+  });
+
+  it("event_store ZORUNLU bileşendir", () => {
+    // Olaylar yayinin ve durum gecisi kaydinin kaynagi (ADR-048).
+    expect(eventStoreCheck(createDb()).required).toBe(true);
+  });
+
+  it("event_store ve cas probe'ları YALNIZ OKUR", async () => {
+    // Yazan bir probe, sistem saglikli oldugu surece veri uretmeye devam
+    // eder ve olctugu seyi kirletir.
+    const db = createDb();
+    await eventStoreCheck(db).probe();
+    await casCheck(db).probe();
+    for (const sql of db.calls) {
+      expect(sql).toMatch(/^SELECT/i);
+      expect(sql).not.toMatch(/INSERT|UPDATE|DELETE/i);
+    }
+  });
+
+  it("provider: adapter yoksa DEGRADED", async () => {
+    const result = await providerCheck([]).probe();
+    expect(result.status).toBe("degraded");
+    expect(result.message).toContain("calistirilamaz");
+  });
+
+  it("provider: adapter varsa OK", async () => {
+    const result = await providerCheck(["claude-code", "codex"]).probe();
+    expect(result.status).toBe("ok");
+    expect(result.message).toContain("claude-code");
+  });
+
+  it("provider probe'u AĞA ÇIKMAZ — DB bile sorgulamaz", async () => {
+    // Readiness her cagrildiginda dis saglayiciya istek atmak hem kota
+    // harcar hem o saglayicinin yavaslamasinin Y'yi trafikten
+    // dusurmesine yol acar. Gercek ag yoklamasi adapter.health()'te ve
+    // sonucu probedNetwork: true tasir (ADR-045).
+    const db = createDb();
+    const check = providerCheck([]);
+    await check.probe();
+    expect(db.calls).toEqual([]);
+  });
+
+  it("provider ZORUNLU DEĞİL — agent yoksa sistem 503 dönmez", async () => {
+    // Y, agent olmadan da context derleyip manifest uretebilir. Bunu
+    // `required` yapmak, calisan bir yetenegi trafikten dusururdu.
+    expect(providerCheck([]).required).toBe(false);
+    const report = await checkReadiness([providerCheck([])]);
+    expect(statusCodeFor(report.status)).toBe(200);
+  });
+});
 
 describe("MetricsRegistry — ölçülmeyen metrik RAPORLANMAZ", () => {
   it("hiç ölçüm yoksa çıktı boş", () => {

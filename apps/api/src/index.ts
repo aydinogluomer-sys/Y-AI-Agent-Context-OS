@@ -81,6 +81,7 @@ import {
 } from "./auth";
 import { mayContinueAfterDatabaseFailure } from "./startup-policy";
 import { deriveEvaluationSubject, bodyDeclaredSubject } from "./domain/identity/evaluation-subject";
+import { AdapterRegistry } from "@y/adapters";
 
 const router = Router();
 
@@ -365,6 +366,24 @@ async function queryDb(sql: string, params: unknown[] = []): Promise<any> {
  * birikmemesi demek olurdu — P01'de rate limiter'da yasanan hatanin
  * aynisi.
  */
+/**
+ * [P17 / A6] Agent adapter kayit defteri.
+ *
+ * Modul duzeyinde tutulur: kayitli adapter kumesi SURECIN durumudur,
+ * istegin degil (metricsRegistry ile ayni gerekce).
+ *
+ * BUGUN BOS ve bu bir eksiklik degil, GERCEGIN KENDISI: Claude Code ve
+ * Codex SDK'lari kurulmadi cunku calisir kimlik bilgisi ve ag erisimi
+ * olmadan bir entegrasyon dogrulanamaz. Bos registry, `providerCheck`
+ * probe'unun `degraded` donmesine ve `readyz` yanitinda "agent
+ * calistirilamaz" yazmasina yol acar.
+ *
+ * Bos birakmak yerine yapilandirilmamis bir adapter KAYDETMEK, listeyi
+ * doldurup sistemi hazir gostermek olurdu — P00'da kapatilan kalibin
+ * aynisi.
+ */
+const adapterRegistry = new AdapterRegistry();
+
 const metricsRegistry = new MetricsRegistry();
 
 const permissionKernelService = new PermissionKernelService(
@@ -900,7 +919,15 @@ router.get("/healthz", async (req: Request, res: Response) => {
 router.get("/readyz", async (req: Request, res: Response) => {
   const { checkReadiness, defaultChecks, statusCodeFor } = await import("./observability/health");
 
-  const report = await checkReadiness(defaultChecks({ query: queryDb }));
+  // [P17 / A6] Yapilandirilmis adapter listesi provider probe'una verilir.
+  // Probe AGA CIKMAZ: her load balancer yoklamasinda dis bir saglayiciya
+  // istek atmak, hem kota harcar hem o saglayicinin yavaslamasinin Y'yi
+  // trafikten dusurmesine yol acar.
+  const configuredAdapters = adapterRegistry.list();
+
+  const report = await checkReadiness(
+    defaultChecks({ query: queryDb }, configuredAdapters)
+  );
 
   res.status(statusCodeFor(report.status)).json({
     status: report.status,
