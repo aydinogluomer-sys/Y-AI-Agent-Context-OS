@@ -22,6 +22,7 @@ export default defineConfig(() => {
         '@y/graph/': path.resolve(projectRoot, 'packages/graph/src') + '/',
         '@y/graph': path.resolve(projectRoot, 'packages/graph/src/index.ts'),
         '@y/adapters': path.resolve(projectRoot, 'packages/adapters/src/index.ts'),
+        '@y/observability': path.resolve(projectRoot, 'packages/observability/src/index.ts'),
         '@y/security/': path.resolve(projectRoot, 'packages/security/src') + '/',
         '@y/security': path.resolve(projectRoot, 'packages/security/src/index.ts'),
         '@y/web': path.resolve(projectRoot, 'apps/web/src'),

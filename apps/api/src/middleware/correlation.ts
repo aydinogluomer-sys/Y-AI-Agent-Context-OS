@@ -10,6 +10,7 @@
 
 import type { Request, Response, NextFunction } from "express";
 import { randomUUID } from "crypto";
+import { runWithContext } from "@y/observability";
 
 export const CORRELATION_HEADER = "x-correlation-id";
 
@@ -30,6 +31,20 @@ export function correlationId() {
 
     (req as CorrelatedRequest).correlationId = id;
     res.setHeader(CORRELATION_HEADER, id);
-    next();
+
+    /*
+     * [P18 / Y-P18-002] Bagilami AsyncLocalStorage'a KUR.
+     *
+     * Onceki hali korelasyon id'sini yalniz `req` uzerine yaziyordu; log
+     * yazan kod `req`'e erisemedigi icin HICBIR satir korelasyon
+     * tasimiyordu.
+     *
+     * `next()` bagLam icinde cagriliyor: bu istegin tum alt cagri agaci
+     * — middleware'ler, handler, async devamlar — ayni bagLami gorur.
+     * Korelasyonu her fonksiyon imzasindan gecirmek alternatifti;
+     * reddedildi cunku BIR imzayi unutmak sessizce korelasyonsuz log
+     * uretirdi.
+     */
+    runWithContext({ correlationId: id }, () => next());
   };
 }

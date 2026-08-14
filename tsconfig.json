@@ -49,6 +49,9 @@
       "@y/adapters": [
         "./packages/adapters/src/index.ts"
       ],
+      "@y/observability": [
+        "./packages/observability/src/index.ts"
+      ],
       "@y/security/*": [
         "./packages/security/src/*"
       ],

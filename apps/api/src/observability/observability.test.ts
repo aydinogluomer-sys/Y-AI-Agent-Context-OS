@@ -487,8 +487,43 @@ describe("MetricsRegistry — histogram", () => {
 });
 
 describe("metrik kayıt defteri — master §27 kapsamı", () => {
-  it("14 metrik tanımlı", () => {
-    expect(METRIC_DEFINITIONS.length).toBe(14);
+  it("20 metrik tanımlı — faz dosyası 15+ istiyor", () => {
+    expect(METRIC_DEFINITIONS.length).toBe(20);
+  });
+
+  it("spec §27'nin ADIYLA saydığı metriklerin hepsi tanımlı", () => {
+    // Bu liste spec §27'den birebir. Ikisi (context_reduction_ratio,
+    // retrieval_recall) P18 denetimine kadar TANIMLI DEGILDI.
+    const required = [
+      "context_compile",
+      "retrieval_duration",
+      "index_duration",
+      "agent_run_duration",
+      "provider_errors",
+      "policy_denials",
+      "approvals",
+      "context_tokens",
+      "context_reduction_ratio",
+      "retrieval_recall",
+      "worker_retries"
+    ];
+    const names = METRIC_DEFINITIONS.map((d) => d.name).join(" ");
+    const missing = required.filter((r) => !names.includes(r));
+    expect(missing).toEqual([]);
+  });
+
+  it("ölçülemeyen metrik SİLİNMEZ, tanımlı kalır", () => {
+    // `retrieval_recall` ground truth gerektirir (P16) ve bugun
+    // olculemez. Tanimdan silmek eksigi GIZLERDI; tanimli kalmasi
+    // `unmeasured` listesinde gorunmesini saglar.
+    const recall = METRIC_DEFINITIONS.find((d) => d.name === "y_retrieval_recall");
+    expect(recall).toBeDefined();
+    expect(recall!.help).toContain("Ground truth");
+
+    const registry = new MetricsRegistry();
+    expect(registry.unmeasured()).toContain("y_retrieval_recall");
+    // Olculmemis metrik ciktida GORUNMEZ.
+    expect(registry.render()).not.toContain("y_retrieval_recall");
   });
 
   it("her metriğin açıklaması var", () => {

@@ -51,7 +51,54 @@ export const METRIC_DEFINITIONS: readonly MetricDefinition[] = [
   { name: "y_worker_retries_total", kind: "counter", help: "Worker yeniden deneme" },
   { name: "y_chain_verify_duration_seconds", kind: "histogram", help: "Kanit zinciri dogrulama suresi", buckets: [0.01, 0.1, 1, 5] },
   { name: "y_sse_connections_active", kind: "gauge", help: "Acik SSE baglantisi" },
-  { name: "y_firewall_exclusions_total", kind: "counter", help: "Firewall tarafindan dislanan aday" }
+  { name: "y_firewall_exclusions_total", kind: "counter", help: "Firewall tarafindan dislanan aday" },
+
+  // --- [P18 / Y-P18-003] spec §27'nin kalan metrikleri --------------------
+
+  // spec §27 bu ikisini ACIKCA sayiyordu ve tanimli DEGILLERDI.
+  {
+    name: "y_context_reduction_ratio",
+    kind: "histogram",
+    help: "Derlenen context / aday havuzu orani. Urun tezinin olcusu.",
+    buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1]
+  },
+  {
+    name: "y_retrieval_recall",
+    kind: "histogram",
+    // OLCULEMEZ: ground truth insan etiketlemesi gerektirir (P16).
+    // Tanimli olmasi bilincli — kayit defterindeki `unmeasured` listesi
+    // neyin EKSIK oldugunu gorunur kilar. Silmek, eksigi gizlerdi.
+    help: "Kritik context geri cagirma orani. Ground truth gerektirir (P16).",
+    buckets: [0.5, 0.7, 0.8, 0.9, 0.95, 1]
+  },
+
+  // Temel istek/veritabani metrikleri: hicbiri tanimli degildi.
+  {
+    name: "y_http_request_duration_seconds",
+    kind: "histogram",
+    help: "HTTP istek suresi",
+    buckets: [0.005, 0.025, 0.1, 0.5, 1, 5]
+  },
+  {
+    name: "y_db_query_duration_seconds",
+    kind: "histogram",
+    help: "Veritabani sorgu suresi",
+    buckets: [0.001, 0.01, 0.05, 0.25, 1, 5]
+  },
+  {
+    name: "y_graph_traversal_duration_seconds",
+    kind: "histogram",
+    help: "Graph traversal suresi (derinlik etiketli)",
+    buckets: [0.01, 0.05, 0.25, 1, 5]
+  },
+  {
+    name: "y_event_lag_seconds",
+    kind: "histogram",
+    // Olay yazimindan SSE teslimine kadar gecen sure. Yayinin gercekten
+    // gercek zamanli olup olmadigini olcen tek sayi.
+    help: "Olay yazimi -> SSE teslimi gecikmesi",
+    buckets: [0.01, 0.05, 0.25, 1, 5]
+  }
 ];
 
 type Labels = Readonly<Record<string, string>>;
