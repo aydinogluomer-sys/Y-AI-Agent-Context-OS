@@ -13,8 +13,8 @@ belgeye de uygulanır: bir madde tamam değilse **TAMAM DEĞİL** yazar.
 
 | Ölçüm | Değer | Kaynak |
 |---|---|---|
-| Birim/sözleşme testi | **1175 passed, 4 skipped** | `vitest run` |
-| Test dosyası | 48 | `vitest run` |
+| Birim/sözleşme testi | **1265 passed, 4 skipped** | `vitest run` |
+| Test dosyası | 55 | `vitest run` |
 | Typecheck | **0 hata** (loose + strict) | `npm run typecheck` |
 | Build | **OK** | `npm run build` |
 | Migration | **82** (35 göç + 47 yeni) | `migrations/*.sql` |
@@ -22,7 +22,7 @@ belgeye de uygulanır: bir madde tamam değilse **TAMAM DEĞİL** yazar.
 | Sır taraması | **0 yeni bulgu** (70 kabul edilmiş) | `npm run secret-scan` |
 | False-green çırçır | **43 toplam / 39 P0** (taban kilitli; P00'da 135) | `npm run gate:false-green` |
 | UI dürüstlük açığı | **0** (P00'da 103) | `inventory-ui` |
-| 410'a kapatılan legacy route | **17** | API envanteri |
+| 410'a kapatılan legacy route | **20** | `grep -cE "status\\(410\\)"` |
 
 Gate zinciri tek komutla çalışır: `npm run gate:all`.
 
@@ -49,7 +49,7 @@ Gate zinciri tek komutla çalışır: `npm run gate:all`.
 | P14 Evidence | ⚠️ **KISMİ** | Hash zinciri + şema hazır; **run'a bağlanmadı** |
 | P15 UI konsolidasyon | ⚠️ **KISMİ** | Dürüstlük değişmezi kuruldu; **IA yeniden yazımı yapılmadı** |
 | P16 Benchmark | ⚠️ **KISMİ** | Uydurma metrikler silindi; **ölçüm harness'ı yok** |
-| P17 Security hardening | ✅ | False-green çırçır gate'i CI'a bağlandı; **P0-7 kapatıldı** |
+| P17 Security hardening | ⚠️ **KISMİ** | P0-7 kapatıldı, T-05/T-09/T-15 uygulandı; **T-14 nonce deposu ve 18 güvenlik spec'i eksik** |
 | P18 Observability | ⚠️ **KISMİ** | Bağımlılık bazlı hazırlık probe'u + metrik defteri; **tracing ve yük ölçümü yok** |
 | P19 CI/CD | ✅ | 5 dürüstlük gate'i CI'da |
 | P20 Kabul | ✅ | Bu belge |
@@ -97,6 +97,20 @@ manifest (P09) → boundary (P10) → adapter sözleşmesi (P11)
 
 **12 / 13 kapatıldı.** Kalan **tek** bulgu P0-13'tür (sahte agent run) ve
 gerçek bir `adapter.start()` gerektirir — §3'teki tek kırık halka.
+
+> **Düzeltme (P17 · üç yönlü denetim).** Rapordaki üç sayı yanlıştı:
+>
+> - *"410'a kapatılan legacy route: 17"* → gerçek sayı **20**.
+> - *"15 dil parser"* → gerçek sayı **20** (TypeScript ailesi 4 +
+>   tree-sitter 15 + SQL 1). Daha önemlisi bu ifade spec §6'nın
+>   karşılandığı izlenimi veriyordu; **SQL karşılanmıyordu** ve A7'de
+>   eklendi.
+> - *"P17 Security hardening ✅"* → **KISMİ**. T-05, T-09 ve T-15 için
+>   sıfır kod vardı; A4/A5/A8'de kapatıldı ama T-14'ün nonce deposu ve
+>   planın adlandırdığı 18 güvenlik spec'i hâlâ eksik.
+>
+> Üçü de aynı sınıf: bir sayının yanlış olması, kapatılabilir işi
+> "bloke" saydırıp görünmez yapmıştı.
 
 > **Önceki sürüm düzeltmesi.** Bu bölüm daha önce "10 / 13 kapatıldı,
 > kalan 3'ü agent runtime'ına bağlı" diyordu. Bu **yanlıştı**: P0-12 zaten
@@ -168,6 +182,41 @@ Her biri bir grep testiyle kilitlendi; geri gelmeleri CI'ı kırar.
 
 ---
 
+## 5.0 Üç yönlü denetim (P17 · 2026-08-14)
+
+Bu tur, zincirin daha önce **hiç doğrulanmamış** halkasını yokladı:
+
+```
+kaynak spec (2.885 satır) → türetilmiş plan (1.501) → kod → bu rapor
+                          ▲
+                    bu halka hiç kontrol edilmemişti
+```
+
+**Türetme sağlam çıktı.** Spec §58'in istediği 14 çıktının (A–N) hepsi
+planda ve hepsinin gerçek içeriği var. Spec §28'in 24 tehdidi planda
+`T-01`–`T-24` olarak tam. Yumuşatma veya düşürme bulunamadı.
+
+**Boşluk (2)→(3)'teydi:** plan bir şeyi şart koşuyor, kod içermiyordu.
+
+### Kapatılanlar
+
+| # | Bulgu | Öncesi |
+|---|---|---|
+| A1 | ADR borcu | Kod 49 ADR'ye atıf yapıyor, **8 belge vardı** |
+| A2 | §37 DTO ayrımı | Simülasyon ve üretim **aynı tipti**; LLM'in uydurduğu metrikler doğrulanmadan geçiyordu |
+| A3 | §38 registry sözlüğü | 9 durum yerine **2**; 104 kalem tek kelimeye sıkışıyordu |
+| A4 | T-05 prompt injection | Spec §29'un tamamı — **sıfır kod** |
+| A5 | T-15 worker kimliği | §54 release kapısı — **sıfır kod** |
+| A6 | §27 sağlık probe'ları | 4 bileşen eksik (graph, event, CAS, provider) |
+| A7 | §6 SQL parser | 82 migration **hiç sembol üretmiyordu** (şimdi 645) |
+| A8 | T-09 MCP allow-list | **Sıfır kod** |
+| A9 | Kaynak hijyeni | `builder.ts` literal NUL içeriyor, `grep` satır göstermiyordu |
+| A10 | §39 dokümantasyon | 16 belgenin **13'ü yoktu** |
+
+Her madde kendi regresyon testiyle kilitlendi.
+
+---
+
 ## 5.1 Çırçırda kalan 43 bulgunun dökümü
 
 Çırçır sayısı **"43 yalan" demek değildir**. Kalanların ne olduğu
@@ -211,6 +260,15 @@ Bu bölüm rapor içindeki en önemli bölümdür.
 |---|---|
 | P06 recall harness | Ground-truth etiketleri **insan** tarafından üretilmeli. Kendim etiketlemek, ölçtüğüm sistemin çıktısını doğru kabul etmek olurdu |
 | P16 benchmark (50 görev) | Aynı sebep + 5 gerçek repository |
+
+### 6.2.1 P17 denetiminden kalanlar
+
+| İş | Neden |
+|---|---|
+| T-14 kullanılmış nonce deposu | Canlı Postgres (P19). Worker token'ı TTL süresince (≤1 saat) tekrar kullanılabilir; test bu sınırı kayıt altına alıyor |
+| Planın adlandırdığı 18 `tests/security/*.spec.ts` | **Hiçbiri yok**; çoğu canlı Postgres gerektiriyor |
+| §55 Golden E2E — 30 adım | Bugün 2 smoke testi (UI kökü + liveness) |
+| SBOM (T-24) | Araç kararı |
 
 ### 6.3 Ölçek nedeniyle yapılmayanlar
 
