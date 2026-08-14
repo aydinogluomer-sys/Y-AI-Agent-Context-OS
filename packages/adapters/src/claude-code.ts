@@ -83,6 +83,10 @@ export class ClaudeCodeAdapter implements AgentAdapter {
       streaming: true,
       toolSupport: CLAUDE_CODE_TOOLS,
       mcpSupport: true,
+      // [P17 / T-09] Bos: SDK baglanmadan hangi MCP sunuculari
+      // bildirilecegi BILINEMEZ. Uydurma bir liste, policy'nin neye
+      // karsi calistigini yanlis gosterirdi.
+      mcpTools: [],
       fileOperations: true,
       approvalSupport: true,
       // Gercek BPE tokenizer'i P08'de bos birakildi; burada ADI

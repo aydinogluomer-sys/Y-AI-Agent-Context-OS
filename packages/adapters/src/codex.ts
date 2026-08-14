@@ -65,6 +65,8 @@ export class CodexAdapter implements AgentAdapter {
       toolSupport: CODEX_TOOLS,
       // Claude Code'dan farkli: MCP destegi yok.
       mcpSupport: false,
+      // [P17 / T-09] mcpSupport: false oldugu icin bos.
+      mcpTools: [],
       fileOperations: true,
       approvalSupport: true,
       tokenizerId: "openai-cl100k",

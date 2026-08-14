@@ -42,6 +42,21 @@ export {
   type SecretKind
 } from "./secret-scanner/index";
 
+// P17 / T-09 — MCP escalation: sunucu allow-list + tool filtresi.
+// DENY-BY-DEFAULT, iki katman. MCP agent'a CALISMA ZAMANINDA yeni
+// araclar kazandirir; bilinmeyen bir arac, Y'nin korumadigi bir yoldur.
+export {
+  decideMcpToolCall,
+  filterMcpTools,
+  assertValidMcpPolicy,
+  McpPolicyError,
+  EMPTY_MCP_POLICY,
+  type McpPolicy,
+  type McpServerGrant,
+  type McpDecision,
+  type McpRejectionReason
+} from "./mcp/allowlist";
+
 // P17 / T-15 — Worker kimligi imzalidir; imzasiz = DENY (spec §54).
 // Dogrulama CLAIM NOKTASINDA yapilir, worker baslangicinda degil:
 // baslangicta dogrulanan bir kimlik, suresi dolduktan sonra da is alir.

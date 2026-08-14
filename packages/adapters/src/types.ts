@@ -60,6 +60,20 @@ export interface AgentCapabilities {
   readonly streaming: boolean;
   readonly toolSupport: readonly ToolSpec[];
   readonly mcpSupport: boolean;
+  /**
+   * [P17 / T-09] Adapter'in bildirdigi MCP araclari.
+   *
+   * `mcpSupport: boolean` tek basina "MCP var mi" sorusunu cevapliyor ama
+   * "HANGI MCP" sorusunu hic sormuyordu. MCP agent'a CALISMA ZAMANINDA
+   * yeni araclar kazandirir; bilinmeyen bir arac, Y'nin korumadigi bir
+   * yoldur (Change Firewall ve komut allow-list'i yalniz BILINEN yollari
+   * korur).
+   *
+   * Bu liste HAM bildirimdir — izin verildigi anlamina GELMEZ.
+   * `filterMcpTools` policy'ye gore suzer, `decideMcpToolCall` cagri
+   * aninda yeniden karar verir.
+   */
+  readonly mcpTools: readonly { readonly serverId: string; readonly toolName: string }[];
   readonly fileOperations: boolean;
   readonly approvalSupport: boolean;
   readonly tokenizerId: string;
