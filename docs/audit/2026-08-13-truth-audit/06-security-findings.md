@@ -1,6 +1,6 @@
 # 06 — Güvenlik Bulguları
 
-> Baseline commit: `be66ef6a1ca62e9b9da62447b0a1af49ebe6e953`
+> Baseline commit: `88641fa26c2f74b788c5961ed0d878569e389a48`
 > Sınıflandırma: **P0** = release blocker · **P1** = production-critical · **P2** = kozmetik
 
 Envanterden türeyen ölçüt: 181 route'un **34'i** yalnız

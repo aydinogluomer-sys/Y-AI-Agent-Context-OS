@@ -1,114 +1,114 @@
 category,id,label,route,declared_status,component,data_source,verdict
-mission-control,chat-cockpit,Sohbet Kokpiti,/chat,implemented,Badge,ağ çağrısı tespit edilmedi,FAKE
+mission-control,chat-cockpit,Sohbet Kokpiti,/chat,placeholder,Badge,ağ çağrısı tespit edilmedi,FAKE
 mission-control,project-dashboard,AI Görev Kontrolü,/dashboard,implemented,AIMissionControlPanel,backend API,REAL
-mission-control,active-project,Aktif Proje,/active-project,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-mission-control,system-health,Sistem Sağlığı,/system-health,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-mission-control,token-budget-status,Token Bütçe Durumu,/budget,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-mission-control,cost-compression-chart,Maliyet ve Sıkıştırma,/cost-chart,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-projects-workspace,projects,Projeler Kaydı,/projects,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-projects-workspace,memberships,Üyelik Yetkilendirmeleri,/memberships,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-projects-workspace,scoped-paths,Kapsam Belirlenmiş Yollar,/scoped-paths,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-projects-workspace,repo-adapter,Repo Adaptör Motoru,/repo-adapter,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-projects-workspace,file-explorer,Dosya Gezgini,/explorer,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-projects-workspace,allowed-paths,İzin Verilen Yollar,/allowed-paths,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-projects-workspace,workspace-boundaries,Çalışma Alanı Sınırları,/boundaries,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
+mission-control,active-project,Aktif Proje,/active-project,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+mission-control,system-health,Sistem Sağlığı,/system-health,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+mission-control,token-budget-status,Token Bütçe Durumu,/budget,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+mission-control,cost-compression-chart,Maliyet ve Sıkıştırma,/cost-chart,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+projects-workspace,projects,Projeler Kaydı,/projects,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+projects-workspace,memberships,Üyelik Yetkilendirmeleri,/memberships,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+projects-workspace,scoped-paths,Kapsam Belirlenmiş Yollar,/scoped-paths,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+projects-workspace,repo-adapter,Repo Adaptör Motoru,/repo-adapter,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+projects-workspace,file-explorer,Dosya Gezgini,/explorer,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+projects-workspace,allowed-paths,İzin Verilen Yollar,/allowed-paths,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+projects-workspace,workspace-boundaries,Çalışma Alanı Sınırları,/boundaries,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
 context-os,index-job-orchestrator,Dizin İşi Orkestratörü,/index-jobs,implemented,IndexJobOrchestratorPanel,backend API,REAL
-context-os,context-objects,Bağlam Nesneleri,/ctx-objects,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-context-os,context-items,Bağlam Öğeleri,/ctx-items,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-context-os,context-chunks,Bağlam Parçaları (Chunks),/ctx-chunks,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-context-os,context-pack-builder,50K Bağlam Paketi Oluşturucu,/pack-builder,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-context-os,compression-ratios,Sıkıştırma Oranları,/ratios,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-context-os,segment-ranking,Segment Sıralaması,/ranking,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-context-os,context-registry,Bağlam Sicili,/registry,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-context-os,context-export,Bağlam Dışa Aktarma,/export,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
+context-os,context-objects,Bağlam Nesneleri,/ctx-objects,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+context-os,context-items,Bağlam Öğeleri,/ctx-items,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+context-os,context-chunks,Bağlam Parçaları (Chunks),/ctx-chunks,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+context-os,context-pack-builder,50K Bağlam Paketi Oluşturucu,/pack-builder,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+context-os,compression-ratios,Sıkıştırma Oranları,/ratios,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+context-os,segment-ranking,Segment Sıralaması,/ranking,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+context-os,context-registry,Bağlam Sicili,/registry,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+context-os,context-export,Bağlam Dışa Aktarma,/export,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
 graph-intelligence,impact-analysis,Etki Analizi Paneli,/impact-analysis,implemented,ImpactAnalysisPanel,backend API,REAL
-graph-intelligence,ast-map,AST Haritası,/ast-map,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-graph-intelligence,dependency-graph,Bağımlılık Grafiği,/dependency-graph,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-graph-intelligence,symbol-index,Sembol Dizini,/symbols,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-graph-intelligence,import-export-resolver,İthalat/İhracat Çözücü,/resolver,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-graph-intelligence,impact-radius,Etki Yarıçapı,/radius,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-graph-intelligence,incremental-index,Artımlı Dizinleme,/incremental-idx,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-graph-intelligence,syntax-recovery,Sözdizimi Kurtarma,/recovery,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
+graph-intelligence,ast-map,AST Haritası,/ast-map,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+graph-intelligence,dependency-graph,Bağımlılık Grafiği,/dependency-graph,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+graph-intelligence,symbol-index,Sembol Dizini,/symbols,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+graph-intelligence,import-export-resolver,İthalat/İhracat Çözücü,/resolver,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+graph-intelligence,impact-radius,Etki Yarıçapı,/radius,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+graph-intelligence,incremental-index,Artımlı Dizinleme,/incremental-idx,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+graph-intelligence,syntax-recovery,Sözdizimi Kurtarma,/recovery,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
 artifact-cas,artifact-center,Artefakt Merkezi CAS,/artifacts,implemented,ArtifactCenterPanel,backend API,REAL
-artifact-cas,workspace-files,Çalışma Alanı Dosyaları,/ws-files,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-artifact-cas,cas-blobs,CAS İkili Verileri (Blobs),/blobs,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-artifact-cas,dedup-chunks,Tekilleştirilmiş Parçalar,/dedup,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-artifact-cas,hash-verification,Hash Doğrulama,/hash-verify,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-artifact-cas,integrity-audit,Bütünlük Denetimi,/integrity-audit,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-artifact-cas,quarantine,Karantina Kayıtları,/quarantine,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
+artifact-cas,workspace-files,Çalışma Alanı Dosyaları,/ws-files,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+artifact-cas,cas-blobs,CAS İkili Verileri (Blobs),/blobs,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+artifact-cas,dedup-chunks,Tekilleştirilmiş Parçalar,/dedup,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+artifact-cas,hash-verification,Hash Doğrulama,/hash-verify,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+artifact-cas,integrity-audit,Bütünlük Denetimi,/integrity-audit,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+artifact-cas,quarantine,Karantina Kayıtları,/quarantine,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
 task-lifecycle,file-locks,Dosya Kilitleri ve Kiraları,/file-locks,implemented,FileLockingPanel,backend API,REAL
-task-lifecycle,task-board,Görev Panosu (Task Board),/tasks,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-task-lifecycle,backlog,Yapılacaklar Kuyruğu,/backlog,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-task-lifecycle,active-tasks,Aktif Görevler,/active-tasks,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-task-lifecycle,verified-tasks,Doğrulanmış Görevler,/verified,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-task-lifecycle,closed-tasks,Kapatılmış Görevler,/closed,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-task-lifecycle,fsm-transitions,FSM Durum Geçişleri,/fsm,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-agent-network,dispatcher-agent,Yönlendirici Ajan (Dispatcher),/dispatcher,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-agent-network,context-builder-agent,Bağlam Yapılandırıcı Ajan,/ctx-builder,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-agent-network,developer-agent,Geliştirici Ajan (Developer),/developer,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-agent-network,qa-agent,QA Test Ajanı,/qa-agent,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-agent-network,director-agent,Yönetici Ajan (Director),/director,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-agent-network,session-checkpoints,Oturum Denetim Noktaları,/checkpoints,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-agent-network,continuation-handoff,Devamlılık Handoff Dosyası,/handoff,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-agent-network,chronological-autochecks,Otomatik Zamanlanmış Kontroller,/autochecks,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
+task-lifecycle,task-board,Görev Panosu (Task Board),/tasks,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+task-lifecycle,backlog,Yapılacaklar Kuyruğu,/backlog,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+task-lifecycle,active-tasks,Aktif Görevler,/active-tasks,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+task-lifecycle,verified-tasks,Doğrulanmış Görevler,/verified,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+task-lifecycle,closed-tasks,Kapatılmış Görevler,/closed,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+task-lifecycle,fsm-transitions,FSM Durum Geçişleri,/fsm,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+agent-network,dispatcher-agent,Yönlendirici Ajan (Dispatcher),/dispatcher,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+agent-network,context-builder-agent,Bağlam Yapılandırıcı Ajan,/ctx-builder,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+agent-network,developer-agent,Geliştirici Ajan (Developer),/developer,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+agent-network,qa-agent,QA Test Ajanı,/qa-agent,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+agent-network,director-agent,Yönetici Ajan (Director),/director,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+agent-network,session-checkpoints,Oturum Denetim Noktaları,/checkpoints,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+agent-network,continuation-handoff,Devamlılık Handoff Dosyası,/handoff,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+agent-network,chronological-autochecks,Otomatik Zamanlanmış Kontroller,/autochecks,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
 security-kernel,permission-kernel,Erişim Yetki Çekirdeği,/security,implemented,PermissionKernelPanel,backend API,REAL
-security-kernel,abac-matrix,ABAC Matrisi,/abac-matrix,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-security-kernel,role-policies,Rol Politikaları,/policies,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-security-kernel,human-approval-gate,İnsan Onay Geçidi,/human-approval,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-security-kernel,path-traversal-guard,Dizin Kaçış Koruması,/traversal-guard,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-security-kernel,secret-redactor,Sır Ayıklayıcı (Redactor),/redactor,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-security-kernel,default-deny-rules,Varsayılan Reddetme Kuralları,/default-deny,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-security-kernel,read-only-policies,Salt Okunur Kurallar,/read-only,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
+security-kernel,abac-matrix,ABAC Matrisi,/abac-matrix,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+security-kernel,role-policies,Rol Politikaları,/policies,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+security-kernel,human-approval-gate,İnsan Onay Geçidi,/human-approval,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+security-kernel,path-traversal-guard,Dizin Kaçış Koruması,/traversal-guard,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+security-kernel,secret-redactor,Sır Ayıklayıcı (Redactor),/redactor,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+security-kernel,default-deny-rules,Varsayılan Reddetme Kuralları,/default-deny,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+security-kernel,read-only-policies,Salt Okunur Kurallar,/read-only,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
 evidence-audit,evidence-store,Kanıt Deposu Paneli,/evidence,implemented,EvidenceStorePanel,backend API,REAL
 evidence-audit,event-journal,Ajan Olay Günlüğü,/events,implemented,EventJournalPanel,backend API,REAL
-evidence-audit,event-store,Olay Deposu,/event-store,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-evidence-audit,evidence-health-gauge,Kanıt Sağlık Göstergesi,/health-gauge,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-evidence-audit,corruption-reports,Bozulma Raporları,/corruption,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-evidence-audit,cryptographic-ledger,Kriptografik Defter,/ledger,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-evidence-audit,signed-logs,İmzalı Loglar,/signed-logs,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
+evidence-audit,event-store,Olay Deposu,/event-store,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+evidence-audit,evidence-health-gauge,Kanıt Sağlık Göstergesi,/health-gauge,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+evidence-audit,corruption-reports,Bozulma Raporları,/corruption,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+evidence-audit,cryptographic-ledger,Kriptografik Defter,/ledger,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+evidence-audit,signed-logs,İmzalı Loglar,/signed-logs,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
 worker-runtime,worker-runtime,İşçi Çalışma Zamanı HUD,/workers,implemented,WorkerRuntimeDashboard,backend API,REAL
-worker-runtime,index-sync,Dizin Eşitleme İşleri,/index-sync,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-worker-runtime,git-tracking,Git Takibi,/git-tracking,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-worker-runtime,ast-compilation-jobs,AST Derleme İşleri,/ast-jobs,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-worker-runtime,load-metrics,Yük Metrikleri,/load,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-worker-runtime,runtime-telemetry,Çalışma Zamanı Telemetrisi,/telemetry,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-database-migrations,db-status,Veritabanı Durumu,/db-status,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-database-migrations,supabase-pool-manager,Supabase Havuz Yöneticisi,/db-pool,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-database-migrations,migrations,Migrasyon Defteri,/migrations,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-database-migrations,schema-browser,Şema Tarayıcısı,/schema,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-database-migrations,dev-reset-utility,Geliştirici Sıfırlama Aracı,/dev-reset,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-database-migrations,public-tables,Genel Tablolar,/tables,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-providers-connectors,model-routing,Model Yönlendirme,/model-routing,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-providers-connectors,google-sdk-adapter,Google SDK Adaptörü,/google-sdk,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-providers-connectors,saas-sync-states,SaaS Eşitleme Durumları,/saas-sync,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-providers-connectors,credential-stubs,Kimlik Bilgisi Taslakları,/credentials,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-providers-connectors,connect-center,Bağlantı Merkezi,/connectors,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
+worker-runtime,index-sync,Dizin Eşitleme İşleri,/index-sync,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+worker-runtime,git-tracking,Git Takibi,/git-tracking,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+worker-runtime,ast-compilation-jobs,AST Derleme İşleri,/ast-jobs,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+worker-runtime,load-metrics,Yük Metrikleri,/load,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+worker-runtime,runtime-telemetry,Çalışma Zamanı Telemetrisi,/telemetry,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+database-migrations,db-status,Veritabanı Durumu,/db-status,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+database-migrations,supabase-pool-manager,Supabase Havuz Yöneticisi,/db-pool,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+database-migrations,migrations,Migrasyon Defteri,/migrations,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+database-migrations,schema-browser,Şema Tarayıcısı,/schema,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+database-migrations,dev-reset-utility,Geliştirici Sıfırlama Aracı,/dev-reset,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+database-migrations,public-tables,Genel Tablolar,/tables,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+providers-connectors,model-routing,Model Yönlendirme,/model-routing,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+providers-connectors,google-sdk-adapter,Google SDK Adaptörü,/google-sdk,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+providers-connectors,saas-sync-states,SaaS Eşitleme Durumları,/saas-sync,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+providers-connectors,credential-stubs,Kimlik Bilgisi Taslakları,/credentials,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+providers-connectors,connect-center,Bağlantı Merkezi,/connectors,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
 qa-validation,quality-gate-report,Kalite Geçidi Raporu,/quality-gates,implemented,QualityGateReportPanel,backend API,REAL
-qa-validation,test-runner,Test Koşturucu,/test-runner,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-qa-validation,deterministic-tests,Belirleyici Testler,/test-det,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-qa-validation,db-integration-tests,Veritabanı Entegrasyon Testleri,/test-db,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-qa-validation,secret-scan,Sır Tarayıcısı (Secret Scan),/secret-scan,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-qa-validation,debug-tag-gate,Debug Etiketi Engeli,/debug-gate,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-qa-validation,manual-qa-checklist,Manuel QA Kontrol Listesi,/manual-qa,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-qa-validation,stage-27-validation,Erişim Yetki Çekirdeği (ABAC) Doğrulaması,/stage-27,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-qa-validation,stage-28-validation,Bağlam Paketleyici (50K Pack) Doğrulaması,/stage-28,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-qa-validation,stage-29-validation,Repo Adaptörü ve Kapsamlı Yollar Doğrulaması,/stage-29,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-qa-validation,stage-30-validation,Kriptografik Olay Günlüğü Doğrulaması,/stage-30,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-qa-validation,stage-31-validation,Obsidian Bellek Kasası Doğrulaması,/stage-31,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-qa-validation,stage-32-validation,Ajan Devamlılık Handoff Doğrulaması,/stage-32,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-qa-validation,stage-33-validation,Görev Yaşam Döngüsü FSM Doğrulaması,/stage-33,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-qa-validation,stage-34-validation,İşçi Çalışma Zamanı Telemetrisi Doğrulaması,/stage-34,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-qa-validation,stage-35-validation,Artefakt CAS Tekilleştirme Doğrulaması,/stage-35,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-documentation,architecture-index,Mimari Dizini,/docs/arch-idx,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-documentation,architecture-schema,Mimari Şeması,/docs/arch-schema,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-documentation,kernel-explanation,Çekirdek Çalışma Tezi,/docs/kernel-explain,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-documentation,context-execution-plan,Bağlam Yürütme Planı,/docs/execution-plan,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-documentation,ui-accessibility-notes,Arayüz Erişilebilirlik Notları,/docs/accessibility,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-documentation,quality-gates,Kalite Geçitleri Kuralları,/docs/quality-gates,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-documentation,manual-qa,Manuel QA Rehberi,/docs/manual-qa,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-documentation,implementation-log,Uygulama Günlüğü,/docs/impl-log,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-governance-kernel-debt,kernel-awareness-note,Çekirdek Farkındalık Notu,/gov/awareness,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-governance-kernel-debt,kernel-debt-register,Çekirdek Borç Sicili,/gov/debt,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-governance-kernel-debt,permission-kernel-audit,Erişim Çekirdeği Denetimi,/gov/audit,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-governance-kernel-debt,human-review-requirements,İnsan İnceleme Koşulları,/gov/human-review,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
-governance-kernel-debt,release-sign-off,Sürüm İmza Defteri,/gov/signoff,implemented,ModuleSimulationPanel,client literal / setTimeout,FAKE
+qa-validation,test-runner,Test Koşturucu,/test-runner,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+qa-validation,deterministic-tests,Belirleyici Testler,/test-det,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+qa-validation,db-integration-tests,Veritabanı Entegrasyon Testleri,/test-db,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+qa-validation,secret-scan,Sır Tarayıcısı (Secret Scan),/secret-scan,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+qa-validation,debug-tag-gate,Debug Etiketi Engeli,/debug-gate,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+qa-validation,manual-qa-checklist,Manuel QA Kontrol Listesi,/manual-qa,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+qa-validation,stage-27-validation,Erişim Yetki Çekirdeği (ABAC) Doğrulaması,/stage-27,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+qa-validation,stage-28-validation,Bağlam Paketleyici (50K Pack) Doğrulaması,/stage-28,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+qa-validation,stage-29-validation,Repo Adaptörü ve Kapsamlı Yollar Doğrulaması,/stage-29,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+qa-validation,stage-30-validation,Kriptografik Olay Günlüğü Doğrulaması,/stage-30,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+qa-validation,stage-31-validation,Obsidian Bellek Kasası Doğrulaması,/stage-31,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+qa-validation,stage-32-validation,Ajan Devamlılık Handoff Doğrulaması,/stage-32,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+qa-validation,stage-33-validation,Görev Yaşam Döngüsü FSM Doğrulaması,/stage-33,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+qa-validation,stage-34-validation,İşçi Çalışma Zamanı Telemetrisi Doğrulaması,/stage-34,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+qa-validation,stage-35-validation,Artefakt CAS Tekilleştirme Doğrulaması,/stage-35,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+documentation,architecture-index,Mimari Dizini,/docs/arch-idx,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+documentation,architecture-schema,Mimari Şeması,/docs/arch-schema,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+documentation,kernel-explanation,Çekirdek Çalışma Tezi,/docs/kernel-explain,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+documentation,context-execution-plan,Bağlam Yürütme Planı,/docs/execution-plan,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+documentation,ui-accessibility-notes,Arayüz Erişilebilirlik Notları,/docs/accessibility,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+documentation,quality-gates,Kalite Geçitleri Kuralları,/docs/quality-gates,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+documentation,manual-qa,Manuel QA Rehberi,/docs/manual-qa,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+documentation,implementation-log,Uygulama Günlüğü,/docs/impl-log,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+governance-kernel-debt,kernel-awareness-note,Çekirdek Farkındalık Notu,/gov/awareness,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+governance-kernel-debt,kernel-debt-register,Çekirdek Borç Sicili,/gov/debt,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+governance-kernel-debt,permission-kernel-audit,Erişim Çekirdeği Denetimi,/gov/audit,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+governance-kernel-debt,human-review-requirements,İnsan İnceleme Koşulları,/gov/human-review,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE
+governance-kernel-debt,release-sign-off,Sürüm İmza Defteri,/gov/signoff,placeholder,ModuleSimulationPanel,client literal / setTimeout,FAKE

@@ -713,7 +713,17 @@ export default function App() {
       case "index-job-orchestrator":
         return <IndexJobOrchestratorPanel projectId={workspace.activeProjectId} />;
       default:
-        return <ModuleSimulationPanel tabId={activeTab} projectId={workspace.activeProjectId} />;
+        // P15 / ADR-056 — DURUST VARSAYILAN.
+        //
+        // P00 bulgusu: kodlanmamis 102 ekran buraya dusuyor ve simulasyon
+        // paneli onlari CALISIYORMUS GIBI gosteriyordu. Ayni dosyada
+        // durust bir "Henuz Kodlanmadi" karti render eden fonksiyon
+        // DURUYOR ama HIC CAGRILMIYORDU.
+        //
+        // Artik cagriliyor. Simulasyon paneli yalnizca ACIKCA simulasyon
+        // isteyen ekranlar icin kalir; kodlanmamis bir ekran, kodlanmadigini
+        // SOYLER.
+        return renderPlaceholderView(activeTab);
     }
   };
 

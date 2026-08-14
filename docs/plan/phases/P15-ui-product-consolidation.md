@@ -296,3 +296,55 @@ pnpm run secret-scan
 ```
 
 Ek zorunluluk: **fabrikasyon ekran sayısı = 0** ve feature registry'de hiçbir UI kaydı kanıtsız `PASS` değil.
+
+---
+
+## Uygulama Kaydı (2026-08-14) — KISMİ
+
+Bu faz **tam olarak uygulanmadı**. Yapılan, P15'in **dürüstlük
+çekirdeğidir**.
+
+### Yapılanlar
+
+| İş | Durum | Ölçüm |
+|---|---|---|
+| Nav durumlarının gerçeğe çekilmesi | Tamam | HONESTY GAP **103 → 0** |
+| `renderPlaceholderView` bağlanması | Tamam | kodlanmamış ekran artık kodlanmadığını söylüyor |
+| Dürüstlük değişmezi testi | Tamam | 7 test, işaret veriden türüyor |
+| `index.html` başlığı | Tamam | "My Google AI Studio App" → ürün adı |
+
+### En sinsi P00 bulgusu kapandı
+
+`navigation.ts` bir `status` alanı taşıyordu ve `AppShell` `placeholder`
+için "Simüle" rozeti gösteriyordu — **mekanizma kurulmuştu**. Ama 114
+kaydın tamamı `"implemented"` idi ve `"placeholder"` sayısı **sıfırdı**.
+Sidebar operatöre 113 ekranın da gerçek olduğunu söylüyordu.
+
+Dahası `renderPlaceholderView()` — dürüst bir "Henüz Kodlanmadı" kartı
+render eden fonksiyon — kodda duruyor ama **hiç çağrılmıyordu**.
+
+### Neden bir testle çözüldü
+
+Alanı elle düzeltmek yeterli değildi: bir kez daha elle bakıma
+bırakılırsa yine kayardı. `navigation-honesty.test.ts` işareti
+**veriden türetir** — `App.tsx`'in switch gövdesinden.
+
+Zorlanan kural **tek yönlüdür**: render edilmeyen bir ekran
+`implemented` olamaz. Tersi serbesttir çünkü daha kısıtlayıcı olan taraf
+her zaman güvenlidir (`chat-cockpit` render ediliyor ama pipeline'ı
+simülasyon olduğu için meşru olarak `placeholder`).
+
+### YAPILMAYANLAR
+
+- 113 nav item → 6 birincil + 7 advanced konsolidasyonu
+- react-router / URL tabanlı routing (ADR-012)
+- Tipli API client (ADR-058)
+- 68 fabrikasyon ekranın silinmesi
+- Ölü kod temizliği, 4 kırık worker endpoint çağrısı
+
+Bunlar ~14.500 satırlık bir ön yüz yeniden yazımıdır. Yarım yapılmış bir
+IA göçü, iki farklı navigasyon modelinin aynı anda yaşaması demekti — ve
+bu, tek bir yalan söyleyen alandan **daha kötü** bir durum olurdu.
+
+Bugün yapılan şey, o yeniden yazım gelene kadar operatöre **yalan
+söylenmemesini** garanti eder.

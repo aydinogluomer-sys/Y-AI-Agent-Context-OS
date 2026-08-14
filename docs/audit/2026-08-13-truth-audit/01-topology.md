@@ -1,6 +1,6 @@
 # 01 — Fiziksel Topoloji
 
-> Baseline commit: `be66ef6a1ca62e9b9da62447b0a1af49ebe6e953`
+> Baseline commit: `88641fa26c2f74b788c5961ed0d878569e389a48`
 
 ## Çalışma zamanı topolojisi
 
@@ -10,7 +10,7 @@
 | API mount | `app.use("/api", apiRouter)` | `server.ts:15` |
 | `apps/api` | **Server değil** — yalnız `apiRouter` + `apiReady` export eder | `apps/api/src/index.ts` |
 | API router | **6170 satır**, tek `Router()`, 181 route inline | `apps/api/src/index.ts` |
-| Web app | **982 satır** tek component, router yok | `apps/web/src/App.tsx` |
+| Web app | **992 satır** tek component, router yok | `apps/web/src/App.tsx` |
 | Şema | **Hiç `.sql` dosyası yok** (82 adet) — 1105 satırlık `db.ts` içinde inline string | `apps/api/src/db.ts` |
 | Graph paketi | 3038 satır tek dosya | `packages/graph/src/index.ts` |
 
