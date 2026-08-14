@@ -40,6 +40,9 @@
     "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json",
     "migrations:mapping": "tsx scripts/audit/regenerate-migration-mapping.ts",
     "gate:drift": "tsx scripts/audit/verify-inventories.ts",
+    "perf:fixture": "tsx scripts/perf/generate-fixture-repo.ts --preset small --out .perf/small",
+    "perf": "tsx scripts/perf/measure.ts --fixture .perf/small",
+    "perf:record": "tsx scripts/perf/measure.ts --fixture .perf/small --record",
     "gate:false-green": "tsx scripts/audit/scan-false-green.ts --gate",
     "gate:all": "npm run typecheck && npm run gate:drift && npm run gate:false-green && npm run secret-scan && npx vitest run"
   },

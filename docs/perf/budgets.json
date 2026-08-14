@@ -1,0 +1,25 @@
+{
+  "_comment": "P18/Y-P18-008. Butceler OLCUMDEN uretilir, hedeften degil. Deger 5 tekrarin MEDYANI (tek kosu GC duraklamalarinda sapar). Efektif tolerans = max(toleranceRatio, spreadRatio): kapi bu makinenin GERCEK gurultu tabanina gore kalibre edilir. Yeniden kaydetmek icin: npm run perf:record",
+  "toleranceRatio": 0.1,
+  "budgets": [
+    {
+      "name": "parse.typescript",
+      "perOpMs": 107.9399,
+      "recordedAt": "2026-08-14T18:58:09.764Z",
+      "spreadRatio": 0.643
+    },
+    {
+      "name": "parse.sql",
+      "perOpMs": 5.5786,
+      "recordedAt": "2026-08-14T18:58:09.764Z",
+      "spreadRatio": 0.163
+    },
+    {
+      "name": "manifest.canonicalJson",
+      "perOpMs": 1.9046,
+      "recordedAt": "2026-08-14T18:58:09.764Z",
+      "spreadRatio": 0.602
+    }
+  ],
+  "_limitation": "spreadRatio yuksek olan kalemlerde (bu makinede %60+) kapi ancak bundan BUYUK regresyonlari yakalar. Bu bir kusur degil olcumun siniri: gurultuyu yakalayan bir kapi kapatilir. Adanmis bir performans makinesi yayilimi dusurur ve kapiyi keskinlestirir."
+}

@@ -25,3 +25,6 @@ test-results/
 # sessiz surum sapmasi uretiyordu.
 package-lock.json
 yarn.lock
+
+# P18: sentetik performans fixture'lari (deterministik, yeniden uretilebilir)
+.perf/
