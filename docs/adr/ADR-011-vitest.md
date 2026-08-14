@@ -28,6 +28,13 @@ Baseline koşumu: 162 assertion "geçti", 13 skip marker basıldı, exit 0.
 2. **node:test** — workspace/alias çözümü elle kurulmalı.
 3. **vitest** — SEÇİLEN. Vite zaten bağımlılık; `@y/*` alias'ları doğrudan kullanılıyor.
 
+## Reason
+
+Test koşucusunun projede zaten kurulu olan Vite yapılandırmasını (alias'lar
+dahil) paylaşması, ikinci bir çözümleme yapılandırması tutma ihtiyacını
+ortadan kaldırır. İki ayrı alias tablosu zamanla birbirinden ayrışır ve
+"testte geçiyor, build'de kırılıyor" sınıfı hatalar üretir.
+
 ## Consequences
 
 - `passWithNoTests: false` — bir test dosyasının sessizce hiç çalışmaması,

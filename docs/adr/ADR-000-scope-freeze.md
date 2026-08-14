@@ -60,6 +60,16 @@ ekranın bir arada yaşadığı bir durumda. Kapsam donmazsa, her faz yeni yüze
    sabiti P08'de zaten kaldırılıyor.
 3. **Kapsamı dondurmadan devam** — reddedildi (yukarıdaki Context).
 
+## Reason
+
+Bir önceki turda ürün "AI Agent Operating System" olarak genişlemiş ve
+40+ modüle dağılmıştı; hiçbiri uçtan uca çalışmıyordu. Kapsamı dondurmak,
+mevcut yeteneklerin silinmesi değil, **hangisinin kullanıcıya yüzey
+olacağının** kararıdır (bkz. spec §25 headless module principle).
+
+Kapsam donmadan yapılan her iyileştirme, yeni bir yarım yüzey daha
+üretme riskini taşır.
+
 ## Explicit Non-Goals
 
 Aşağıdakiler **ayrı ürün alanı olarak geliştirilmeyecektir**. Bunlara ekleme

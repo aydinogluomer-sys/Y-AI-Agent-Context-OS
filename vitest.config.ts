@@ -45,7 +45,9 @@ export default defineConfig({
       // P04: worker'lar da test edilir. Eskiden kapsam disindaydilar ve
       // "dosya say, basarili raporla" davranisi bu yuzden gorulmedi.
       "workers/**/*.test.ts",
-      "tests/unit/**/*.test.ts"
+      "tests/unit/**/*.test.ts",
+      // P17/A1: ADR atif butunlugu testi belgelerin yaninda durur.
+      "docs/**/*.test.ts"
     ],
     exclude: ["**/node_modules/**", "**/dist/**", "tests/e2e/**"],
     reporters: ["default"],

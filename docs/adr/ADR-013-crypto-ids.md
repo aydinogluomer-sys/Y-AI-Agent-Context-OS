@@ -22,6 +22,17 @@ P00 Truth Audit, 60 çağrı noktasında şu kalıbı tespit etti:
 `event_records`, `evidence_records` gibi tablolarda bu bir bütünlük riskidir:
 bir aktör gelecekteki bir kimliği tahmin edip önceden kayıt oluşturabilir.
 
+## Reason
+
+`Math.random()` kriptografik olarak güvenli değildir ve kısa bir sonekle
+birleştirildiğinde doğum günü paradoksu nedeniyle çakışma olasılığı ihmal
+edilebilir olmaktan çıkar.
+
+Birincil anahtarda çakışma iki ayrı zarar üretir: ya bir kayıt diğerinin
+üzerine yazılır (sessiz veri kaybı), ya UNIQUE ihlali **gerçek bir hata
+gibi görünen** sahte bir başarısızlık üretir. İkisi de kanıt iddiasında
+bulunan bir sistemde kabul edilemez.
+
 ## Consequences
 
 - `newId()` `crypto.randomUUID()` kullanır.
