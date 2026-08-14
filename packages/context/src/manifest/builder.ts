@@ -22,6 +22,7 @@ import { createHash } from "crypto";
 import { canonicalJson, type CanonicalValue } from "./canonical-json";
 import type { CompiledContext, ExclusionReason } from "../compiler/compile";
 import type { RankedCandidate } from "../retrieval/types";
+import { scanForInjectionAttempt, untrustedRepositoryContent } from "@y/security";
 
 export interface ManifestItem {
   readonly fragmentId: string;
@@ -43,6 +44,18 @@ export interface ManifestItem {
   readonly rank: number;
   /** İçerik redakte edildiyse işaretlenir. */
   readonly redacted: boolean;
+  /**
+   * [P17 / T-05 · ADR-063] Bu fragment repository'den geldi: DATA'dır,
+   * talimat değildir (spec §29). Sabit görünse de manifest'e yazılır —
+   * kanıt "model ne gördü"nün yanında "onu NE OLARAK gördü"yü de
+   * cevaplamak zorundadır.
+   */
+  readonly trust: "untrusted_repository_content";
+  /**
+   * Tespit edilen enjeksiyon DENEMESİ sayısı. Sıfır olması içeriğin
+   * güvenli olduğunu GÖSTERMEZ; koruma tespit değil, trust boundary'dir.
+   */
+  readonly injectionObservationCount: number;
 }
 
 export interface ManifestExclusion {
@@ -130,7 +143,11 @@ export function buildManifest(input: BuildManifestInput): ContextManifest {
     policyVersion: input.policyVersion,
     tokenCount: fragment.tokens,
     rank: index + 1,
-    redacted: fragment.truncated
+    redacted: fragment.truncated,
+    trust: "untrusted_repository_content",
+    injectionObservationCount: scanForInjectionAttempt(
+      untrustedRepositoryContent(fragment.path, fragment.content)
+    ).length
   }));
 
   const exclusions: ManifestExclusion[] = [

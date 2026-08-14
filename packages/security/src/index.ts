@@ -42,6 +42,25 @@ export {
   type SecretKind
 } from "./secret-scanner/index";
 
+// P17 / T-05 · ADR-063 — Repository icerigi DATA'dir.
+// Azaltim YAPISALDIR: repo icerigi tip duzeyinde talimattan ayrilir ve
+// talimat kanalina konamaz. Tespit bir GOZLEMDIR, bir kapi degil.
+export {
+  systemInstruction,
+  userInstruction,
+  untrustedRepositoryContent,
+  scanForInjectionAttempt,
+  buildAgentPayload,
+  assertNoRawContentInPrompt,
+  RawContentInPromptError,
+  type TrustLevel,
+  type InstructionText,
+  type UntrustedContent,
+  type InjectionPatternId,
+  type InjectionObservation,
+  type AgentPayload
+} from "./trust/boundary";
+
 import { redactSecrets as redactSecretsImpl } from "./secret-scanner/index";
 
 /**

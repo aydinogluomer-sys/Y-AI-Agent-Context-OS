@@ -174,6 +174,26 @@ export interface ManifestItem {
   readonly rank: number;
   /** Sır redaksiyonu uygulandıysa işaretlenir. */
   readonly redacted: boolean;
+  /**
+   * [P17 / T-05 · ADR-063] GÜVEN SEVİYESİ.
+   *
+   * Repository'den okunan her fragment `untrusted_repository_content`'tir
+   * ve ASLA talimat değildir (spec §29). Alan sabit görünse de manifest'e
+   * yazılır: kanıt, "model ne gördü" sorusunun yanında "onu ne olarak
+   * gördü" sorusunu da cevaplamak zorundadır.
+   *
+   * Sabit bir değeri kaydetmenin değeri, gelecekte başka bir güven
+   * seviyesi eklendiğinde eski manifest'lerin hangi varsayımla
+   * üretildiğinin belli olmasıdır.
+   */
+  readonly trust: "untrusted_repository_content";
+  /**
+   * Bu fragment üzerinde tespit edilen enjeksiyon DENEMESİ sayısı.
+   *
+   * Sıfır olması içeriğin güvenli olduğunu GÖSTERMEZ — koruma tespit
+   * değil, trust boundary'nin kendisidir. Sayı kanıt içindir.
+   */
+  readonly injectionObservationCount: number;
 }
 
 export interface ManifestExclusion {

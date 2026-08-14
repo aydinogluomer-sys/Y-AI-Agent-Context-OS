@@ -78,7 +78,7 @@ eski dosya `Durum: Superseded by ADR-NNN` olarak işaretlenir.
 | 060 | Benchmark repo'ları gerçek OSS commit'leri | P16 | Önerildi |
 | 061 | Metrikler kanıttan okunur | P16 | Önerildi |
 | 062 | Native kol da aynı kanıt formatına indirgenir | P16 | Önerildi |
-| 063 | Repository içeriği DATA'dır | P17 | Önerildi |
+| [063](ADR-063-repository-content-is-data.md) | Repository içeriği DATA'dır | P17 | Kısmen uygulandı |
 | 064 | Shadow mode kalıcı olarak kaldırılır | P17 | Önerildi |
 | 065 | Güvenlik testleri ayrı, atlanamaz CI gate'i | P17 | Önerildi |
 | 066 | OpenTelemetry | P18 | Önerildi |
@@ -111,6 +111,7 @@ olduğu her ADR'nin *Consequences* bölümünde yazılıdır:
 | 043 | sözleşme zorlanıyor; agent başlatma SDK bekliyor (P11) |
 | 044 | yol iletilmiyor; sandbox implementasyonu SDK bekliyor (P11) |
 | 045 | müzakere ve `probedNetwork` var; canlı sağlayıcı bekliyor (P11) |
+| 063 | kanal ayrımı ve manifest alanı var; adapter'a teslim `adapter.start()` bekliyor (P11) |
 
 "Önerildi" durumundaki ADR'lerin gerekçeleri master plan §4 ve ilgili
 faz dosyasındaki *Architecture Decisions* bölümündedir; faz başladığında
