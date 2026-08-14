@@ -28,6 +28,7 @@ import {
   type EmbeddingProvider,
   type EmbeddingInput
 } from "../packages/providers/src/embedding/provider";
+import { globToRegExpSource } from "../packages/security/src/context-firewall/glob";
 
 export interface WorkerDb {
   query(sql: string, params?: unknown[]): Promise<{ rows: any[]; rowCount: number | null }>;
@@ -40,6 +41,16 @@ export interface EmbeddingWorkerOptions {
   /** Tek turda işlenecek azami chunk. */
   readonly batchSize?: number;
   readonly maxAttempts?: number;
+  /**
+   * P07 / Y-P07-005 — DENY kapsamındaki yol glob'ları.
+   *
+   * ZORUNLU ALAN, opsiyonel değil. Bu liste olmadan worker çalışırsa,
+   * DENY kapsamındaki bir chunk'ın içeriği harici embedding
+   * sağlayıcısına gönderilir ve bu GERİ ALINAMAZ. Boş liste vermek
+   * meşru bir karardır (hiçbir şey yasak değil) ama BİLİNÇLİ olmalıdır;
+   * alanı unutmak bir karar değildir.
+   */
+  readonly deniedGlobs: readonly string[];
   /** Test edilebilirlik: gerçek beklemeyi devre dışı bırakır. */
   readonly sleep?: (ms: number) => Promise<void>;
 }
@@ -195,6 +206,10 @@ export class EmbeddingWorker {
     organizationId: string,
     limit: number
   ): Promise<{ chunkId: string; content: string; contentHash: string; containsSecret: boolean }[]> {
+    // P07 / Y-P07-005: DENY kapsamindaki yollar SORGUDA elenir. Adaylari
+    // bellege alip sonra filtrelemek, iceriklerini okumus olmak demektir.
+    const deniedRegex = this.options.deniedGlobs.map((g) => `^${globToRegExpSource(g)}$`);
+
     const result = await this.options.db.query(
       `SELECT c.id, c.content, c.content_hash,
               COALESCE(f.contains_secret, FALSE) AS contains_secret
@@ -204,6 +219,8 @@ export class EmbeddingWorker {
           AND c.organization_id = $2
           -- Sir iceren chunk HIC gonderilmez (T-07).
           AND COALESCE(f.contains_secret, FALSE) = FALSE
+          -- DENY kapsamindaki chunk'in embedding'i bile uretilmez (ADR-027).
+          AND NOT (c.path ~ ANY($5::text[]))
           AND (
             c.embedding IS NULL
             OR c.embedded_content_hash IS DISTINCT FROM c.content_hash
@@ -211,7 +228,7 @@ export class EmbeddingWorker {
           )
         ORDER BY c.id
         LIMIT $4;`,
-      [snapshotId, organizationId, this.options.model, limit]
+      [snapshotId, organizationId, this.options.model, limit, deniedRegex]
     );
 
     return result.rows.map((row) => ({
@@ -267,10 +284,18 @@ async function main(): Promise<void> {
   const pool = new Pool({ connectionString });
   // Gercek saglayici P14'te baglanacak. Bugun yapilandirilmamis saglayici
   // ACIKCA hata verir; sahte vektor uretmez.
+  // DENY glob'lari policy store'dan gelir. Bugun yalnizca varsayilan
+  // sinif tabanli DENY'ler var; policy entegrasyonu P08 compile akisinda.
+  const deniedGlobs = (process.env.EMBEDDING_DENY_GLOBS || "secrets/**,node_modules/**,vendor/**")
+    .split(",")
+    .map((g) => g.trim())
+    .filter(Boolean);
+
   const worker = new EmbeddingWorker({
     db: pool,
     provider: new UnconfiguredEmbeddingProvider(),
-    model: process.env.EMBEDDING_MODEL || "text-embedding-3-small"
+    model: process.env.EMBEDDING_MODEL || "text-embedding-3-small",
+    deniedGlobs
   });
 
   process.once("SIGINT", () => worker.stop());

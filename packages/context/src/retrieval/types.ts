@@ -11,6 +11,8 @@
  *   4. `local_memory_stub` üç uydurma dosya döndürüyordu.
  */
 
+import type { AllowedContextUniverse } from "@y/security/context-firewall/universe";
+
 export const RETRIEVAL_CHANNELS = ["lexical", "semantic", "symbol", "graph"] as const;
 export type RetrievalChannel = (typeof RETRIEVAL_CHANNELS)[number];
 
@@ -124,11 +126,18 @@ export interface RetrievalSpec {
   /** Birleştirme sonrası döndürülecek aday sayısı. */
   readonly limit?: number;
   /**
-   * Context Firewall ön filtresi (ADR-027).
-   * DENY kapsamındaki yollar aday havuzuna HİÇ girmez; sonradan
-   * filtrelenmez. Sebep: DENY içeriğinin embedding'i bile hesaplanmamalı.
+   * Context Firewall (P07 / ADR-027, ADR-028).
+   *
+   * ZORUNLU ALAN — opsiyonel DEĞİL. Unutulması bir çalışma zamanı
+   * kontrolü değil, DERLEME HATASIDIR. Y-P07-004'ün kabul kriteri tam
+   * olarak budur: universe olmadan retrieval çağrısı derlenmemeli.
+   *
+   * Universe bir SQL predicate'ine derlenir ve kanalların sorgularına
+   * gömülür. DENY kapsamındaki chunk'lar aday havuzuna HİÇ girmez;
+   * sonradan filtrelenmez — DENY içeriğinin embedding'i bile
+   * hesaplanmamalıdır.
    */
-  readonly deniedPathPrefixes?: readonly string[];
+  readonly universe: AllowedContextUniverse;
   /** Sır içeren chunk'lar aday olamaz (T-07). */
   readonly excludeSecrets?: boolean;
 }

@@ -27,11 +27,8 @@
  *   okunmaması hatasının tekrarı olurdu.
  */
 
-import type {
-  Candidate,
-  RetrievalChannel,
-  RetrievalSpec
-} from "./types";
+import type { Candidate, RetrievalChannel, RetrievalSpec } from "./types";
+import { effectForPath } from "@y/security/context-firewall/universe";
 
 export interface ChannelRunner {
   readonly channel: RetrievalChannel;
@@ -157,16 +154,17 @@ export function assertFirewallRespected(
   candidates: readonly Candidate[],
   spec: RetrievalSpec
 ): void {
-  const denied = spec.deniedPathPrefixes ?? [];
-
   for (const candidate of candidates) {
-    for (const prefix of denied) {
-      if (candidate.path.startsWith(prefix)) {
-        throw new Error(
-          `Firewall ihlali: '${candidate.path}' DENY kapsaminda ama aday havuzunda. ` +
-            `Bir kanal on filtreyi uygulamiyor (ADR-027).`
-        );
-      }
+    const effect = effectForPath(spec.universe, candidate.path);
+
+    // APPROVAL da ihlaldir (ADR-029): onay bekleyen kaynak, onay
+    // verilene kadar context'e GIRMEZ. "Once goster, sonra onayla"
+    // provenance'i bozar.
+    if (effect !== "allow") {
+      throw new Error(
+        `Firewall ihlali: '${candidate.path}' universe'de '${effect}' ama aday ` +
+          `havuzunda. Bir kanal on filtreyi uygulamiyor (ADR-027).`
+      );
     }
 
     if (spec.excludeSecrets && candidate.containsSecret) {

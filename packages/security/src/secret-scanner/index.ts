@@ -187,7 +187,11 @@ export function looksLikeRealSecretValue(value: string): boolean {
   // SQL kolon referansi: `contains_secret = EXCLUDED.contains_secret`,
   // `password = NEW.password`, `token = t.token`. Bir kolonun BASKA BIR
   // KOLONA atanmasi sir degildir — deger tasimaz, ad tasir.
-  if (/^(?:EXCLUDED|NEW|OLD|[A-Za-z_][A-Za-z0-9_]*)\.[A-Za-z_][A-Za-z0-9_]*$/.test(value)) return false;
+  // Cok seviyeli zincirler de dahil: `existing.candidate.containsSecret`.
+  // Her segment tanimlayici bicimindeyse bu bir OZELLIK ERISIMIDIR.
+  // Gomulu bir sir literaldir ve literaller bu bicimde olmaz; JWT gibi
+  // noktali gercek sirlar ise kendi kurallariyla (jwt) yakalanir.
+  if (/^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+$/.test(value)) return false;
 
   // SQL parametre yer tutucusu: $1, $12
   if (/^\$\d+$/.test(value)) return false;

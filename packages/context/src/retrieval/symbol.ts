@@ -22,6 +22,8 @@
  */
 
 import type { Candidate, RetrievalSpec } from "./types";
+import { compilePredicate } from "@y/security/context-firewall/universe";
+
 
 export interface SymbolDb {
   query(sql: string, params?: unknown[]): Promise<{ rows: any[]; rowCount: number | null }>;
@@ -37,6 +39,7 @@ export class SymbolRetriever {
     if (identifiers.length === 0) return [];
 
     const limit = Math.min(Math.max(1, spec.perChannelLimit ?? DEFAULT_LIMIT), 1_000);
+    const firewall = compilePredicate(spec.universe, "c.path", 5);
 
     const result = await this.db.query(
       `WITH matched AS (
@@ -60,16 +63,16 @@ export class SymbolRetriever {
            ON c.snapshot_id = $1 AND c.path = m.path AND c.symbol_name = m.symbol_name
          LEFT JOIN files f ON f.id = c.file_id
         WHERE c.organization_id = $2
-          AND ($5::text[] IS NULL OR NOT (c.path LIKE ANY($5::text[])))
-          AND ($6::boolean IS NOT TRUE OR COALESCE(f.contains_secret, FALSE) = FALSE)
+          AND ${firewall.sql}
+          AND ($8::boolean IS NOT TRUE OR COALESCE(f.contains_secret, FALSE) = FALSE)
         ORDER BY m.exact DESC, m.name_collisions ASC, c.id
-        LIMIT $7;`,
+        LIMIT $9;`,
       [
         spec.snapshotId,
         spec.organizationId,
         identifiers,
         identifiers.map((i) => `%${i}%`),
-        toLikePatterns(spec.deniedPathPrefixes),
+        ...firewall.params,
         spec.excludeSecrets ?? false,
         limit
       ]

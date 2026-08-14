@@ -91,5 +91,9 @@ migrate edilmiş veritabanları yeniden çalıştırılmaz.
 | 0065 | `0065_chunks_trigram.sql` | `2.4.2-chunks-trigram` | yeni | var |
 | 0066 | `0066_retrieval_runs.sql` | `2.4.3-retrieval-runs` | yeni | var |
 | 0067 | `0067_retrieval_candidates.sql` | `2.4.4-retrieval-candidates` | yeni | var |
+| 0068 | `0068_policy_rules.sql` | `2.5.0-policy-rules` | yeni | var |
+| 0069 | `0069_file_classifications.sql` | `2.5.1-file-classifications` | yeni | var |
+| 0070 | `0070_context_universes.sql` | `2.5.2-context-universes` | yeni | var |
+| 0071 | `0071_chunks_universe_bucket.sql` | `2.5.3-chunks-universe-bucket` | yeni | var |
 
-Toplam: **67** migration (35 göç + 32 yeni).
+Toplam: **71** migration (35 göç + 36 yeni).

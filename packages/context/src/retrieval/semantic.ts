@@ -29,6 +29,8 @@
  */
 
 import { RetrievalError, type Candidate, type RetrievalSpec } from "./types";
+import { compilePredicate } from "@y/security/context-firewall/universe";
+
 
 export interface SemanticDb {
   query(sql: string, params?: unknown[]): Promise<{ rows: any[]; rowCount: number | null }>;
@@ -100,6 +102,7 @@ export class SemanticRetriever {
     }
 
     const limit = Math.min(Math.max(1, spec.perChannelLimit ?? DEFAULT_LIMIT), 1_000);
+    const firewall = compilePredicate(spec.universe, "c.path", 4);
 
     const result = await this.db.query(
       `SELECT c.id, c.path, c.symbol_name, c.symbol_type, c.content,
@@ -112,15 +115,15 @@ export class SemanticRetriever {
         WHERE c.snapshot_id = $1
           AND c.organization_id = $2
           AND c.embedding IS NOT NULL
-          AND ($4::text[] IS NULL OR NOT (c.path LIKE ANY($4::text[])))
-          AND ($5::boolean IS NOT TRUE OR COALESCE(f.contains_secret, FALSE) = FALSE)
+          AND ${firewall.sql}
+          AND ($7::boolean IS NOT TRUE OR COALESCE(f.contains_secret, FALSE) = FALSE)
         ORDER BY c.embedding <=> $3::vector, c.id
-        LIMIT $6;`,
+        LIMIT $8;`,
       [
         spec.snapshotId,
         spec.organizationId,
         toVectorLiteral(vector),
-        toLikePatterns(spec.deniedPathPrefixes),
+        ...firewall.params,
         spec.excludeSecrets ?? false,
         limit
       ]

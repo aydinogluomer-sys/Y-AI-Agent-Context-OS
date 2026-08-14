@@ -16,6 +16,24 @@ import { SemanticRetriever, toVectorLiteral, EMBEDDING_DIMENSIONS } from "./sema
 import { SymbolRetriever, extractIdentifiers, looksLikeIdentifier, symbolMatchScore } from "./symbol";
 import { fuseChannels, mergeByRrf, assertFirewallRespected, RRF_K } from "./hybrid";
 import { RetrievalError, type Candidate, type RetrievalSpec } from "./types";
+import { computeUniverse } from "@y/security/context-firewall/universe";
+
+/**
+ * P07: universe artik ZORUNLU alan. Test spec'leri de bir universe
+ * tasimak zorunda — bu, "universe olmadan retrieval derlenmemeli"
+ * kabul kriterinin testlerdeki karsiligidir.
+ */
+const UNIVERSE = computeUniverse({
+  organizationId: "org_a",
+  projectId: "proj_1",
+  principalSub: "oidc|alice",
+  role: "developer",
+  policyVersion: "v1",
+  rules: [
+    { effect: "allow", resourceGlob: "src/**" },
+    { effect: "deny", resourceGlob: "secrets/**" }
+  ]
+});
 
 function createDb(rows: any[] = []) {
   const calls: { sql: string; params: unknown[] }[] = [];
@@ -52,7 +70,8 @@ const SPEC: RetrievalSpec = {
   organizationId: "org_a",
   projectId: "proj_1",
   snapshotId: "snap_1",
-  query: "topla fonksiyonunu duzelt"
+  query: "topla fonksiyonunu duzelt",
+  universe: UNIVERSE
 };
 
 describe("LexicalRetriever — gerçek FTS (ADR-025)", () => {
@@ -74,12 +93,17 @@ describe("LexicalRetriever — gerçek FTS (ADR-025)", () => {
     expect(db.calls[0].sql).toContain("c.tsv @@ query");
   });
 
-  it("firewall ön filtresi SQL'de uygulanır (ADR-027)", async () => {
+  it("firewall ön filtresi SQL'de uygulanır (ADR-027, ADR-028)", async () => {
     const db = createDb([row()]);
-    await new LexicalRetriever(db).search({ ...SPEC, deniedPathPrefixes: ["secrets/"] });
+    await new LexicalRetriever(db).search(SPEC);
 
-    expect(db.calls[0].sql).toContain("NOT (c.path LIKE ANY($4::text[]))");
-    expect(db.calls[0].params[3]).toEqual(["secrets/%"]);
+    // Universe SQL predicate'ine derlenip sorguya GOMULUR.
+    expect(db.calls[0].sql).toContain("LIKE ANY($4::text[])");
+    expect(db.calls[0].sql).toContain("~ ANY($5::text[])");
+    expect(db.calls[0].sql).toContain("NOT (c.path ~ ANY($6::text[]))");
+    // Glob metni SQL govdesinde GECMEZ; parametre olarak gider.
+    expect(db.calls[0].sql).not.toContain("secrets");
+    expect((db.calls[0].params[5] as string[]).some((r) => r.includes("secrets"))).toBe(true);
   });
 
   it("sır içeren chunk'ları dışlayabilir (T-07)", async () => {
@@ -87,7 +111,7 @@ describe("LexicalRetriever — gerçek FTS (ADR-025)", () => {
     await new LexicalRetriever(db).search({ ...SPEC, excludeSecrets: true });
 
     expect(db.calls[0].sql).toContain("contains_secret");
-    expect(db.calls[0].params[4]).toBe(true);
+    expect(db.calls[0].params[6]).toBe(true);
   });
 
   it("kullanılabilir terim yoksa sorgu ÇALIŞTIRMAZ", async () => {
@@ -101,7 +125,7 @@ describe("LexicalRetriever — gerçek FTS (ADR-025)", () => {
   it("limit üst sınırı uygulanır", async () => {
     const db = createDb([row()]);
     await new LexicalRetriever(db).search({ ...SPEC, perChannelLimit: 999_999 });
-    expect(db.calls[0].params[5]).toBe(1_000);
+    expect(db.calls[0].params[7]).toBe(1_000);
   });
 });
 
@@ -483,9 +507,12 @@ describe("assertFirewallRespected — savunma derinliği (ADR-027)", () => {
   };
 
   it("DENY kapsamındaki aday HATA verir (sessizce ayıklanmaz)", () => {
-    expect(() =>
-      assertFirewallRespected([denied], { ...SPEC, deniedPathPrefixes: ["secrets/"] })
-    ).toThrow(/Firewall ihlali/);
+    expect(() => assertFirewallRespected([denied], SPEC)).toThrow(/Firewall ihlali/);
+  });
+
+  it("universe'de yer almayan yol da ihlaldir (varsayılan izin yok)", () => {
+    const unknown = { ...denied, path: "yeni-dizin/a.ts" };
+    expect(() => assertFirewallRespected([unknown], SPEC)).toThrow(/Firewall ihlali/);
   });
 
   it("sır içeren aday HATA verir (T-07)", () => {
@@ -497,8 +524,6 @@ describe("assertFirewallRespected — savunma derinliği (ADR-027)", () => {
 
   it("temiz havuz geçer", () => {
     const clean = { ...denied, path: "src/a.ts" };
-    expect(() =>
-      assertFirewallRespected([clean], { ...SPEC, deniedPathPrefixes: ["secrets/"], excludeSecrets: true })
-    ).not.toThrow();
+    expect(() => assertFirewallRespected([clean], { ...SPEC, excludeSecrets: true })).not.toThrow();
   });
 });

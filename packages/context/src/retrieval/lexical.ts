@@ -28,6 +28,8 @@
  */
 
 import type { Candidate, RetrievalSpec } from "./types";
+import { compilePredicate } from "@y/security/context-firewall/universe";
+
 
 export interface LexicalDb {
   query(sql: string, params?: unknown[]): Promise<{ rows: any[]; rowCount: number | null }>;
@@ -44,6 +46,11 @@ export class LexicalRetriever {
 
     const limit = Math.min(Math.max(1, spec.perChannelLimit ?? DEFAULT_LIMIT), 1_000);
 
+    // Firewall on filtresi (ADR-027, ADR-028): universe SQL predicate'ine
+    // derlenir ve sorguya GOMULUR. Aday listesi bellege geldikten sonra
+    // filtrelemek, DENY icerigini zaten okumus olmak demektir.
+    const firewall = compilePredicate(spec.universe, "c.path", 4);
+
     const result = await this.db.query(
       `SELECT c.id, c.path, c.symbol_name, c.symbol_type, c.content,
               c.start_line, c.end_line, c.estimated_tokens,
@@ -55,17 +62,15 @@ export class LexicalRetriever {
         WHERE c.snapshot_id = $1
           AND c.organization_id = $2
           AND c.tsv @@ query
-          -- Firewall on filtresi (ADR-027): DENY kapsamindaki yollar
-          -- aday havuzuna HIC girmez, sonradan filtrelenmez.
-          AND ($4::text[] IS NULL OR NOT (c.path LIKE ANY($4::text[])))
-          AND ($5::boolean IS NOT TRUE OR COALESCE(f.contains_secret, FALSE) = FALSE)
+          AND ${firewall.sql}
+          AND ($7::boolean IS NOT TRUE OR COALESCE(f.contains_secret, FALSE) = FALSE)
         ORDER BY rank DESC, c.id
-        LIMIT $6;`,
+        LIMIT $8;`,
       [
         spec.snapshotId,
         spec.organizationId,
         terms,
-        toLikePatterns(spec.deniedPathPrefixes),
+        ...firewall.params,
         spec.excludeSecrets ?? false,
         limit
       ]

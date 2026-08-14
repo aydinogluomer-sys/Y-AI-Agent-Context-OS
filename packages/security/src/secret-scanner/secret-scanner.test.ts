@@ -142,6 +142,15 @@ describe("scanForSecrets — tespit", () => {
     expect(scanForSecrets(`const token = "${fakeOpaqueSecret()}"`).length).toBeGreaterThan(0);
   });
 
+  it("çok seviyeli özellik erişimini sır saymaz", () => {
+    // P07'de gate'in yakaladigi false positive: bir birlestirme
+    // ifadesinde bayragin baska bir nesneden okunmasi.
+    expect(scanForSecrets("containsSecret: existing.candidate.containsSecret")).toEqual([]);
+    expect(scanForSecrets("const apiKey = config.services.auth.apiKey")).toEqual([]);
+    // JWT nokta iceriyor diye KACMAMALI; kendi kuraliyla yakalanir.
+    expect(scanForSecrets(`const t = "${fake.jwt()}"`).length).toBeGreaterThan(0);
+  });
+
   it("fonksiyon çağrısını sır saymaz", () => {
     // Gate'in P05'te yakaladigi false positive: bir DTO donusturucusunde
     // `fileContainsSecret: Boolean(row.contains_secret)`. Cagri bir

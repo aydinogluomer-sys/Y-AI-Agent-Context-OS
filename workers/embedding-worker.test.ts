@@ -113,6 +113,9 @@ function row(id: string, overrides: Partial<Row> = {}): Row {
 
 const noSleep = async () => {};
 
+/** P07: DENY listesi ZORUNLU alan; testlerde acikca bos verilir. */
+const NO_DENY: string[] = [];
+
 describe("EmbeddingWorker — gerçekten yazar", () => {
   it("bekleyen chunk'lar için embedding üretir ve yazar", async () => {
     const db = createDb([row("c1"), row("c2")]);
@@ -120,6 +123,7 @@ describe("EmbeddingWorker — gerçekten yazar", () => {
       db,
       provider: fakeProvider(),
       model: MODEL,
+      deniedGlobs: NO_DENY,
       sleep: noSleep
     }).runOnce("snap_1", "org_a");
 
@@ -129,7 +133,8 @@ describe("EmbeddingWorker — gerçekten yazar", () => {
 
   it("vektörü pgvector literal biçiminde yazar", async () => {
     const db = createDb([row("c1")]);
-    await new EmbeddingWorker({ db, provider: fakeProvider(), model: MODEL, sleep: noSleep }).runOnce(
+    await new EmbeddingWorker({ db, provider: fakeProvider(), model: MODEL, deniedGlobs: NO_DENY,
+      sleep: noSleep }).runOnce(
       "snap_1",
       "org_a"
     );
@@ -141,7 +146,8 @@ describe("EmbeddingWorker — gerçekten yazar", () => {
 
   it("hangi İÇERİKTEN üretildiğini kaydeder (bayatlık tespiti)", async () => {
     const db = createDb([row("c1")]);
-    await new EmbeddingWorker({ db, provider: fakeProvider(), model: MODEL, sleep: noSleep }).runOnce(
+    await new EmbeddingWorker({ db, provider: fakeProvider(), model: MODEL, deniedGlobs: NO_DENY,
+      sleep: noSleep }).runOnce(
       "snap_1",
       "org_a"
     );
@@ -155,6 +161,7 @@ describe("EmbeddingWorker — gerçekten yazar", () => {
       db,
       provider: fakeProvider(),
       model: MODEL,
+      deniedGlobs: NO_DENY,
       sleep: noSleep
     }).runOnce("snap_1", "org_a");
 
@@ -166,7 +173,8 @@ describe("EmbeddingWorker — gerçekten yazar", () => {
 describe("EmbeddingWorker — idempotency", () => {
   it("bekleyen sorgusu içerik hash'i VE modeli karşılaştırır", async () => {
     const db = createDb([row("c1")]);
-    await new EmbeddingWorker({ db, provider: fakeProvider(), model: MODEL, sleep: noSleep }).runOnce(
+    await new EmbeddingWorker({ db, provider: fakeProvider(), model: MODEL, deniedGlobs: NO_DENY,
+      sleep: noSleep }).runOnce(
       "snap_1",
       "org_a"
     );
@@ -179,7 +187,8 @@ describe("EmbeddingWorker — idempotency", () => {
 
   it("model parametresi sorguya geçer", async () => {
     const db = createDb([row("c1")]);
-    await new EmbeddingWorker({ db, provider: fakeProvider(), model: MODEL, sleep: noSleep }).runOnce(
+    await new EmbeddingWorker({ db, provider: fakeProvider(), model: MODEL, deniedGlobs: NO_DENY,
+      sleep: noSleep }).runOnce(
       "snap_1",
       "org_a"
     );
@@ -192,7 +201,8 @@ describe("EmbeddingWorker — idempotency", () => {
 describe("EmbeddingWorker — sır koruması (T-07)", () => {
   it("sorgu sır içeren chunk'ları dışlar", async () => {
     const db = createDb([row("c1")]);
-    await new EmbeddingWorker({ db, provider: fakeProvider(), model: MODEL, sleep: noSleep }).runOnce(
+    await new EmbeddingWorker({ db, provider: fakeProvider(), model: MODEL, deniedGlobs: NO_DENY,
+      sleep: noSleep }).runOnce(
       "snap_1",
       "org_a"
     );
@@ -205,7 +215,8 @@ describe("EmbeddingWorker — sır koruması (T-07)", () => {
     // Savunma derinligi: sorgu degisip sir gelse bile disari cikmaz.
     const db = createDb([row("c1", { contains_secret: true })]);
     const provider = fakeProvider();
-    const result = await new EmbeddingWorker({ db, provider, model: MODEL, sleep: noSleep }).runOnce(
+    const result = await new EmbeddingWorker({ db, provider, model: MODEL, deniedGlobs: NO_DENY,
+      sleep: noSleep }).runOnce(
       "snap_1",
       "org_a"
     );
@@ -216,6 +227,57 @@ describe("EmbeddingWorker — sır koruması (T-07)", () => {
   });
 });
 
+describe("EmbeddingWorker — firewall (P07 / Y-P07-005)", () => {
+  it("DENY kapsamındaki yolları SORGUDA eler", async () => {
+    const db = createDb([row("c1")]);
+    await new EmbeddingWorker({
+      db,
+      provider: fakeProvider(),
+      model: MODEL,
+      deniedGlobs: ["secrets/**", "vendor/**"],
+      sleep: noSleep
+    }).runOnce("snap_1", "org_a");
+
+    const select = db.calls.find((c) => /^SELECT c.id, c.content/i.test(c.sql));
+    // Adaylari bellege alip sonra filtrelemek, iceriklerini okumus olmak
+    // demektir (ADR-027).
+    expect(select?.sql).toContain("NOT (c.path ~ ANY($5::text[]))");
+
+    const patterns = select?.params[4] as string[];
+    expect(patterns.length).toBe(2);
+    expect(patterns.some((p) => p.includes("secrets"))).toBe(true);
+  });
+
+  it("DENY listesi boş olabilir ama BİLİNÇLİ verilmelidir", async () => {
+    // Alan zorunlu oldugu icin unutulamaz; bos vermek bir KARARDIR.
+    const db = createDb([row("c1")]);
+    await new EmbeddingWorker({
+      db,
+      provider: fakeProvider(),
+      model: MODEL,
+      deniedGlobs: [],
+      sleep: noSleep
+    }).runOnce("snap_1", "org_a");
+
+    const select = db.calls.find((c) => /^SELECT c.id, c.content/i.test(c.sql));
+    expect(select?.params[4]).toEqual([]);
+  });
+
+  it("glob doğrudan SQL'e gömülmez, regex parametresi olarak geçer", async () => {
+    const db = createDb([row("c1")]);
+    await new EmbeddingWorker({
+      db,
+      provider: fakeProvider(),
+      model: MODEL,
+      deniedGlobs: ["secrets/**"],
+      sleep: noSleep
+    }).runOnce("snap_1", "org_a");
+
+    const select = db.calls.find((c) => /^SELECT c.id, c.content/i.test(c.sql));
+    expect(select?.sql).not.toContain("secrets");
+  });
+});
+
 describe("EmbeddingWorker — sağlayıcı sırası", () => {
   it("sonuçları id ile eşleştirir (sıraya güvenmez)", async () => {
     const db = createDb([row("c1"), row("c2")]);
@@ -223,6 +285,7 @@ describe("EmbeddingWorker — sağlayıcı sırası", () => {
       db,
       provider: fakeProvider({ shuffle: true }),
       model: MODEL,
+      deniedGlobs: NO_DENY,
       sleep: noSleep
     }).runOnce("snap_1", "org_a");
 
@@ -246,7 +309,8 @@ describe("EmbeddingWorker — sağlayıcı sırası", () => {
     };
 
     const db = createDb([row("c1"), row("c2")]);
-    const result = await new EmbeddingWorker({ db, provider: partial, model: MODEL, sleep: noSleep }).runOnce(
+    const result = await new EmbeddingWorker({ db, provider: partial, model: MODEL, deniedGlobs: NO_DENY,
+      sleep: noSleep }).runOnce(
       "snap_1",
       "org_a"
     );
@@ -266,6 +330,7 @@ describe("EmbeddingWorker — retry", () => {
       db,
       provider,
       model: MODEL,
+      deniedGlobs: NO_DENY,
       maxAttempts: 3,
       sleep: noSleep
     }).runOnce("snap_1", "org_a");
@@ -282,6 +347,7 @@ describe("EmbeddingWorker — retry", () => {
       db,
       provider,
       model: MODEL,
+      deniedGlobs: NO_DENY,
       maxAttempts: 3,
       sleep: noSleep
     }).runOnce("snap_1", "org_a");
@@ -299,6 +365,7 @@ describe("EmbeddingWorker — retry", () => {
       db,
       provider,
       model: MODEL,
+      deniedGlobs: NO_DENY,
       maxAttempts: 2,
       sleep: noSleep
     }).runOnce("snap_1", "org_a");
@@ -310,7 +377,8 @@ describe("EmbeddingWorker — retry", () => {
   it("bilinmeyen model erken hata verir", async () => {
     const db = createDb([row("c1")]);
     await expect(
-      new EmbeddingWorker({ db, provider: fakeProvider(), model: "yok", sleep: noSleep }).runOnce(
+      new EmbeddingWorker({ db, provider: fakeProvider(), model: "yok", deniedGlobs: NO_DENY,
+      sleep: noSleep }).runOnce(
         "snap_1",
         "org_a"
       )
@@ -323,7 +391,8 @@ describe("EmbeddingWorker — batch", () => {
     const provider = fakeProvider({ maxBatchSize: 2 });
     const db = createDb([row("c1"), row("c2"), row("c3"), row("c4"), row("c5")]);
 
-    await new EmbeddingWorker({ db, provider, model: MODEL, sleep: noSleep }).runOnce("snap_1", "org_a");
+    await new EmbeddingWorker({ db, provider, model: MODEL, deniedGlobs: NO_DENY,
+      sleep: noSleep }).runOnce("snap_1", "org_a");
 
     // 5 chunk / 2 = 3 cagri.
     expect(provider.calls).toBe(3);
@@ -337,6 +406,7 @@ describe("EmbeddingWorker — batch", () => {
       db,
       provider,
       model: MODEL,
+      deniedGlobs: NO_DENY,
       batchSize: 10,
       maxAttempts: 1,
       sleep: noSleep
