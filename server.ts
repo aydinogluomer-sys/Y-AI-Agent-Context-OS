@@ -72,8 +72,8 @@ Interface expected:
   "contextOS": {
     "confidenceScore": 92.5,
     "totalScannedDocs": 1420,
-    "tokensInvolved": 12450000,
-    "compressedPackTokens": 48200,
+    "tokensInvolved": null,
+    "compressedPackTokens": null,
     "primaryFiles": [
       { "path": "string", "reason": "string", "role": "string" }
     ],
@@ -282,8 +282,17 @@ function generateFallbackSimulation(task: string, repo: string, isError = false,
       ]
     },
     costGovernance: {
-      tokenBudget: 120000,
-      estimatedCost: "$0.14 USD (92% cheaper than vanilla GPT-4 complete workspace scans)"
+      // P16 — UYDURMA MALIYET IDDIASI KALDIRILDI.
+      //
+      // Eski deger: "$0.14 USD (92% cheaper than vanilla GPT-4 complete
+      // workspace scans)". Bu sayi HICBIR olcume dayanmiyordu; sabitti.
+      // Bir urunun rakibinden %92 ucuz oldugunu iddia etmesi, o iddiayi
+      // olcmus olmasini gerektirir.
+      tokenBudget: null,
+      estimatedCost: null,
+      measured: false,
+      unavailableReason:
+        "Maliyet ve butce olculmedi. Karsilastirma harness'i P16'nin konusu."
     }
   };
 }

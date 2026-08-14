@@ -7,10 +7,10 @@
 
 | Ölçüt | Değer |
 |---|---|
-| Taranan dosya | 184 |
-| Toplam bulgu | **161** |
-| P0 (release blocker) | **115** |
-| P1 (production-critical) | **46** |
+| Taranan dosya | 244 |
+| Toplam bulgu | **132** |
+| P0 (release blocker) | **100** |
+| P1 (production-critical) | **32** |
 
 ## Kural bazlı dağılım
 
@@ -18,17 +18,17 @@
 |---|---|---:|---|
 | `assert-true` | P0 | 52 | assert("...", true) — koşulsuz geçen sahte assertion |
 | `skip-then-pass` | P0 | 36 | DB/bağımlılık yoksa atla ve yine de PASS say |
-| `fabricated-hash` | P0 | 1 | Math.random() ile üretilip hash gibi sunulan değer |
+| `fabricated-hash` | P0 | 0 | Math.random() ile üretilip hash gibi sunulan değer |
 | `settimeout-success` | P0 | 0 | setTimeout/delay sonrası koşulsuz başarı durumu |
 | `fallback-success` | P0 | 0 | Sağlayıcı/servis hatasında sahte başarıya düşme |
-| `simulation-generator` | P0 | 14 | Uydurma çıktı üreten fonksiyon |
-| `hardcoded-metric` | P1 | 7 | Ölçülmeden yazılmış metrik/confidence literal'i |
-| `literal-run-count` | P0 | 1 | Run sonucunda hesaplanmadan yazılmış sayaç |
-| `fabricated-diff` | P1 | 4 | Git'e bakılmadan üretilmiş diff/author kaydı |
+| `simulation-generator` | P0 | 1 | Uydurma çıktı üreten fonksiyon |
+| `hardcoded-metric` | P1 | 4 | Ölçülmeden yazılmış metrik/confidence literal'i |
+| `literal-run-count` | P0 | 0 | Run sonucunda hesaplanmadan yazılmış sayaç |
+| `fabricated-diff` | P1 | 0 | Git'e bakılmadan üretilmiş diff/author kaydı |
 | `embedded-secret` | P0 | 1 | Kaynak kodda gömülü / parçalanmış sır |
 | `permissive-fallback` | P0 | 10 | Hata durumunda izin veren güvenlik fallback'i |
-| `unconditional-flag` | P1 | 1 | Doğrulanmadan true yazılan güvenlik bayrağı |
-| `stub-dependency` | P1 | 6 | Gerçek analiz yerine stub bağımlılık kaydı |
+| `unconditional-flag` | P1 | 0 | Doğrulanmadan true yazılan güvenlik bayrağı |
+| `stub-dependency` | P1 | 0 | Gerçek analiz yerine stub bağımlılık kaydı |
 | `weak-e2e-assertion` | P1 | 0 | toBeLessThan(400/500) — 401/404 dahi geçiren E2E iddiası |
 | `random-primary-key` | P1 | 28 | Math.random() ile primary key üretimi (ADR-013 ihlali) |
 
@@ -36,31 +36,29 @@
 
 | Dosya | Bulgu |
 |---|---:|
-| `scripts/validate-vault.ts` | 46 |
-| `scripts/validate-segment-20-26.ts` | 23 |
-| `scripts/validate-segment-19-21.ts` | 18 |
-| `packages/context/src/index.ts` | 12 |
-| `scripts/validate-segment-1-10.ts` | 8 |
-| `scripts/validate-segment-15-18.ts` | 6 |
+| `scripts/validate-vault.ts` | 44 |
+| `scripts/validate-segment-20-26.ts` | 22 |
+| `scripts/validate-segment-19-21.ts` | 17 |
+| `scripts/validate-segment-1-10.ts` | 6 |
 | `scripts/validate-stage-34.ts` | 6 |
 | `scripts/validate-stage-35.ts` | 6 |
-| `apps/api/src/index.ts` | 4 |
-| `apps/web/src/lib/api/ai.ts` | 4 |
+| `scripts/validate-segment-15-18.ts` | 5 |
 | `scripts/validation-suite.ts` | 4 |
-| `packages/context/src/search-server.ts` | 3 |
 | `scripts/validate-phase-2-runner.ts` | 3 |
-| `scripts/validate-segment-11-14.ts` | 3 |
 | `apps/api/src/db.ts` | 2 |
+| `apps/api/src/index.ts` | 2 |
 | `scripts/validate-phase-3-startup.ts` | 2 |
+| `scripts/validate-segment-11-14.ts` | 2 |
 | `scripts/validate-stage-27.ts` | 2 |
 | `apps/api/src/startup-policy.ts` | 1 |
-| `apps/web/src/App.tsx` | 1 |
+| `apps/web/src/lib/api/ai.ts` | 1 |
 | `packages/security/src/secret-scanner/secret-scanner.test.ts` | 1 |
 | `scripts/run-validation-suite.ts` | 1 |
 | `scripts/validate-phase-5-evidence-integrity.ts` | 1 |
 | `scripts/validate-stage-30.ts` | 1 |
 | `scripts/validate-stage-31.ts` | 1 |
 | `scripts/validate-stage-32.ts` | 1 |
+| `scripts/validate-stage-33.ts` | 1 |
 
 ## Yorum
 

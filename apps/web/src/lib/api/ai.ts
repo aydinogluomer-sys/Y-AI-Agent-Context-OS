@@ -53,10 +53,14 @@ export interface AiSimulationResponse {
     difficulty: "Easy" | "Medium" | "Hard" | string;
   };
   contextOS: {
-    confidenceScore: number;
-    totalScannedDocs: number;
-    tokensInvolved: number;
-    compressedPackTokens: number;
+    // P16: bu alanlar OLCULMEDIGI surece null. Sifir degil — sifir
+    // "olctuk ve sifir cikti" demek olurdu.
+    confidenceScore: number | null;
+    totalScannedDocs: number | null;
+    tokensInvolved: number | null;
+    compressedPackTokens: number | null;
+    measured?: boolean;
+    unavailableReason?: string;
     primaryFiles: AiFileReference[];
     relatedFiles: AiFileReference[];
   };
@@ -99,8 +103,11 @@ export interface AiSimulationResponse {
     }>;
   };
   costGovernance: {
-    tokenBudget: number;
-    estimatedCost: string;
+    tokenBudget: number | null;
+    estimatedCost: string | null;
+    measured?: boolean;
+    unavailableReason?: string;
+    estimatedCostUnavailableReason?: string;
   };
 }
 
@@ -199,11 +206,28 @@ export function createLocalAiSimulation(
       riskLevel,
       difficulty: isDb || isAuth ? "Hard" : "Medium",
     },
+      // P16 — UYDURMA METRIKLER KALDIRILDI.
+      //
+      // P00 Truth Audit: burada `confidenceScore: 92.4`,
+      // `tokensInvolved: 12450000` ve `compressedPackTokens: 48200`
+      // LITERAL olarak uretiliyordu. Hicbiri olculmustu; hepsi sabitti.
+      // `docs/stages/stage-35-validation.md`'deki "%62-81 alan tasarrufu"
+      // iddiasi da bu literal'lerden geliyordu.
+      //
+      // Bir "context optimization" urunu, context'i iyilestirdigini
+      // OLCMEDEN bu sayilari gosteremez. Olcum harness'i P16'nin konusu
+      // ve bagimsiz etiketlenmis bir veri kumesi gerektiriyor.
+      //
+      // `null` = OLCULMEDI. Sifir degil: sifir "olctuk ve sifir cikti"
+      // demek olurdu.
     contextOS: {
-      confidenceScore: isUi ? 92.4 : 88.7,
-      totalScannedDocs: 23,
-      tokensInvolved: 12450000,
-      compressedPackTokens: 48200,
+      confidenceScore: null,
+      totalScannedDocs: null,
+      tokensInvolved: null,
+      compressedPackTokens: null,
+      measured: false,
+      unavailableReason:
+        "Olcum harness'i (P16) henuz kurulmadi; bagimsiz etiketlenmis veri kumesi gerekiyor.",
       primaryFiles,
       relatedFiles,
     },
@@ -335,7 +359,8 @@ export function createLocalAiSimulation(
     },
     costGovernance: {
       tokenBudget: 150000,
-      estimatedCost: "Local fallback: $0.00; provider mode depends on configured model.",
+      estimatedCost: null,
+      estimatedCostUnavailableReason: "Maliyet olculmedi; gercek saglayici cagrisi yok.",
     },
   };
 }

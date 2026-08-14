@@ -38,7 +38,10 @@
     "audit:false-green": "tsx scripts/audit/scan-false-green.ts",
     "audit:registry": "tsx scripts/audit/rebuild-feature-registry.ts",
     "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json",
-    "migrations:mapping": "tsx scripts/audit/regenerate-migration-mapping.ts"
+    "migrations:mapping": "tsx scripts/audit/regenerate-migration-mapping.ts",
+    "gate:drift": "tsx scripts/audit/verify-inventories.ts",
+    "gate:false-green": "tsx scripts/audit/scan-false-green.ts --gate",
+    "gate:all": "npm run typecheck && npm run gate:drift && npm run gate:false-green && npm run secret-scan && npx vitest run"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

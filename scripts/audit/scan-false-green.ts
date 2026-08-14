@@ -9,6 +9,7 @@
  *   tsx scripts/audit/scan-false-green.ts --gate     # bulgu varsa exit 1
  */
 
+import * as fs from "fs";
 import * as path from "path";
 import { REPO_ROOT, rel, walk, writeCsv, writeDoc } from "./lib";
 import { readLines } from "./lib";
@@ -263,10 +264,64 @@ build **fail** eder.
     console.log(`[audit]     ${rule.padEnd(22)} ${count}`);
   }
 
-  if (gateMode && findings.length > 0) {
-    console.error(`\n[GATE FAIL] ${findings.length} false-green bulgusu var (P0=${p0}).`);
+  if (gateMode) {
+    enforceRatchet(findings.length, p0);
+  }
+}
+
+/**
+ * P17 / Y-P17-008 — CIRCIR (ratchet) gate'i.
+ *
+ * NEDEN SIFIR DEGIL, CIRCIR
+ *   "Bulgu > 0 ise fail" kurali bugun 135 bulguyla CI'i kalici olarak
+ *   kirmis olurdu. Kirik bir gate, kapatilan bir gate'tir: ekip onu
+ *   atlamaya baslar ve koruma tamamen kaybolur.
+ *
+ *   Circir farkli bir soz verir: SAYI ARTAMAZ. Bugunku borc kabul
+ *   edilir, YENI borc reddedilir. Sayi dustukce taban kendiliginden
+ *   sikilasir ve geri gitmek imkansiz hale gelir.
+ *
+ * TABAN NEREDE
+ *   `docs/audit/false-green-ratchet.json`. Bu dosya elle DUSURULEBILIR
+ *   ama elle YUKSELTILMEMELIDIR; yukseltmek, borcu artirmayi mesru
+ *   kilmak olurdu. Script sayi dustugunde tabani KENDILIGINDEN gunceller.
+ */
+function enforceRatchet(total: number, p0: number): void {
+  const ratchetPath = path.join(REPO_ROOT, "docs/audit/false-green-ratchet.json");
+
+  let baseline: { total: number; p0: number };
+  try {
+    baseline = JSON.parse(fs.readFileSync(ratchetPath, "utf-8"));
+  } catch {
+    // Taban yoksa bugunku sayi taban olur.
+    baseline = { total, p0 };
+  }
+
+  if (total > baseline.total || p0 > baseline.p0) {
+    console.error(
+      `\n[GATE FAIL] False-green bulgusu ARTTI.\n` +
+        `  toplam: ${baseline.total} -> ${total}\n` +
+        `  P0    : ${baseline.p0} -> ${p0}\n\n` +
+        `Bugunku borc kabul edilir; YENI borc reddedilir. Ekledginiz kod\n` +
+        `assert(true), skip-then-pass, uydurma metrik ya da sabit hash\n` +
+        `iceriyor olabilir.`
+    );
     process.exit(1);
   }
+
+  if (total < baseline.total || p0 < baseline.p0) {
+    fs.writeFileSync(
+      ratchetPath,
+      JSON.stringify({ total, p0, updatedAt: new Date().toISOString() }, null, 2) + "\n",
+      "utf-8"
+    );
+    console.log(
+      `[GATE] Circir SIKILDI: toplam ${baseline.total} -> ${total}, P0 ${baseline.p0} -> ${p0}.`
+    );
+    return;
+  }
+
+  console.log(`[GATE] Circir korundu: toplam ${total}, P0 ${p0}.`);
 }
 
 main();

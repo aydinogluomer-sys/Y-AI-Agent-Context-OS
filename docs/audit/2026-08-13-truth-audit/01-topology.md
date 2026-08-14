@@ -1,6 +1,6 @@
 # 01 — Fiziksel Topoloji
 
-> Baseline commit: `88641fa26c2f74b788c5961ed0d878569e389a48`
+> Baseline commit: `b455586eff83f01df4b2f79d79765ae14dcc771e`
 
 ## Çalışma zamanı topolojisi
 

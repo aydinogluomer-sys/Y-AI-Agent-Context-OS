@@ -183,7 +183,12 @@ export function ModuleSimulationPanel({ tabId, projectId }: ModuleSimulationPane
     addLog(`[Compactor] Model: ${budgetModel}, Yöntem: ${budgetAlgo} ile sıkıştırma başladı.`);
     
     setTimeout(() => {
-      const reduction = budgetAlgo === "semantic" ? 0.72 : budgetAlgo === "huffman" ? 0.45 : 0.60;
+      // P16 — SABIT SIKISTIRMA ORANI KALDIRILDI.
+      // Bu satir, secilen algoritmaya gore SABIT bir oran donduruyordu
+      // (0.72 / 0.45 / 0.60) ve panel bunu olculmus bir tasarruf gibi
+      // gosteriyordu. Gercek oran ancak gercek chunk'lar uzerinde
+      // olculebilir (P16 harness).
+      const reduction = null;
       const initialTokens = budgetSlider * 1000;
       const finalTokens = Math.round(initialTokens * (1 - reduction));
       

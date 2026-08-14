@@ -43,8 +43,40 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: TypeScript Typecheck
+      # ---------------------------------------------------------------
+      # P17 / P19 — DÜRÜSTLÜK GATE'LERİ
+      #
+      # Bu adımlar P00 Truth Audit'in bulgularının geri gelmesini
+      # engeller. Her biri GERÇEKTEN KIRILABİLİR olduğu doğrulanmıştır;
+      # kırılamayan bir gate, olmayan bir gate'tir.
+      # ---------------------------------------------------------------
+
+      - name: "Gate — Strict Typecheck (kanonik kod)"
+        # `tsconfig.strict.json` yalnizca kanonik yollar icin strict.
+        # Legacy kod hala loose; ikisi ayri ayri kosuyor.
         run: pnpm run typecheck
+
+      - name: "Gate — Envanter drift (audit dokumanlari kaynakla tutarli mi)"
+        # P00'daki 30+ dokuman kaynaktan kopmustu. Bu gate, audit
+        # ciktilarinin kod degistiginde bayatlamasini engeller.
+        run: pnpm run gate:drift
+
+      - name: "Gate — False-green circiri (borc ARTAMAZ)"
+        # Sifir degil CIRCIR: bugunku borc kabul edilir, YENI borc
+        # reddedilir. "Bulgu > 0 ise fail" kurali CI'i kalici kirar ve
+        # kirik bir gate, kapatilan bir gate'tir.
+        run: pnpm run gate:false-green
+
+      - name: "Gate — Birim ve sozlesme testleri"
+        run: pnpm exec vitest run
+
+      - name: "Gate — Migration esleme tazeligi"
+        # MAPPING.md yeniden uretilir; fark varsa birileri migration
+        # ekleyip eslemeyi guncellememis demektir.
+        run: |
+          pnpm run migrations:mapping
+          git diff --exit-code migrations/MAPPING.md
+
 
       - name: Secret Leak Scan
         run: pnpm run secret-scan
