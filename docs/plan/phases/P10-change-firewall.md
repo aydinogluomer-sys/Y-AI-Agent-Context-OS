@@ -283,3 +283,126 @@ pnpm run test:e2e -- tests/e2e/change-firewall.spec.ts
 ```
 
 **`ChangeBoundary` sözleşmesi bu gate'te donar** — P12 buna bağımlıdır.
+
+---
+
+## Uygulama Kaydı (2026-08-14)
+
+### Tamamlanan görevler
+
+| Görev | Durum | Kanıt |
+|---|---|---|
+| Y-P10-001 boundary türetme | Tamam | `change-firewall/boundary.ts` + 16 test |
+| Y-P10-002 karar motoru | Tamam | `decide.ts` + 15 test |
+| Y-P10-003 hash-before/after | Tamam | write-race kontrolü sınır kontrolünden ÖNCE |
+| Y-P10-004 komut politikası | Tamam | `command-policy.ts` + 11 test (ALLOWLIST) |
+| Y-P10-005 onay şeması | Tamam (şema) | migration `0077`; akış P12 run FSM'ine bağlı |
+| writeFile enforcement | Tamam | `changeDecision` ZORUNLU alan — derleme kısıtı |
+| Migration'lar | Tamam | `0075`–`0078` |
+| Approval servisi + route'lar | **YAPILMADI** | run kavramı P12'de |
+| `task_boundaries` göçü + DROP | **YAPILMADI** | P19 |
+
+### Migration numaralandırması
+
+| Plan | Gerçek |
+|---|---|
+| 0085 change_boundaries | `0075_change_boundaries.sql` |
+| 0086 mutation_decisions | `0076_mutation_decisions.sql` |
+| 0087 approval_requests | `0077_approval_requests.sql` |
+| 0088 command_policies | `0078_command_policies.sql` |
+| 0089 file_locks + run_id | **ERTELENDİ** — run tablosu P12'de |
+| 0090 eski tabloların göçü + DROP | **ERTELENDİ** — P19 |
+
+### Karar 1 — Boundary task'tan türetilir, kullanıcıdan alınmaz (ADR-038)
+
+Kullanıcı boundary'yi **genişletemez**, yalnız onay verebilir. Sebep
+basit: kullanıcının genişletebildiği bir sınır, sınır değildir. Bir agent
+"bu dosyayı da eklememe izin ver" diyebilseydi, sınırın tek işlevi bir
+tıklama eklemek olurdu.
+
+Türetme girdileri: manifest fragment yolları (agent'ın **gördüğü**
+dosyalar), graph'taki doğrudan bağımlılar/tersler, test konvansiyonu ve
+policy sınıflandırması.
+
+**Görev metni tek başına yeterli değil** — metin bir niyet beyanıdır, kod
+gerçeğinin kendisi değil.
+
+### Karar 2 — Tek dosya glob'u, dizin glob'u değil
+
+`src/a.ts` manifest'te olduğu için `src/**` yazma izni vermek,
+boundary'yi anlamsız derecede genişletirdi. Her manifest fragment'ı
+**kendi yolu** kadar izin üretir.
+
+Var olmayan test yollarına da izin verilmez: bu, agent'ın oraya yeni
+dosya açabilmesi demektir ve ayrı bir karardır.
+
+### Karar 3 — Enforcement mutation noktasında (ADR-039)
+
+Agent'ın "niyeti" değil, **gerçek yazma girişimi** değerlendirilir. Agent
+planını sunmayabilir, planından sapabilir ya da planı hiç üretmeyebilir.
+Tek güvenilir nokta dosya sistemine yazma anıdır.
+
+Bunun somut biçimi: `LocalRepositoryAdapter.writeFile` artık
+`changeDecision` **zorunlu alanını** alıyor. Unutmak bir çalışma zamanı
+kontrolü değil, **derleme hatası**. `ASK_APPROVAL` durumunda "onay
+bekleniyor" diye geçici izin verilmez — onay geldiğinde YENİ bir karar
+alınır.
+
+### Karar 4 — Write-race kontrolü sınır kontrolünden ÖNCE (ADR-041)
+
+Sınır içinde bile olsa, bayat bir hash üzerine yazmak başkasının işini
+sessizce siler. "Son yazan kazanır" davranışı, iki agent aynı dosyada
+çalıştığında birinin işini yok etmek demektir (T-20).
+
+### Karar 5 — Silme, değiştirmekten farklı muamele görür
+
+`expected` bandında bile silme **onay ister**. Bir değişiklik diff'te
+görünür; silme ise dosyanın var olduğunu bilmeyen için görünmezdir.
+
+### Karar 6 — Komut politikası ALLOWLIST
+
+Yasaklı komut listesi tutmak, bilinen kötüleri sayıp geri kalanı serbest
+bırakmaktır — ve yeni bir kötü her zaman vardır. Varsayılan politikada
+`docker`, `kubectl`, `ssh`, `curl`, `wget`, `rm` **bilerek yok**:
+bunlar dış dünyaya etki eder.
+
+Ek savunmalar: komut adında yol ayracı reddedilir (`./git` çalıştırmak
+`git` çalıştırmak değildir), argümanlarda kabuk metakarakteri
+reddedilir, `--force`/`--hard`/`push` gibi yıkıcı git argümanları
+reddedilir.
+
+### Kabul kriterlerinin durumu
+
+| Kriter | Durum | Not |
+|---|---|---|
+| Boundary task'tan türetiliyor | Evet | 16 test |
+| Kullanıcı genişletemiyor | Evet | API'de genişletme yolu yok |
+| Mutation backend'de değerlendiriliyor | Evet | `writeFile` derleme kısıtı |
+| DENY/ALLOW/ASK_APPROVAL kararı | Evet | 15 test |
+| Sınır dışı yazım reddediliyor | Evet | varsayılan izin yok |
+| hash-before/after | Evet | race kontrolü önce |
+| Komut politikası | Evet | ALLOWLIST + 11 test |
+| Onay akışı uçtan uca | **HAYIR** | run FSM'i P12 |
+| `boundary_checks` göçü | **HAYIR** | P19 |
+
+### Gate sonuçları
+
+```text
+typecheck (loose + strict)   0 hata
+vitest                       988 passed | 4 skipped (992)
+build                        OK
+secret-scan                  0 yeni bulgu
+drift (verify-inventories)   8/8 kontrol geçti
+```
+
+### Bu fazda kapatılmayanlar
+
+- **Onay servisi ve route'ları.** `approval_requests` şeması hazır ve
+  kısıtları (kim/ne zaman/neden üçlüsü zorunlu) tanımlı. Ama bir onay
+  akışı run'ı bloklamalı ve run FSM'i **P12'nin konusu**. Şemasız bir
+  akış yazmak yerine akışsız bir şema bırakmak daha az yanıltıcıdır.
+- **`file_locks` + `run_id`.** Aynı sebep: run tablosu P12'de.
+- **`task_boundaries` / `boundary_checks` göçü ve DROP.** Eski tablolar
+  duruyor; okuyucuları yok (route'lar 410). P19'da temizlenecek.
+- **`tests/security/{approval-bypass,write-race,command-injection}.spec.ts`**
+  — birim seviyesinde karşılıkları yazıldı; canlı senaryo P19.

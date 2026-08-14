@@ -307,12 +307,35 @@ export class LocalRepositoryAdapter implements WritableRepositoryAdapter {
    * `expectedHashBefore` verilmişse ve dosyanın mevcut hash'i uymuyorsa
    * yazım reddedilir. P10 Change Firewall bu alanı zorunlu kılacak.
    */
+  /**
+   * Dosya yazimi.
+   *
+   * P10 / ADR-039 — `changeDecision` ZORUNLU ALAN, opsiyonel DEGIL.
+   * Change Firewall karari olmadan yazma yapilamaz ve bu bir calisma
+   * zamani kontrolu degil, DERLEME kisitidir: alani unutmak tip hatasi
+   * verir.
+   *
+   * Karar "ALLOW" disinda bir deger tasiyorsa yazim REDDEDILIR.
+   * Cagiran, "ASK_APPROVAL" durumunda onay akisini isletmek ve YENI bir
+   * karar almakla yukumludur — burada "onay bekleniyor" diye gecici
+   * izin verilmez.
+   */
   async writeFile(params: {
     relativePath: string;
     content: string;
     expectedHashBefore: string | null;
+    changeDecision: "ALLOW" | "DENY" | "ASK_APPROVAL";
+    decisionReason: string;
   }): Promise<{ hashBefore: string | null; hashAfter: string }> {
     this.assertConnected();
+
+    if (params.changeDecision !== "ALLOW") {
+      throw new AdapterError(
+        "PATH_REJECTED",
+        `Change Firewall yazimi engelledi (${params.changeDecision}).`,
+        params.decisionReason
+      );
+    }
 
     const check = this.guard.check(params.relativePath);
     if (!isPathAllowed(check)) {

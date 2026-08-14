@@ -1,8 +1,8 @@
 table,migration_version,defined_at_line,column_count,has_project_id,has_org_id,reads,writes,verdict
-projects,1.0.0-projects-foundation,10,7,false,true,88,50,KEEP
+projects,1.0.0-projects-foundation,10,7,false,true,90,51,KEEP
 memberships,1.0.1-memberships-foundation,10,6,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
-tasks,1.0.2-tasks-foundation,10,13,true,true,99,78,KEEP
-context_items,1.0.3-context-vault-foundation,10,13,true,false,37,28,KEEP + ALTER (needs organization_id)
+tasks,1.0.2-tasks-foundation,10,13,true,true,101,78,KEEP
+context_items,1.0.3-context-vault-foundation,10,13,true,false,38,28,KEEP + ALTER (needs organization_id)
 context_chunks,1.0.3-context-vault-foundation,27,6,false,false,12,10,KEEP + ALTER (needs organization_id)
 graph_nodes,1.0.4-knowledge-graph-foundation,10,7,true,true,21,14,KEEP
 graph_edges,1.0.4-knowledge-graph-foundation,21,7,true,true,19,19,KEEP
@@ -42,7 +42,7 @@ permission_overrides,1.3.3-permission-kernel-mvp,38,11,true,false,0,2,WRITE-ONLY
 cas_blobs,1.3.4-artifact-cas-mvp,10,12,true,false,5,2,KEEP + ALTER (needs organization_id)
 artifact_versions,1.3.4-artifact-cas-mvp,26,21,true,false,14,7,KEEP + ALTER (needs organization_id)
 organizations,2.0.0-organizations,12,7,false,false,2,0,READ-ONLY (never written) -> investigate
-users,2.0.1-users,11,8,false,false,5,3,KEEP + ALTER (needs organization_id)
+users,2.0.1-users,11,8,false,false,6,3,KEEP + ALTER (needs organization_id)
 org_memberships,2.0.2-org-memberships,8,6,false,true,5,0,READ-ONLY (never written) -> investigate
 project_memberships,2.0.3-project-memberships,12,6,true,false,10,2,KEEP + ALTER (needs organization_id)
 service_identities,2.0.4-service-identities,11,8,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
@@ -67,3 +67,7 @@ context_universes,2.5.2-context-universes,23,13,true,true,0,0,"DEAD (0 read, 0 w
 context_manifests,2.6.0-context-manifests,23,21,true,true,0,0,"DEAD (0 read, 0 write) -> DROP"
 context_manifest_items,2.6.1-context-manifest-items,24,19,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
 context_manifest_exclusions,2.6.2-context-manifest-exclusions,21,10,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
+change_boundaries,2.7.0-change-boundaries,26,13,true,true,0,0,"DEAD (0 read, 0 write) -> DROP"
+mutation_decisions,2.7.1-mutation-decisions,22,16,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
+approval_requests,2.7.2-approval-requests,20,11,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
+command_policies,2.7.3-command-policies,22,8,true,true,0,0,"DEAD (0 read, 0 write) -> DROP"

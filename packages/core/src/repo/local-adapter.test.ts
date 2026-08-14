@@ -222,7 +222,9 @@ describe("LocalRepositoryAdapter — yazma (T-20)", () => {
       relativePath: "src/new.ts",
       content: "export const x = 1;\n",
       expectedHashBefore: null
-    });
+    ,
+      changeDecision: "ALLOW" as const,
+      decisionReason: "test: sinir ici"});
     expect(r.hashBefore).toBeNull();
     expect(r.hashAfter).toMatch(/^[0-9a-f]{64}$/);
     expect(fs.readFileSync(path.join(scratch, "src", "new.ts"), "utf-8")).toBe("export const x = 1;\n");
@@ -230,21 +232,29 @@ describe("LocalRepositoryAdapter — yazma (T-20)", () => {
 
   it("hash eşleşmesiyle üzerine yazar", async () => {
     const a = await adapter();
-    const first = await a.writeFile({ relativePath: "x.ts", content: "a", expectedHashBefore: null });
+    const first = await a.writeFile({ relativePath: "x.ts", content: "a", expectedHashBefore: null ,
+      changeDecision: "ALLOW" as const,
+      decisionReason: "test: sinir ici"});
     const second = await a.writeFile({
       relativePath: "x.ts",
       content: "b",
       expectedHashBefore: first.hashAfter
-    });
+    ,
+      changeDecision: "ALLOW" as const,
+      decisionReason: "test: sinir ici"});
     expect(second.hashBefore).toBe(first.hashAfter);
   });
 
   it("hash uyuşmazlığında yazımı REDDEDER (eşzamanlı değişiklik)", async () => {
     const a = await adapter();
-    await a.writeFile({ relativePath: "y.ts", content: "orijinal", expectedHashBefore: null });
+    await a.writeFile({ relativePath: "y.ts", content: "orijinal", expectedHashBefore: null ,
+      changeDecision: "ALLOW" as const,
+      decisionReason: "test: sinir ici"});
 
     await expect(
-      a.writeFile({ relativePath: "y.ts", content: "cakisan", expectedHashBefore: "f".repeat(64) })
+      a.writeFile({ relativePath: "y.ts", content: "cakisan", expectedHashBefore: "f".repeat(64) ,
+      changeDecision: "ALLOW" as const,
+      decisionReason: "test: sinir ici"})
     ).rejects.toBeInstanceOf(AdapterError);
 
     // Dosya DEGISMEMIS olmali.
@@ -254,20 +264,26 @@ describe("LocalRepositoryAdapter — yazma (T-20)", () => {
   it("denylist'teki yola yazımı reddeder", async () => {
     const a = await adapter();
     await expect(
-      a.writeFile({ relativePath: ".env", content: "SECRET=x", expectedHashBefore: null })
+      a.writeFile({ relativePath: ".env", content: "SECRET=x", expectedHashBefore: null ,
+      changeDecision: "ALLOW" as const,
+      decisionReason: "test: sinir ici"})
     ).rejects.toBeInstanceOf(AdapterError);
   });
 
   it("traversal ile yazımı reddeder", async () => {
     const a = await adapter();
     await expect(
-      a.writeFile({ relativePath: "../escape.ts", content: "x", expectedHashBefore: null })
+      a.writeFile({ relativePath: "../escape.ts", content: "x", expectedHashBefore: null ,
+      changeDecision: "ALLOW" as const,
+      decisionReason: "test: sinir ici"})
     ).rejects.toBeInstanceOf(AdapterError);
   });
 
   it("geçici dosya bırakmaz (atomik rename)", async () => {
     const a = await adapter();
-    await a.writeFile({ relativePath: "atomic.ts", content: "x", expectedHashBefore: null });
+    await a.writeFile({ relativePath: "atomic.ts", content: "x", expectedHashBefore: null ,
+      changeDecision: "ALLOW" as const,
+      decisionReason: "test: sinir ici"});
     const leftovers = fs.readdirSync(scratch).filter((f) => f.endsWith(".tmp"));
     expect(leftovers).toEqual([]);
   });
@@ -355,3 +371,55 @@ describe("classifyFileShape", () => {
     expect(classifyFileShape("src/a.ts", src).isMinified).toBe(false);
   });
 });
+
+describe("LocalRepositoryAdapter — Change Firewall (P10 / ADR-039)", () => {
+  it("DENY karariyla yazim REDDEDILIR", async () => {
+    const adapter = new LocalRepositoryAdapter(repoDir);
+    await adapter.connect();
+
+    await expect(
+      adapter.writeFile({
+        relativePath: "src/yeni.ts",
+        content: "x",
+        expectedHashBefore: null,
+        changeDecision: "DENY",
+        decisionReason: "sinir disi"
+      })
+    ).rejects.toThrow(/Change Firewall yazimi engelledi/);
+  });
+
+  it("ASK_APPROVAL karariyla da yazim REDDEDILIR", async () => {
+    // "Onay bekleniyor" diye gecici izin verilmez: onay geldiginde
+    // YENI bir karar alinir.
+    const adapter = new LocalRepositoryAdapter(repoDir);
+    await adapter.connect();
+
+    await expect(
+      adapter.writeFile({
+        relativePath: "src/yeni.ts",
+        content: "x",
+        expectedHashBefore: null,
+        changeDecision: "ASK_APPROVAL",
+        decisionReason: "migration onay ister"
+      })
+    ).rejects.toThrow(/ASK_APPROVAL/);
+  });
+
+  it("reddedilen yazim dosyayi OLUSTURMAZ", async () => {
+    const adapter = new LocalRepositoryAdapter(repoDir);
+    await adapter.connect();
+
+    await adapter
+      .writeFile({
+        relativePath: "src/olusmamali.ts",
+        content: "x",
+        expectedHashBefore: null,
+        changeDecision: "DENY",
+        decisionReason: "sinir disi"
+      })
+      .catch(() => undefined);
+
+    await expect(adapter.readFile("src/olusmamali.ts")).rejects.toBeTruthy();
+  });
+});
+

@@ -98,5 +98,9 @@ migrate edilmiş veritabanları yeniden çalıştırılmaz.
 | 0072 | `0072_context_manifests.sql` | `2.6.0-context-manifests` | yeni | var |
 | 0073 | `0073_context_manifest_items.sql` | `2.6.1-context-manifest-items` | yeni | var |
 | 0074 | `0074_context_manifest_exclusions.sql` | `2.6.2-context-manifest-exclusions` | yeni | var |
+| 0075 | `0075_change_boundaries.sql` | `2.7.0-change-boundaries` | yeni | var |
+| 0076 | `0076_mutation_decisions.sql` | `2.7.1-mutation-decisions` | yeni | var |
+| 0077 | `0077_approval_requests.sql` | `2.7.2-approval-requests` | yeni | var |
+| 0078 | `0078_command_policies.sql` | `2.7.3-command-policies` | yeni | var |
 
-Toplam: **74** migration (35 göç + 39 yeni).
+Toplam: **78** migration (35 göç + 43 yeni).
