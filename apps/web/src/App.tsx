@@ -814,106 +814,47 @@ export default function App() {
             {/* Modal Body Scroll Area */}
             <div className="overflow-y-auto space-y-4 flex-1 pr-1 scrollbar-thin">
               {modalTab === "db" && (
-                <form onSubmit={workspace.handleConfigureDb} className="space-y-4">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-steel-muted font-mono text-[10px]">BAĞLANTI MODU:</span>
-                    <button
-                      type="button"
-                      onClick={() => workspace.setUseRawString(!workspace.useRawString)}
-                      className="text-[10px] font-mono text-optic-cyan hover:underline bg-transparent border-none cursor-pointer"
-                    >
-                      {workspace.useRawString ? "Ayrıştırılmış Alanlara Geç" : "Ham Connection String Kullan"}
-                    </button>
+                <div className="space-y-4">
+                  {/*
+                    P17 / P0-12 KALINTISI KALDIRILDI.
+
+                    Burada tam islevli bir kimlik bilgisi formu duruyordu:
+                    ham connection string, kullanici adi ve <input type="password">
+                    ile veritabani parolasi. Buton "Veritabanini Bagla ve Test Et"
+                    diyordu.
+
+                    Formun arkasindaki POST /api/db/configure P02'de SILINDI
+                    (P0-2: govdeden connection string alip global db referansini
+                    calisma zamaninda degistiriyor, duz metin parolayi .env'e
+                    yaziyordu). Yani form kaldi ama HICBIR SEY YAPMIYORDU.
+
+                    Calismayan bir parola alanini birakmak iki ayri zarar uretir:
+                    (1) kullaniciyi uretim veritabani parolasini uygulama arayuzune
+                    yazmaya alistirir — bu tam olarak kimlik avinin isledigi
+                    refleksdir; (2) buton yalan soyler.
+
+                    Baglanti bilgisi artik yalniz ortam degiskeninden gelir.
+                  */}
+                  <div className="p-4 rounded-lg border border-glass-border bg-black/40 space-y-3">
+                    <div className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
+                      Veritabanı Yapılandırması
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Veritabanı bağlantısı arayüzden yapılandırılmaz. Bağlantı
+                      bilgisi <code className="text-optic-cyan">DATABASE_URL</code> ortam
+                      değişkeninden veya secret manager'dan okunur (ADR-073).
+                    </p>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Bu ekranda daha önce bir parola alanı vardı. Arkasındaki
+                      uç nokta güvenlik nedeniyle kaldırıldığı için form hiçbir
+                      şey yapmıyordu; çalışmayan bir parola alanı bırakmak yerine
+                      alan tamamen silindi.
+                    </p>
+                    <div className="text-[10px] text-zinc-500 font-mono pt-1 border-t border-glass-border/40">
+                      Bağlantı durumu: <span className="text-slate-300">GET /api/readyz</span>
+                    </div>
                   </div>
-
-                  {workspace.configResultMsg && (
-                    <div className={`p-3 rounded-lg border text-xs font-mono ${
-                      workspace.configResultMsg.success
-                        ? "bg-evidence-green/10 border-evidence-green/30 text-evidence-green"
-                        : "bg-rose-500/10 border-rose-500/30 text-rose-400"
-                    }`}>
-                      {workspace.configResultMsg.text}
-                    </div>
-                  )}
-
-                  {workspace.useRawString ? (
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">PostgreSQL / Supabase Bağlantı Linki</label>
-                      <input
-                        type="text"
-                        value={workspace.dbConnStr}
-                        onChange={(e) => workspace.setDbConnStr(e.target.value)}
-                        placeholder="postgresql://postgres:pass@db.supabase.co:5432/postgres"
-                        className="w-full text-xs text-slate-200 p-2.5 rounded-lg border border-glass-border bg-black focus:border-optic-cyan/40 focus:outline-none font-mono"
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="col-span-2 space-y-1">
-                          <label className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">Sunucu Host</label>
-                          <input
-                            type="text"
-                            value={workspace.dbHost}
-                            onChange={(e) => workspace.setDbHost(e.target.value)}
-                            className="w-full text-xs text-slate-200 p-2 rounded-lg border border-glass-border bg-black focus:border-optic-cyan/40 focus:outline-none font-mono"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">Port</label>
-                          <input
-                            type="text"
-                            value={workspace.dbPort}
-                            onChange={(e) => workspace.setDbPort(e.target.value)}
-                            className="w-full text-xs text-slate-200 p-2 rounded-lg border border-glass-border bg-black focus:border-optic-cyan/40 focus:outline-none font-mono"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">Kullanıcı Adı</label>
-                          <input
-                            type="text"
-                            value={workspace.dbUsername}
-                            onChange={(e) => workspace.setDbUsername(e.target.value)}
-                            className="w-full text-xs text-slate-200 p-2 rounded-lg border border-glass-border bg-black focus:border-optic-cyan/40 focus:outline-none font-mono"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">Veritabanı Adı</label>
-                          <input
-                            type="text"
-                            value={workspace.dbName}
-                            onChange={(e) => workspace.setDbName(e.target.value)}
-                            className="w-full text-xs text-slate-200 p-2 rounded-lg border border-glass-border bg-black focus:border-optic-cyan/40 focus:outline-none font-mono"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">Veritabanı Şifresi</label>
-                        <input
-                          type="password"
-                          value={workspace.dbPassword}
-                          onChange={(e) => workspace.setDbPassword(e.target.value)}
-                          placeholder="PostgreSQL / Supabase şifrenizi girin..."
-                          className="w-full text-xs text-slate-200 p-2 rounded-lg border border-glass-border bg-black focus:border-optic-cyan/40 focus:outline-none font-mono"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="pt-3 border-t border-glass-border/40 flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={workspace.configPending}
-                      className="px-4 py-2 bg-optic-cyan/15 hover:bg-optic-cyan/30 border border-optic-cyan/40 text-optic-cyan text-xs rounded-xl font-bold font-mono uppercase transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      {workspace.configPending ? "Bağlanıyor..." : "Veritabanını Bağla ve Test Et"}
-                    </button>
-                  </div>
-                </form>
+                </div>
               )}
 
               {modalTab === "ai" && (

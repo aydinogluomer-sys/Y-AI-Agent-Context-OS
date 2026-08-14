@@ -7,7 +7,7 @@
 
 | Ölçüt | Değer |
 |---|---|
-| Taranan dosya | 247 |
+| Taranan dosya | 250 |
 | Toplam bulgu | **132** |
 | P0 (release blocker) | **100** |
 | P1 (production-critical) | **32** |

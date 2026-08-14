@@ -13,14 +13,14 @@ belgeye de uygulanır: bir madde tamam değilse **TAMAM DEĞİL** yazar.
 
 | Ölçüm | Değer | Kaynak |
 |---|---|---|
-| Birim/sözleşme testi | **1145 passed, 4 skipped** | `vitest run` |
-| Test dosyası | 44 | `vitest run` |
+| Birim/sözleşme testi | **1158 passed, 4 skipped** | `vitest run` |
+| Test dosyası | 46 | `vitest run` |
 | Typecheck | **0 hata** (loose + strict) | `npm run typecheck` |
 | Build | **OK** | `npm run build` |
 | Migration | **82** (35 göç + 47 yeni) | `migrations/*.sql` |
 | Envanter drift | **8/8 kontrol geçti** | `npm run gate:drift` |
-| Sır taraması | **0 yeni bulgu** (71 kabul edilmiş) | `npm run secret-scan` |
-| False-green çırçır | **135 toplam / 100 P0** (taban kilitli) | `npm run gate:false-green` |
+| Sır taraması | **0 yeni bulgu** (70 kabul edilmiş) | `npm run secret-scan` |
+| False-green çırçır | **132 toplam / 100 P0** (taban kilitli) | `npm run gate:false-green` |
 | UI dürüstlük açığı | **0** (P00'da 103) | `inventory-ui` |
 | 410'a kapatılan legacy route | **17** | API envanteri |
 
@@ -49,7 +49,7 @@ Gate zinciri tek komutla çalışır: `npm run gate:all`.
 | P14 Evidence | ⚠️ **KISMİ** | Hash zinciri + şema hazır; **run'a bağlanmadı** |
 | P15 UI konsolidasyon | ⚠️ **KISMİ** | Dürüstlük değişmezi kuruldu; **IA yeniden yazımı yapılmadı** |
 | P16 Benchmark | ⚠️ **KISMİ** | Uydurma metrikler silindi; **ölçüm harness'ı yok** |
-| P17 Security hardening | ✅ | False-green çırçır gate'i CI'a bağlandı |
+| P17 Security hardening | ✅ | False-green çırçır gate'i CI'a bağlandı; **P0-7 kapatıldı** |
 | P18 Observability | ⚠️ **KISMİ** | Bağımlılık bazlı hazırlık probe'u + metrik defteri; **tracing ve yük ölçümü yok** |
 | P19 CI/CD | ✅ | 5 dürüstlük gate'i CI'da |
 | P20 Kabul | ✅ | Bu belge |
@@ -90,10 +90,58 @@ manifest (P09) → boundary (P10) → adapter sözleşmesi (P11)
 | P0-6 | Unscoped task route'ları (IDOR) | P02 |
 | P0-8 | `context/isolated-retrieve` unscoped | P02 |
 | P0-9 | Path traversal | P03 |
+| P0-7 | **İstemcinin `subject` nesnesi yetki değerlendirmesine yayılıyordu** | **P17** |
 | P0-10 | **SQL enjeksiyonu** (`${sourceTable}`) | **P09** |
 | P0-11 | Sır tarayıcısında gömülü parola | P03 |
+| P0-12 | `config/inspect` yanıtından düz metin parola React state'ine | P02 |
 
-**10 / 13 kapatıldı.** Kalan 3'ü agent runtime'ına bağlı (P11 wire-up).
+**12 / 13 kapatıldı.** Kalan **tek** bulgu P0-13'tür (sahte agent run) ve
+gerçek bir `adapter.start()` gerektirir — §3'teki tek kırık halka.
+
+> **Önceki sürüm düzeltmesi.** Bu bölüm daha önce "10 / 13 kapatıldı,
+> kalan 3'ü agent runtime'ına bağlı" diyordu. Bu **yanlıştı**: P0-12 zaten
+> P02'de kapatılmıştı ama tabloya işlenmemişti, P0-7 ise hiç kapatılmamıştı
+> ve agent runtime'a **bağlı değildi** — yalnız bir HTTP handler'ında
+> duruyordu. Sayının yanlış olması, kapatılabilecek bir P0'ı "bloke"
+> sayıldığı için gözden kaçırmıştı.
+
+### P0-7 ne yapıyordu
+
+`POST /api/projects/:id/permissions/evaluate` istemcinin gövdede
+gönderdiği `subject` nesnesini olduğu gibi yayıyordu:
+
+```ts
+subject: { ...subject, project_id: projectId }
+```
+
+İstemci `subject_type: "system"` gönderip **sistem kimliğiyle** karar
+verdirebiliyordu; seed policy `allow / system / hepsi / hepsi` olduğu için
+sonuç her zaman ALLOW oluyor ve **audit kaydı da o sahte kimlikle**
+yazılıyordu (ADR-017 ihlali: audit aktörü her zaman doğrulanmış
+principal olmalıdır).
+
+Özne türevi artık HTTP katmanından ayrı bir modülde
+(`apps/api/src/domain/identity/evaluation-subject.ts`) ve fonksiyon
+**istek gövdesini parametre olarak bile almıyor** — gövdeye erişimi
+olmayan bir fonksiyon gövdeden kimlik sızdıramaz. Gövdede `subject`
+gönderilirse yanıt `subjectIgnored: true` ile bunu **açıkça** bildirir;
+sessizce yok saymak, çağıranın gönderdiği kimliğin uygulandığını
+sanmasına yol açardı.
+
+### P0-12'nin kalıntısı da temizlendi
+
+P02'de `config/inspect` regex'i silinmişti, ama arayüzde **tam işlevli
+kimlik bilgisi formu** duruyordu: ham connection string, kullanıcı adı ve
+`<input type="password">`. Arkasındaki `POST /api/db/configure` P02'de
+silindiği için form **hiçbir şey yapmıyordu** — ama kullanıcıdan hâlâ
+üretim parolası istiyordu. Ayrıca `dbHost` varsayılanı **gerçek bir
+Supabase host adıydı** ve ön yüz paketine gömülü geliyordu (P0-11 ile
+aynı aile).
+
+Form kaldırıldı; yerine `DATABASE_URL`'in nereden geldiğini anlatan durgun
+bir panel kondu. Çalışmayan bir parola alanını bırakmak iki ayrı zarar
+üretir: kullanıcıyı üretim parolasını uygulama arayüzüne yazmaya alıştırır
+(kimlik avının işlediği refleks), ve buton yalan söyler.
 
 ---
 
@@ -170,7 +218,8 @@ ayrım her test dosyasının başında yazılıdır.
 
 **Bu sürüm üretime alınamaz.**
 
-Sebep tek: agent çalıştırma zinciri kapalı değil. Ürünün üç sütunundan
+Sebep tek: agent çalıştırma zinciri kapalı değil. Açık kalan **tek** P0
+güvenlik bulgusu (P0-13) da aynı sebebe bağlıdır. Ürünün üç sütunundan
 ikisi (**CONTEXT** ve **PROOF**) uçtan uca kurulmuş ve test edilmiş
 durumda; üçüncüsü (**CONTROL**) sınır hesabı ve karar motoruna kadar
 kurulmuş ama uygulanacağı bir agent oturumu yok.

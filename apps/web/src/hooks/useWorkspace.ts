@@ -16,17 +16,21 @@ export function useWorkspace() {
   const [newProjectDesc, setNewProjectDesc] = useState("");
   const [isCreatingProj, setIsCreatingProj] = useState(false);
 
-  // Database Connection configuration modal states
+  /**
+   * [P17 / P0-12 kalintisi] Veritabani kimlik bilgisi state'i KALDIRILDI.
+   *
+   * Burada dbUsername / dbPassword / dbHost / dbPort / dbName / dbConnStr
+   * tutuluyordu ve bir <input type="password"> ile besleniyordu. Arkasindaki
+   * POST /api/db/configure P02'de silindiginden form hicbir sey yapmiyordu.
+   *
+   * Ayrica `dbHost` varsayilani GERCEK bir Supabase host adiydi ve on yuz
+   * paketine gomulu geliyordu — P0-11 ile ayni aile (kaynak koda gomulu
+   * altyapi kimligi). Altyapi adresi bir UI varsayilani degildir.
+   *
+   * Modal hala aciliyor; icerigi artik DATABASE_URL'in nereden geldigini
+   * anlatan durgun bir panel.
+   */
   const [showConfigModal, setShowConfigModal] = useState(false);
-  const [dbUsername, setDbUsername] = useState("postgres");
-  const [dbPassword, setDbPassword] = useState("");
-  const [dbHost, setDbHost] = useState("db.vnnfcwpywdxepdwwuqoo.supabase.co");
-  const [dbPort, setDbPort] = useState("5432");
-  const [dbName, setDbName] = useState("postgres");
-  const [dbConnStr, setDbConnStr] = useState("");
-  const [useRawString, setUseRawString] = useState(false);
-  const [configPending, setConfigPending] = useState(false);
-  const [configResultMsg, setConfigResultMsg] = useState<{ success: boolean; text: string } | null>(null);
 
   // Global Telemetry Systems
   const [healthStatus, setHealthStatus] = useState<any>(null);
@@ -100,42 +104,8 @@ export function useWorkspace() {
     }
   };
 
-  /**
-   * [P02 / Y-P02-009] P0-12 KAPATILDI.
-   *
-   * Onceki hali GET /api/config/inspect yanitindaki DATABASE_URL'i regex'leyip
-   * DUZ METIN PAROLAYI React state'ine yaziyordu; parola bir <input> value'sunda
-   * DOM'da bulunuyordu. Endpoint de silindi (P0-2 ile ayni ailede).
-   *
-   * Baglanti bilgisi artik istemciye hic gonderilmez.
-   */
-  const loadConfigInspect = async () => {
-    // Bilerek bos: istemcinin veritabani baglanti bilgisine ihtiyaci yok.
-  };
-
-  /**
-   * [P02 / Y-P02-009] P0-2 KAPATILDI.
-   *
-   * POST /api/db/configure silindi: govdeden connection string alip global db
-   * referansini calisma zamaninda degistiriyor ve duz metin parolayi .env'e
-   * yaziyordu (SSRF + credential harvest + kalici config zehirlenmesi).
-   *
-   * Veritabani yapilandirmasi bir UI islemi degildir; DATABASE_URL ortam
-   * degiskeni / secret manager'dan gelir (ADR-073).
-   */
-  const handleConfigureDb = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setConfigResultMsg({
-      success: false,
-      text:
-        "Veritabani yapilandirmasi UI uzerinden yapilamaz. DATABASE_URL ortam " +
-        "degiskeni veya secret manager uzerinden ayarlanir (P02 / ADR-073)."
-    });
-  };
-
   useEffect(() => {
     loadHealthStatus();
-    loadConfigInspect();
     loadProjects();
   }, []);
 
@@ -160,26 +130,9 @@ export function useWorkspace() {
     handleCreateProject,
     loadProjects,
 
-    // Db config states
+    // Db config modal (yalniz gorunurluk; kimlik bilgisi state'i yok)
     showConfigModal,
     setShowConfigModal,
-    dbUsername,
-    setDbUsername,
-    dbPassword,
-    setDbPassword,
-    dbHost,
-    setDbHost,
-    dbPort,
-    setDbPort,
-    dbName,
-    setDbName,
-    dbConnStr,
-    setDbConnStr,
-    useRawString,
-    setUseRawString,
-    configPending,
-    configResultMsg,
-    handleConfigureDb,
 
     // Telemetries
     healthStatus,

@@ -80,6 +80,7 @@ import {
   getAuditActor
 } from "./auth";
 import { mayContinueAfterDatabaseFailure } from "./startup-policy";
+import { deriveEvaluationSubject, bodyDeclaredSubject } from "./domain/identity/evaluation-subject";
 
 const router = Router();
 
@@ -3837,18 +3838,37 @@ router.get("/projects/:id/permission-policies", requireProjectScope, async (req:
 router.post("/projects/:id/permissions/evaluate", requireProjectScope, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const projectId = req.params.id;
-    const { subject, resource, action, context_json } = req.body;
+    const { resource, action, context_json } = req.body;
 
-    if (!subject || !resource || !action) {
-      return res.status(400).json({ error: "Missing subject, resource, or action in evaluation payload." });
+    if (!resource || !action) {
+      return res.status(400).json({ error: "Missing resource or action in evaluation payload." });
     }
 
-    // Force evaluation under verified request parameters project boundary
+    /**
+     * P17 / P0-7 KAPANDI — kimlik ISTEKTEN ALINMAZ.
+     *
+     * Eski hali:
+     *     subject: { ...subject, project_id: projectId }
+     *
+     * Istemcinin gonderdigi `subject` nesnesi oldugu gibi yayiliyordu.
+     * Bir istemci `subject_type: "system"` gonderip sistem kimligiyle
+     * degerlendirme yaptirabiliyordu — ve seed policy "allow / system / hepsi / hepsi"
+     * oldugu icin sonuc her zaman ALLOW oluyordu. Ustelik audit kaydi da
+     * o sahte kimlikle yaziliyordu.
+     *
+     * ADR-017: yetki tek noktadan verilir ve audit aktoru HER ZAMAN
+     * dogrulanmis principal'dir. Istemcinin kendi kimligini bildirmesi,
+     * kimlik dogrulamasini istemciye devretmektir.
+     *
+     * Govdedeki `subject` alani artik OKUNMUYOR. Yok sayilmasi sessizce
+     * degil, asagidaki yanit alaniyla bildiriliyor.
+     */
+    const principal = (req as Request & { authPrincipal: ApiAuthPrincipal }).authPrincipal;
+
+    // Turev HTTP katmanindan AYRI bir modulde: govdeyi parametre olarak bile
+    // almadigi icin govdeden kimlik sizdiramaz ve testle kilitlenebilir.
     const evaluation = await permissionKernelService.evaluate({
-      subject: {
-        ...subject,
-        project_id: projectId
-      },
+      subject: deriveEvaluationSubject(principal, projectId),
       resource: {
         ...resource,
         project_id: projectId
@@ -3857,7 +3877,14 @@ router.post("/projects/:id/permissions/evaluate", requireProjectScope, async (re
       context: context_json
     });
 
-    res.json({ evaluation });
+    res.json({
+      evaluation,
+      // Govdede `subject` gonderildiyse YOK SAYILDIGI bildirilir.
+      // Sessizce yok saymak, cagiranin gonderdigi kimligin uygulandigini
+      // sanmasina yol acardi.
+      subjectIgnored: bodyDeclaredSubject(req.body),
+      subjectSource: "authenticated_principal"
+    });
   } catch (err) {
     next(err);
   }
