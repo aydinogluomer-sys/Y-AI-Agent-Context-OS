@@ -4,8 +4,8 @@ memberships,1.0.1-memberships-foundation,10,6,true,false,0,0,"DEAD (0 read, 0 wr
 tasks,1.0.2-tasks-foundation,10,13,true,true,101,78,KEEP
 context_items,1.0.3-context-vault-foundation,10,13,true,false,38,28,KEEP + ALTER (needs organization_id)
 context_chunks,1.0.3-context-vault-foundation,27,6,false,false,12,10,KEEP + ALTER (needs organization_id)
-graph_nodes,1.0.4-knowledge-graph-foundation,10,7,true,true,21,14,KEEP
-graph_edges,1.0.4-knowledge-graph-foundation,21,7,true,true,19,19,KEEP
+graph_nodes,1.0.4-knowledge-graph-foundation,10,7,true,true,26,14,KEEP
+graph_edges,1.0.4-knowledge-graph-foundation,21,7,true,true,20,19,KEEP
 audit_logs,1.0.5-audit-and-telemetry-foundation,10,11,true,true,66,33,KEEP
 artifacts,1.0.6-artifacts-debug-connections,10,8,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
 debug_logs,1.0.6-artifacts-debug-connections,22,9,false,false,1,0,READ-ONLY (never written) -> investigate
@@ -39,10 +39,10 @@ file_locks,1.3.2-file-locking-mvp,10,19,true,false,12,10,KEEP + ALTER (needs org
 permission_policies,1.3.3-permission-kernel-mvp,10,10,true,true,3,0,READ-ONLY (never written) -> investigate
 permission_evaluations,1.3.3-permission-kernel-mvp,23,12,true,false,1,2,KEEP + ALTER (needs organization_id)
 permission_overrides,1.3.3-permission-kernel-mvp,38,11,true,false,0,2,WRITE-ONLY (never read) -> DROP
-cas_blobs,1.3.4-artifact-cas-mvp,10,12,true,false,5,2,KEEP + ALTER (needs organization_id)
+cas_blobs,1.3.4-artifact-cas-mvp,10,12,true,false,6,2,KEEP + ALTER (needs organization_id)
 artifact_versions,1.3.4-artifact-cas-mvp,26,21,true,false,14,7,KEEP + ALTER (needs organization_id)
 organizations,2.0.0-organizations,12,7,false,false,2,0,READ-ONLY (never written) -> investigate
-users,2.0.1-users,11,8,false,false,6,3,KEEP + ALTER (needs organization_id)
+users,2.0.1-users,11,8,false,false,8,3,KEEP + ALTER (needs organization_id)
 org_memberships,2.0.2-org-memberships,8,6,false,true,5,0,READ-ONLY (never written) -> investigate
 project_memberships,2.0.3-project-memberships,12,6,true,false,10,2,KEEP + ALTER (needs organization_id)
 service_identities,2.0.4-service-identities,11,8,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
@@ -52,7 +52,7 @@ repository_connections,2.1.1-repository-connections,11,7,false,false,0,0,"DEAD (
 repository_snapshots,2.1.2-repository-snapshots,11,10,false,true,16,5,KEEP
 files,2.1.3-files,11,15,false,true,22,6,KEEP
 orphaned_repo_sources,2.1.6-migrate-repo-sources,16,5,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
-symbols,2.2.0-symbols,15,20,false,true,28,8,KEEP
+symbols,2.2.0-symbols,15,20,false,true,30,8,KEEP
 chunks,2.2.1-chunks,16,21,false,true,12,8,KEEP
 parser_versions,2.2.2-parser-versions,13,5,false,false,5,2,KEEP + ALTER (needs organization_id)
 symbol_invalidations,2.2.3-symbol-invalidations,20,11,false,true,5,2,KEEP
@@ -61,7 +61,7 @@ graph_build_runs,2.3.2-graph-build-runs,19,16,true,true,5,7,KEEP
 graph_tombstones,2.3.3-graph-tombstones,21,11,false,true,0,2,WRITE-ONLY (never read) -> DROP
 retrieval_runs,2.4.3-retrieval-runs,31,16,true,true,0,0,"DEAD (0 read, 0 write) -> DROP"
 retrieval_candidates,2.4.4-retrieval-candidates,31,26,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
-policy_rules,2.5.0-policy-rules,25,11,true,true,4,0,READ-ONLY (never written) -> investigate
+policy_rules,2.5.0-policy-rules,25,11,true,true,5,0,READ-ONLY (never written) -> investigate
 file_classifications,2.5.1-file-classifications,17,11,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
 context_universes,2.5.2-context-universes,23,13,true,true,0,0,"DEAD (0 read, 0 write) -> DROP"
 context_manifests,2.6.0-context-manifests,23,21,true,true,0,0,"DEAD (0 read, 0 write) -> DROP"
@@ -72,6 +72,7 @@ mutation_decisions,2.7.1-mutation-decisions,22,16,false,true,0,0,"DEAD (0 read, 
 approval_requests,2.7.2-approval-requests,20,11,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
 command_policies,2.7.3-command-policies,22,8,true,true,0,0,"DEAD (0 read, 0 write) -> DROP"
 runs,2.8.0-runs,29,15,true,true,4,10,KEEP
-run_events,2.8.1-run-events,20,8,false,false,4,2,KEEP + ALTER (needs organization_id)
-jobs,2.8.2-jobs,25,21,true,true,7,12,KEEP
-evidence_chain,2.9.0-evidence-chain,30,9,false,true,2,0,READ-ONLY (never written) -> investigate
+run_events,2.8.1-run-events,20,8,false,false,5,2,KEEP + ALTER (needs organization_id)
+jobs,2.8.2-jobs,25,21,true,true,8,15,KEEP
+evidence_chain,2.9.0-evidence-chain,30,9,false,true,3,0,READ-ONLY (never written) -> investigate
+retention_policies,3.0.0-retention-policy,25,7,false,false,0,0,"DEAD (0 read, 0 write) -> DROP"

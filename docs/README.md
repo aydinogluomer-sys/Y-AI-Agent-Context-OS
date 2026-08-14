@@ -34,6 +34,9 @@
 | [Olay müdahalesi](operations/incident-response.md) | Sınıflandırma ve ilk aksiyonlar |
 | [Yedekleme](operations/backup-restore.md) | Ne yedeklenir, nasıl dönülür |
 | [Sürüm yükseltme](operations/upgrade.md) | Migration modeli |
+| [Runbook](operations/runbook.md) | Günlük kontroller, sık karşılaşılanlar |
+| [SLO ve alarmlar](operations/slo.md) | **Hedefler ve hangi ölçümün eksik olduğu** |
+| [Ölçeklendirme](operations/scaling.md) | Ölçek modeli, bilinçli tekil noktalar |
 
 ## API
 
