@@ -8,8 +8,8 @@
 | Ölçüt | Değer |
 |---|---|
 | Taranan dosya | 250 |
-| Toplam bulgu | **52** |
-| P0 (release blocker) | **48** |
+| Toplam bulgu | **44** |
+| P0 (release blocker) | **40** |
 | P1 (production-critical) | **4** |
 
 ## Kural bazlı dağılım
@@ -17,7 +17,7 @@
 | Kural | Şiddet | Bulgu | Açıklama |
 |---|---|---:|---|
 | `assert-true` | P0 | 0 | assert("...", true) — koşulsuz geçen sahte assertion |
-| `skip-then-pass` | P0 | 36 | DB/bağımlılık yoksa atla ve yine de PASS say |
+| `skip-then-pass` | P0 | 28 | DB/bağımlılık yoksa atla ve yine de PASS say |
 | `fabricated-hash` | P0 | 0 | Math.random() ile üretilip hash gibi sunulan değer |
 | `settimeout-success` | P0 | 0 | setTimeout/delay sonrası koşulsuz başarı durumu |
 | `fallback-success` | P0 | 0 | Sağlayıcı/servis hatasında sahte başarıya düşme |
@@ -39,16 +39,14 @@
 | `scripts/validate-vault.ts` | 9 |
 | `scripts/validate-segment-20-26.ts` | 7 |
 | `scripts/validate-segment-15-18.ts` | 4 |
-| `scripts/validation-suite.ts` | 4 |
-| `scripts/validate-phase-2-runner.ts` | 3 |
 | `apps/api/src/db.ts` | 2 |
-| `apps/api/src/index.ts` | 2 |
 | `scripts/validate-phase-3-startup.ts` | 2 |
 | `scripts/validate-segment-1-10.ts` | 2 |
 | `scripts/validate-segment-11-14.ts` | 2 |
 | `scripts/validate-segment-19-21.ts` | 2 |
 | `scripts/validate-stage-27.ts` | 2 |
 | `scripts/validate-stage-35.ts` | 2 |
+| `apps/api/src/index.ts` | 1 |
 | `apps/api/src/startup-policy.ts` | 1 |
 | `apps/web/src/lib/api/ai.ts` | 1 |
 | `packages/security/src/secret-scanner/secret-scanner.test.ts` | 1 |

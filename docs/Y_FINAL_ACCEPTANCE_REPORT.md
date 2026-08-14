@@ -13,14 +13,14 @@ belgeye de uygulanır: bir madde tamam değilse **TAMAM DEĞİL** yazar.
 
 | Ölçüm | Değer | Kaynak |
 |---|---|---|
-| Birim/sözleşme testi | **1158 passed, 4 skipped** | `vitest run` |
-| Test dosyası | 46 | `vitest run` |
+| Birim/sözleşme testi | **1168 passed, 4 skipped** | `vitest run` |
+| Test dosyası | 47 | `vitest run` |
 | Typecheck | **0 hata** (loose + strict) | `npm run typecheck` |
 | Build | **OK** | `npm run build` |
 | Migration | **82** (35 göç + 47 yeni) | `migrations/*.sql` |
 | Envanter drift | **8/8 kontrol geçti** | `npm run gate:drift` |
 | Sır taraması | **0 yeni bulgu** (70 kabul edilmiş) | `npm run secret-scan` |
-| False-green çırçır | **52 toplam / 48 P0** (taban kilitli; P00'da 135) | `npm run gate:false-green` |
+| False-green çırçır | **44 toplam / 40 P0** (taban kilitli; P00'da 135) | `npm run gate:false-green` |
 | UI dürüstlük açığı | **0** (P00'da 103) | `inventory-ui` |
 | 410'a kapatılan legacy route | **17** | API envanteri |
 
@@ -163,6 +163,7 @@ Her biri bir grep testiyle kilitlendi; geri gelmeleri CI'ı kırar.
 | Koşulsuz "PASSED SUCCESSFULLY" ×2 | Başarısız iddia sayısından **bağımsız** basılıyordu | P17 |
 | `Math.random()` birincil anahtar ×28 | Gerçek DB'ye INSERT edilen kimlikler (ADR-013) | P17 |
 | DB kimlik bilgisi formu | Ölü uç noktaya **üretim parolası** topluyordu | P17 |
+| Sessiz "Failed: 0" verdikti | Atlanan DB kontrolleriyle **yeşil** görünüyordu | P17 |
 
 ---
 

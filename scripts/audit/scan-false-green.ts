@@ -22,7 +22,7 @@ interface Finding {
   text: string;
 }
 
-interface Rule {
+export interface Rule {
   id: string;
   severity: "P0" | "P1" | "P2";
   description: string;
@@ -33,7 +33,9 @@ interface Rule {
   exclude?: RegExp;
 }
 
-const RULES: Rule[] = [
+// Test edilebilmesi icin disa acildi: bir tarayici kuralinin kapsami,
+// ancak testle kilitlenirse kalici olur.
+export const RULES: Rule[] = [
   {
     id: "assert-true",
     severity: "P0",
@@ -44,7 +46,43 @@ const RULES: Rule[] = [
     id: "skip-then-pass",
     severity: "P0",
     description: "DB/bağımlılık yoksa atla ve yine de PASS say",
-    pattern: /[Ss]kipping .*(?:DB|database|SQL|Live|integration)|[Ff]alling back to simulated|[Ss]andbox fallbacks activated|[Ss]imulating standard/
+    pattern: /[Ss]kipping .*(?:DB|database|SQL|Live|integration)|[Ff]alling back to simulated|[Ss]andbox fallbacks activated|[Ss]imulating standard/,
+    /**
+     * YALNIZ DOĞRULAMA YÜZEYLERİ.
+     *
+     * "Atla ve yine de PASS say" bir TEST VERDİKTİNİN bozulmasıdır; üretim
+     * kodunun bozacak bir verdikti yoktur. Kural kapsamsızken
+     * `apps/api/src/index.ts`'teki şu satırı yakalıyordu:
+     *
+     *   sysLogger.info("Skipping mock data pre-seeding as mock database
+     *                   mode is inactive.");
+     *
+     * Bu satır DOĞRU davranışı DOĞRU şekilde günlüğe yazıyor: mock mod
+     * kapalıyken mock veri ekilmemesi gerekir. Bunu bulgu saymak, tarayıcıyı
+     * gürültüyle doldurur — ve gürültüyle dolmuş bir güvenlik tarayıcısının
+     * çıktısı okunmamaya başlar; asıl bulgu da o zaman kaçar.
+     *
+     * Kapsam: doğrulama script'leri ve testler.
+     */
+    include: /^(scripts[\\/]validat|tests[\\/])|\.test\.ts$|\.spec\.ts$/,
+    /**
+     * ATLAMA TESPIT EDICISININ KENDISI MUAF.
+     *
+     * `validation-suite.ts` bu kaliplari ARAYAN aractir (`SKIP_PATTERNS`),
+     * `validate-phase-2-runner.ts` ise o aracin TESTIDIR ve kaliplari
+     * fixture olarak icerir:
+     *
+     *   detectSkipMarkers("Stage result: PASS ... Skipping live database ...")
+     *
+     * Bir kalibi tespit eden arac o kalibi ICERMEK ZORUNDADIR. Bunlari
+     * bulgu saymak, tarayiciyi kendi bagisiklik sistemine saldirtir:
+     * bulgudan kacinmanin tek yolu tespit edicinin kaliplarini SILMEK
+     * olurdu — yani tarayiciyi korlestirmek.
+     *
+     * Ayni gerekce sir tarayicisinin kendi test verileri icin de
+     * uygulanmisti (`secret-scanner.test.ts`).
+     */
+    exclude: /validation-suite\.ts$|validate-phase-2-runner\.ts$/
   },
   {
     id: "fabricated-hash",
