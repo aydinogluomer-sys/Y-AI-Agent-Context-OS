@@ -294,7 +294,18 @@ export class GraphBuilder {
       // listesi aslinda dosyanin import listesidir (P04 boyle yaziyor).
       // Ayni ciftin tekrar tekrar islenmesini engelliyoruz.
       for (const specifier of symbol.imports) {
-        const pairKey = `${symbol.path} ${specifier}`;
+              // [P17 / A9] Ayirac KACIS DIZISIYLE yaziliyor (`" + ESCAPE + "`), literal
+      // NUL baytiyla degil.
+      //
+      // Calisma zamani degeri AYNI. Fark araclarda: literal NUL bayti
+      // iceren dosyayi `file(1)` `data`, `grep` ise "Binary file matches"
+      // olarak gorur ve ESLESEN SATIRLARI HIC GOSTERMEZ. 694 satirlik bir
+      // kaynak dosyasi, satir bazli her aramaya gorunmez hale gelir.
+      //
+      // Ayiracin NUL olmasi dogru: dosya yolunda ve sembol adinda
+      // gecemeyecegi garanti olan tek karakter. Degistirilen sey ayirac
+      // degil, KAYNAKTA NASIL YAZILDIGI.
+      const pairKey = `${symbol.path}\u0000${specifier}`;
         if (seenImportPairs.has(pairKey)) continue;
         seenImportPairs.add(pairKey);
 
@@ -599,7 +610,7 @@ export class GraphBuilder {
 function addEdge(into: Map<string, PendingEdge>, edge: PendingEdge): void {
   // Kendine kenar graf'i kirletir ve traversal'da gereksiz dongu uretir.
   if (edge.source === edge.target) return;
-  const key = `${edge.source} ${edge.target} ${edge.edgeKind}`;
+  const key = `${edge.source}\u0000${edge.target}\u0000${edge.edgeKind}`;
   const existing = into.get(key);
   // Ayni cift birden cok kanittan gelirse EN GUCLU kanit kazanir.
   if (existing && existing.confidence >= edge.confidence) return;
