@@ -13,6 +13,7 @@ import { detectLanguage } from "../ingestion/snapshot-service";
 import { TypeScriptParser } from "./typescript-parser";
 import { TreeSitterParser } from "./tree-sitter-parser";
 import { StructuralParser } from "./structural-parser";
+import { SqlParser } from "./sql-parser";
 import type { LanguageParser, ParseOptions, ParseResult } from "./types";
 
 export class ParserRegistry {
@@ -99,5 +100,17 @@ export class ParserRegistry {
 
 /** Varsayılan registry: TS compiler + tree-sitter + yapısal fallback. */
 export function createDefaultRegistry(): ParserRegistry {
-  return new ParserRegistry([new TypeScriptParser(), new TreeSitterParser()], new StructuralParser());
+  return new ParserRegistry(
+    [
+      new TypeScriptParser(),
+      new TreeSitterParser(),
+      // [P17 / A7] SQL, spec §6'nin zorunlu dil listesindeydi ama
+      // tree-sitter-wasms SQL grammar'i icermiyor; dosyalar yapisal
+      // parser'a dusuyor ve HIC SEMBOL URETMIYORDU. Bu urunde `schema`
+      // ve `migration` birinci sinif sembol tipleri (spec §6) ve depoda
+      // 82 migration var.
+      new SqlParser()
+    ],
+    new StructuralParser()
+  );
 }
