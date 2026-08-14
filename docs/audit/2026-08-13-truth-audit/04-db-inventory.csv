@@ -64,3 +64,6 @@ retrieval_candidates,2.4.4-retrieval-candidates,31,26,false,true,0,0,"DEAD (0 re
 policy_rules,2.5.0-policy-rules,25,11,true,true,0,0,"DEAD (0 read, 0 write) -> DROP"
 file_classifications,2.5.1-file-classifications,17,11,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
 context_universes,2.5.2-context-universes,23,13,true,true,0,0,"DEAD (0 read, 0 write) -> DROP"
+context_manifests,2.6.0-context-manifests,23,21,true,true,0,0,"DEAD (0 read, 0 write) -> DROP"
+context_manifest_items,2.6.1-context-manifest-items,24,19,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
+context_manifest_exclusions,2.6.2-context-manifest-exclusions,21,10,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"

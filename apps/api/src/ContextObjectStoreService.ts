@@ -131,6 +131,22 @@ export function computeContentHash(
   return crypto.createHash("sha256").update(material).digest("hex");
 }
 
+/**
+ * P09 / Y-P09-008 — Kapsam dogrulamasi yapilabilen kaynak tablolari.
+ *
+ * Anahtar istemcinin gonderdigi deger, DEGER ise SQL'e girecek sabit ad.
+ * Ikisini ayirmak, istemci metninin sorguya hic ulasmamasini garanti
+ * eder: eslesen bir anahtar bulunursa SQL'e giden sey bu dosyadaki
+ * literal'dir.
+ */
+const SCOPE_CHECKABLE_SOURCE_TABLES = new Map<string, string>([
+  ["context_items", "context_items"],
+  ["context_chunks", "context_chunks"],
+  ["index_jobs", "index_jobs"],
+  ["impact_reports", "impact_reports"],
+  ["change_simulations", "change_simulations"]
+]);
+
 export class ContextObjectStoreService {
   constructor(
     private query: (sql: string, params?: any[]) => Promise<any>,
@@ -212,21 +228,42 @@ export class ContextObjectStoreService {
       if (sourceId !== projectId) {
         throw new PermissionDeniedError(`Source scope boundary violation: Project source reference mismatch.`);
       }
-    } else {
-      // Validate table query matching project_id if the schema supports it
-      try {
-        const res = await this.query(
-          `SELECT project_id FROM ${sourceTable} WHERE id = $1 LIMIT 1;`,
-          [sourceId]
-        );
-        if (res.rowCount > 0 && res.rows[0].project_id !== projectId) {
-          throw new PermissionDeniedError(`Source scope boundaries violation: Referenced content belongs to another project.`);
-        }
-      } catch (err: any) {
-        if (err instanceof PermissionDeniedError) throw err;
-        // If table doesn't have project_id or isn't queryable, we log clean info
-        sysLogger.debug(`Dynamic source check skipped for table ${sourceTable}: ${err.message}`);
+    } else if (SCOPE_CHECKABLE_SOURCE_TABLES.has(sourceTable)) {
+      /**
+       * P09 / Y-P09-008 — P0-10 (SQL enjeksiyonu) KAPATILDI.
+       *
+       * Eski hali:
+       *     `SELECT project_id FROM ${sourceTable} WHERE id = $1 LIMIT 1;`
+       *
+       * `sourceTable` istek gövdesinden (`dto.source_table`) geliyordu ve
+       * doğrudan SQL'e interpole ediliyordu. Bir istemci
+       * `users WHERE 1=1 UNION SELECT ...` yazabilirdi.
+       *
+       * Daha da kötüsü, sorgu bir `try/catch` içindeydi ve hata
+       * `sysLogger.debug` ile YUTULUYORDU: enjeksiyon denemesi hiçbir
+       * alarm üretmeden sessizce geçiyordu.
+       *
+       * Tablo adı bir parametre OLAMAZ (SQL'de identifier parametresi
+       * yoktur), bu yüzden çözüm KAPALI BİR KÜME'dir: yalnızca önceden
+       * bilinen tablolar sorgulanır ve ad, kümedeki sabit değerle
+       * değiştirilir — istemcinin metni SQL'e hiç girmez.
+       */
+      const table = SCOPE_CHECKABLE_SOURCE_TABLES.get(sourceTable) as string;
+      const res = await this.query(
+        `SELECT project_id FROM ${table} WHERE id = $1 LIMIT 1;`,
+        [sourceId]
+      );
+      if (res.rowCount > 0 && res.rows[0].project_id !== projectId) {
+        throw new PermissionDeniedError(`Source scope boundaries violation: Referenced content belongs to another project.`);
       }
+    } else {
+      // Bilinmeyen kaynak tablosu SESSIZCE GECILMEZ. Eski kod hatayi
+      // yutuyordu; kapsam dogrulanamayan bir referansi kabul etmek,
+      // dogrulamanin kendisini anlamsiz kilar.
+      throw new PermissionDeniedError(
+        `Desteklenmeyen source_table: '${sourceTable}'. Kapsam dogrulamasi yapilamayan ` +
+          `bir kaynak referansi kabul edilmez.`
+      );
     }
   }
 

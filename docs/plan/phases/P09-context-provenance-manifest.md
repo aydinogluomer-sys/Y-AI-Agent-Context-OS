@@ -283,3 +283,142 @@ pnpm --filter @y/db run test:migrations:upgrade
 ```
 
 **Bu gate, ürünün "model tam olarak ne gördü?" iddiasının kanıtıdır.** `provenance_coverage < 1.0` ise gate geçilmez.
+
+---
+
+## Uygulama Kaydı (2026-08-14)
+
+### Tamamlanan görevler
+
+| Görev | Durum | Kanıt |
+|---|---|---|
+| Y-P09-001 canonical JSON | Tamam | `manifest/canonical-json.ts` + 10 test |
+| Y-P09-002 hash modülü | Tamam | `hashManifest()` — kendi hash alanını dışlar |
+| Y-P09-003 manifest şeması + immutability | Tamam | migration `0072`–`0074`, üç tabloda trigger |
+| Y-P09-004 `ManifestBuilder` | Tamam | `buildManifest()` + `assertCompleteCoverage` |
+| Y-P09-005 provenance coverage | Tamam (birim) | `provenanceCoverage()` + kapsama testleri |
+| Y-P09-006 verify | Tamam | `verifyManifest()` — 5 tamper senaryosu |
+| Y-P09-007 export (imzalı) | **YAPILMADI** | imzalama anahtarı P14 evidence ile ortak |
+| Y-P09-008 SQL injection düzeltmesi | Tamam | **P0-10 KAPANDI** + 13 regresyon testi |
+| Y-P09-009 `context_packs` yazımının kapatılması | Tamam (P08'de) | pack üreticileri silindi |
+
+### Migration numaralandırması
+
+| Plan | Gerçek |
+|---|---|
+| 0081 context_manifests | `0072_context_manifests.sql` |
+| 0082 context_manifest_items | `0073_context_manifest_items.sql` |
+| 0083 context_manifest_exclusions | `0074_context_manifest_exclusions.sql` |
+| 0084 context_fragments | Ayrı tablo YOK — aşağıya bakınız |
+
+### Karar 1 — `context_fragments` ayrı tablo olarak açılmadı
+
+Plan `fragment_id · chunk_id · content_hash · token_count · redacted`
+alanlarıyla ayrı bir tablo öngörüyordu. Bu alanların tamamı
+`context_manifest_items` içinde zaten var (`fragment_id`, `chunk_id`,
+`source_hash`, `chunk_hash`, `token_count`, `redacted`).
+
+Ayrı bir tablo, aynı veriyi iki yerde tutup aralarında tutarlılık
+sağlamak demekti — ve manifest immutable olduğu için ikinci tablonun
+sağladığı hiçbir ek yetenek yok. Bir fragment'ın içeriği zaten
+`chunks` tablosunda; manifest yalnızca ona **hash'le bağlanır**.
+
+**Kapanma koşulu yok:** bu bir sadeleştirme, erteleme değil.
+
+### Karar 2 — İki hash: `source_hash` ve `chunk_hash`
+
+`source_hash` kaynağın, `chunk_hash` manifest'e girenin hash'idir.
+İçerik redakte edildiyse ya da kırpıldıysa ikisi **farklıdır** ve bu fark
+görünür olmalıdır: "model tam olarak ne gördü?" sorusunun yanıtı
+`chunk_hash`tır, `source_hash` değil.
+
+### Karar 3 — Dışlama sebep kümesi KAPALI
+
+Serbest metin bir sebep değildir: üzerinde sorgu çalıştırılamaz ve
+zamanla tutarsızlaşır. Küme `CHECK` ile kilitli; yeni bir sebep eklemek
+migration gerektirir ve bu bilinçli bir karardır.
+
+### Karar 4 — Eksik kapsama ÇALIŞMA ZAMANINDA reddedilir
+
+`assertCompleteCoverage`, `|candidates| === |items| + |exclusions|`
+eşitliğini manifest üretimi sırasında zorlar. Testte değil, üretimde:
+bir aday sessizce kaybolduğunda manifest **üretilmemelidir**.
+
+Eksik bir kanıt, kanıt olmamasından tehlikelidir çünkü tam görünür.
+
+### Karar 5 — Canonical JSON tam RFC 8785 değil (ve bu yazılı)
+
+RFC 8785 sayıları ECMAScript `Number::toString` algoritmasıyla yazmayı
+şart koşar ve üstel gösterim kurallarını ayrıntılandırır. Buradaki
+uygulama manifest içeriğinin kullandığı sayı aralığı (token sayıları,
+0..1 skorlar, satır numaraları) için yeterlidir.
+
+Bu sınır modül başında **yazılıdır**. "RFC 8785 uyumlu" demek, olmadığı
+bir uyumluluğu iddia etmek olurdu.
+
+### P0-10 KAPANDI — SQL enjeksiyonu
+
+```ts
+// ÖNCE
+`SELECT project_id FROM ${sourceTable} WHERE id = $1 LIMIT 1;`
+```
+
+`sourceTable` istek gövdesinden geliyordu. Daha kötüsü: sorgu bir
+`try/catch` içindeydi ve hata `sysLogger.debug` ile **yutuluyordu** —
+bir enjeksiyon denemesi hiçbir alarm üretmeden geçiyordu.
+
+Tablo adı SQL'de parametre **olamaz** (identifier parametresi yoktur),
+bu yüzden çözüm kapalı bir küme: yalnızca önceden bilinen tablolar
+sorgulanır ve ad, kümedeki **sabit değerle** değiştirilir. İstemcinin
+metni SQL'e hiç girmez.
+
+Bilinmeyen bir tablo artık sessizce geçilmiyor, **reddediliyor**:
+kapsam doğrulanamayan bir referansı kabul etmek, doğrulamanın kendisini
+anlamsız kılar.
+
+13 regresyon testi, beş farklı enjeksiyon denemesinin SQL'e
+ulaşmadığını ve meşru yolların korunduğunu doğruluyor.
+
+### Yapılmayan — Y-P09-007 imzalı export
+
+Manifest'in taşınabilir, **imzalı** JSON'u yazılmadı. İmzalama anahtarı
+P14'teki evidence hash zinciriyle ortak: iki ayrı anahtar yönetimi
+kurmak, birinin geride kalması demektir.
+
+Bugün yazılabilecek şey imzasız bir JSON dökümüydü — ki o zaten
+`GET .../manifest` çıktısıdır. "Export" adını imzasız bir çıktıya vermek,
+taşınabilirlik garantisi vermeden garanti veriyormuş gibi görünmektir.
+
+### Kabul kriterlerinin durumu
+
+| Kriter | Durum | Not |
+|---|---|---|
+| Her fragment için provenance | Evet | commit + path + iki hash + gerekçe |
+| Dışlananlar sebebiyle kayıtlı | Evet | kapalı sebep kümesi + runtime zorlama |
+| Manifest immutable | Evet | üç tabloda trigger |
+| Manifest hashable + verify | Evet | 5 tamper senaryosu |
+| Canonical JSON deterministik | Evet | 50 tekrar + alan sırası testleri |
+| P0-10 kapandı | Evet | 13 regresyon testi |
+| İmzalı export | **HAYIR** | P14 |
+| Compile worker manifest yazıyor | **HAYIR** | worker P12 run FSM'ine bağlı |
+
+### Gate sonuçları
+
+```text
+typecheck (loose + strict)   0 hata
+vitest                       939 passed | 4 skipped (943)
+build                        OK
+secret-scan                  0 yeni bulgu
+drift (verify-inventories)   8/8 kontrol geçti
+```
+
+### Bu fazda kapatılmayanlar
+
+- **`context-compile-worker`** — manifest yazımı bir run'a bağlanmalı ve
+  run FSM'i P12'nin konusu. Worker'ın kendisi P12'de yazılacak; manifest
+  builder'ı hazır ve test edilmiş durumda.
+- **Manifest API route'ları** (`/manifest`, `/verify`, `/export`) — run
+  kavramı P12'de geldiğinde bağlanacak.
+- **`tests/integration/manifest/provenance-coverage.test.ts`** — canlı
+  şema gerektirir, P19. Kapsama mantığı birim testleriyle doğrulanmış
+  durumda.

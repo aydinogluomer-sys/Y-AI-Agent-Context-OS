@@ -95,5 +95,8 @@ migrate edilmiş veritabanları yeniden çalıştırılmaz.
 | 0069 | `0069_file_classifications.sql` | `2.5.1-file-classifications` | yeni | var |
 | 0070 | `0070_context_universes.sql` | `2.5.2-context-universes` | yeni | var |
 | 0071 | `0071_chunks_universe_bucket.sql` | `2.5.3-chunks-universe-bucket` | yeni | var |
+| 0072 | `0072_context_manifests.sql` | `2.6.0-context-manifests` | yeni | var |
+| 0073 | `0073_context_manifest_items.sql` | `2.6.1-context-manifest-items` | yeni | var |
+| 0074 | `0074_context_manifest_exclusions.sql` | `2.6.2-context-manifest-exclusions` | yeni | var |
 
-Toplam: **71** migration (35 göç + 36 yeni).
+Toplam: **74** migration (35 göç + 39 yeni).
