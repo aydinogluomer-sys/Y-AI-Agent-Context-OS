@@ -13,11 +13,11 @@ belgeye de uygulanır: bir madde tamam değilse **TAMAM DEĞİL** yazar.
 
 | Ölçüm | Değer | Kaynak |
 |---|---|---|
-| Birim/sözleşme testi | **1265 passed, 4 skipped** | `vitest run` |
-| Test dosyası | 55 | `vitest run` |
+| Birim/sözleşme testi | **1327 passed, 4 skipped** | `vitest run` |
+| Test dosyası | 59 | `vitest run` |
 | Typecheck | **0 hata** (loose + strict) | `npm run typecheck` |
 | Build | **OK** | `npm run build` |
-| Migration | **82** (35 göç + 47 yeni) | `migrations/*.sql` |
+| Migration | **83** (35 göç + 48 yeni) | `migrations/*.sql` |
 | Envanter drift | **8/8 kontrol geçti** | `npm run gate:drift` |
 | Sır taraması | **0 yeni bulgu** (70 kabul edilmiş) | `npm run secret-scan` |
 | False-green çırçır | **43 toplam / 39 P0** (taban kilitli; P00'da 135) | `npm run gate:false-green` |
@@ -50,7 +50,7 @@ Gate zinciri tek komutla çalışır: `npm run gate:all`.
 | P15 UI konsolidasyon | ⚠️ **KISMİ** | Dürüstlük değişmezi kuruldu; **IA yeniden yazımı yapılmadı** |
 | P16 Benchmark | ⚠️ **KISMİ** | Uydurma metrikler silindi; **ölçüm harness'ı yok** |
 | P17 Security hardening | ⚠️ **KISMİ** | P0-7 kapatıldı, T-05/T-09/T-15 uygulandı; **T-14 nonce deposu ve 18 güvenlik spec'i eksik** |
-| P18 Observability | ⚠️ **KISMİ** | Bağımlılık bazlı hazırlık probe'u + metrik defteri; **tracing ve yük ölçümü yok** |
+| P18 Observability | ⚠️ **KISMİ** | 12 görevin 10'u kapandı; **canlı ölçüm ve OTLP ihracı yok** |
 | P19 CI/CD | ✅ | 5 dürüstlük gate'i CI'da |
 | P20 Kabul | ✅ | Bu belge |
 
@@ -238,6 +238,49 @@ pozitif kontrolle birlikte testlidir (`scan-false-green.test.ts`, 12 test).
 
 ---
 
+## 5.2 P18 — Reliability / Observability / Performance
+
+Denetimde P18'in **12 görevinden 2,5'i** yapılmıştı. Bu tur onunu kapattı.
+
+| Görev | Öncesi | Sonrası |
+|---|---|---|
+| Y-P18-001 observability paketi | **Yok** | `packages/observability` — logger + AsyncLocalStorage korelasyon + tracing |
+| Y-P18-002 logger göçü | 73 `sysLogger`, **hiçbiri korelasyon taşımıyor** | Tanım değişti; 73 çağrı yeri değişmeden JSON + korelasyon |
+| Y-P18-003 metrikler | 14 | **20** — spec §27'nin adıyla saydığı ikisi eksikti |
+| Y-P18-004 tracing | **Yok** | Span zinciri + `run_id` korelasyonu; **OTLP ihracı yok** |
+| Y-P18-005 readiness | 6 probe | **10** (A6'da tamamlandı) |
+| Y-P18-006 dayanıklılık | **Yok** | 8 senaryo süreç içi doğrulandı, **5'i canlı altyapı bekliyor ve kayıtlı** |
+| Y-P18-007 fixture üreteci | **Yok** | Deterministik sentetik repo; 10K/50K/100K preset'leri |
+| Y-P18-008 + 012 bütçeler | **Yok** | Ölçümden üretilmiş bütçeler + darboğaz analizi |
+| Y-P18-009 backup/restore | Doküman yok | Doküman var; **tatbikat yapılmadı** |
+| Y-P18-010 runbook/SLO | **Yok** | Üç belge; **hiçbir SLO hedefi doğrulanmadı ve bu yazılı** |
+| Y-P18-011 retention | **Yok** | Migration 0083; kanıt tabloları **süresiz**, politikalar **kapalı** |
+
+### Ölçülen gerçek sayılar
+
+| Yol | Ölçüm |
+|---|---|
+| `parse.typescript` | ~1.08 ms/dosya — **baskın darboğaz** |
+| `parse.sql` | ~0.068 ms/dosya |
+| `manifest.canonicalJson` | ~0.0095 ms/fragment |
+
+**Kapının sınırı yazılı:** bu makinede ölçüm yayılımı %60'a çıkıyor, yani
+kapı ancak bundan büyük regresyonları yakalar (`budgets.json` →
+`_limitation`). Adanmış bir performans makinesi kapıyı keskinleştirir.
+
+### P18'de yapılMAYANLAR
+
+| İş | Neden |
+|---|---|
+| OTLP ihracı + collector | SDK'nın asıl değeri budur ve **collector olmadan doğrulanamaz** |
+| Ölçek testi (10K–100K dosya) | Canlı Postgres; fixture üreteci hazır |
+| SLO hedeflerinin doğrulanması | Canlı ölçüm |
+| 5 dayanıklılık senaryosu | Canlı altyapı — `resilience.test.ts` içinde kayıtlı |
+| Yedekten geri yükleme tatbikatı | Canlı ortam |
+| Retention otomasyonu | Politika tanımlı ve **kapalı**; silme açık operatör eylemi |
+
+---
+
 ## 6. YAPILMAYANLAR — tam liste
 
 Bu bölüm rapor içindeki en önemli bölümdür.
@@ -275,7 +318,7 @@ Bu bölüm rapor içindeki en önemli bölümdür.
 | İş | Ölçek |
 |---|---|
 | P15 IA yeniden yazımı | ~14.500 satır ön yüz, 113 → 6 yüzey, react-router, tipli client |
-| P18 tracing + yük ölçümü | OpenTelemetry bagimliligi + gercek yuk |
+| P18 canlı ölçüm | OTLP collector + canlı Postgres + gerçek yük |
 
 ### 6.4 Canlı Postgres gerektirdiği için ertelenenler (P19)
 
