@@ -27,7 +27,7 @@ import { Button } from "./primitives/Button";
 import { Card } from "./primitives/Card";
 import {
   AiFileReference,
-  AiSimulationResponse,
+  SimulatedAiResult,
   createLocalAiSimulation,
   simulateTask,
 } from "../lib/api/ai";
@@ -72,7 +72,7 @@ export function AIMissionControlPanel({
   const [customInputs, setCustomInputs] = useState(
     "Her ana fazdan sonra test çalıştır; yeşilse sonraki faza geç. Üretim DB engelleyicisini saklama."
   );
-  const [result, setResult] = useState<AiSimulationResponse>(() =>
+  const [result, setResult] = useState<SimulatedAiResult>(() =>
     createLocalAiSimulation(DEFAULT_TASK, "yerel çalışma alanı", "Kokpitin boş kalmaması için ilk yerel simülasyon yüklendi.")
   );
   const [status, setStatus] = useState<"idle" | "running" | "complete">("idle");
@@ -86,11 +86,19 @@ export function AIMissionControlPanel({
    * sonucla ILGISIZ bir sey soylemeye devam ederdi — ve rozetin yalan
    * soyledigi, tam olarak rozete guvenildigi anda anlasilirdi.
    *
-   * `AiSimulationResponse.isFallback` zaten sonucun kendisinde tasiniyor.
-   * Rozet artik dogrudan ondan turetiliyor; senkronizasyon disi kalmasi
-   * yapisal olarak imkansiz.
+   * [P17 / spec §37] AYRIM ARTIK TIP DUZEYINDE.
+   *
+   * Onceki hali `result.isFallback !== true` idi ve rozet "Saglayici
+   * Destekli" diyordu. Bu YANILTICIYDI: `/api/simulate-task` ucu bir dil
+   * modeline "ilgili gorunen gercek dosya yollari kullan" diyor — yollar
+   * repository indeksinden OKUNMUYOR, model tarafindan URETILIYOR.
+   * "Saglayici destekli" olmak, sonucu OLCULMUS yapmaz.
+   *
+   * Panel artik yalniz `SimulatedAiResult` tutuyor; olculmus analiz
+   * (`MeasuredAiAnalysis`) ayri bir tip ve HENUZ URETILMIYOR. Bu yuzden
+   * rozet iki simulasyon KAYNAGINI ayirir, "olculmus" iddiasinda bulunmaz.
    */
-  const isProviderBacked = result.isFallback !== true;
+  const simulationSource = result.simulationSource;
 
   // Advanced HUD Simulator states
   const [model, setModel] = useState("gemini-2.5-flash");
@@ -269,9 +277,9 @@ export function AIMissionControlPanel({
                   <Database className="mr-1 h-3 w-3" />
                   {isDbConnected ? "Aktif Veritabanı" : "Simüle DB"}
                 </Badge>
-                <Badge tone={isProviderBacked ? "success" : "neutral"} variant="low">
+                <Badge tone={simulationSource === "llm" ? "warning" : "neutral"} variant="low">
                   <BrainCircuit className="mr-1 h-3 w-3" />
-                  {isProviderBacked ? "Sağlayıcı Destekli" : "Belirleyici Algoritma"}
+                  {simulationSource === "llm" ? "LLM Simülasyonu" : "Yerel Simülasyon"}
                 </Badge>
               </div>
 
@@ -648,8 +656,8 @@ export function AIMissionControlPanel({
                 <span className="font-mono text-[10px] uppercase tracking-widest text-steel-muted">
                   Mevcut Yürütme Yolu
                 </span>
-                <Badge tone={isProviderBacked ? "success" : "warning"} variant="low">
-                  {isProviderBacked ? "Sağlayıcı" : "Yedek Mod"}
+                <Badge tone="warning" variant="low">
+                  {simulationSource === "llm" ? "Simülasyon (LLM)" : "Simülasyon (Yerel)"}
                 </Badge>
               </div>
               <p className="mt-3 text-xs leading-6 text-steel-muted">

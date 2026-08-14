@@ -43,7 +43,19 @@ export interface AiModelComparison {
   costEstimate: number;
 }
 
-export interface AiSimulationResponse {
+/**
+ * [P17 / ADR-056 · spec §37] SIMULASYON GOVDESI.
+ *
+ * Bu ARAYUZ TEK BASINA DONDURULMEZ. Her sonuc, nereden geldigini tasiyan
+ * ayrik bir birlesim uyesi olarak tiplenir (asagida). Spec §37 acikca
+ * soyluyor: "Production DTO ile simulation DTO ayni olmamalidir."
+ *
+ * Onceki hali `AiSimulationResponse` idi ve HEM gercek saglayici
+ * cagrisinin HEM yerel uretecin donus tipiydi. Ayni tip oldugu icin
+ * simulasyon sonucu, uretim sonucu bekleyen her yere derleme hatasi
+ * vermeden gecebiliyordu.
+ */
+export interface AiAnalysisBody {
   isFallback?: boolean;
   fallbackReason?: string;
   taskSummary: {
@@ -111,9 +123,62 @@ export interface AiSimulationResponse {
   };
 }
 
+/**
+ * SIMULASYON SONUCU — olculmus degildir.
+ *
+ * `simulationSource`:
+ *   `local` — tarayicida deterministik uretec
+ *   `llm`   — sunucudaki dil modeli
+ *
+ * ONEMLI: `llm` de bir SIMULASYONDUR. `/api/simulate-task` ucu, modele
+ * "ilgili gorunen gercek kod dosyasi yollari kullan" diyor — yani yollar
+ * REPOSITORY'DEN OKUNMUYOR, model tarafindan UYDURULUYOR. Bir dil
+ * modelinin urettigi dosya listesi, Y'nin context derleyicisinin ciktisi
+ * degildir; "saglayici destekli" olmasi onu olculmus yapmaz.
+ */
+export interface SimulatedAiResult extends AiAnalysisBody {
+  readonly origin: "simulation";
+  readonly simulationSource: "local" | "llm";
+  readonly simulationReason: string;
+}
+
+/**
+ * OLCULMUS ANALIZ — Y'nin kendi context derleyicisinden gelir.
+ *
+ * BU TIP HENUZ URETILMIYOR. Bilerek tanimli: olculmus bir sonucun
+ * simulasyondan AYRI bir tip oldugunu kayit altina alir ve derleyici
+ * baglandiginda (P08 -> P15 cutover) doldurulacak yeri isaretler.
+ *
+ * Bir `SimulatedAiResult`'i buraya atamak DERLEME HATASIDIR — `origin`
+ * alanlari ortusmez. Ayrimin butun degeri bu.
+ */
+export interface MeasuredAiAnalysis extends AiAnalysisBody {
+  readonly origin: "measured";
+  /** Olcumun dayandigi manifest. Kanitsiz olculmus sonuc olamaz. */
+  readonly manifestHash: string;
+}
+
+export type AiAnalysisResult = SimulatedAiResult | MeasuredAiAnalysis;
+
+/** Sonuc olculmus mu? Rozet ve her tuketici bunu VERIDEN sorar. */
+export function isMeasured(result: AiAnalysisResult): result is MeasuredAiAnalysis {
+  return result.origin === "measured";
+}
+
+/**
+ * `/api/simulate-task` cagrisi.
+ *
+ * Donus tipi `SimulatedAiResult` — `MeasuredAiAnalysis` DEGIL. Uc nokta
+ * bir dil modeline dosya yollari ve skorlar URETTIRIYOR; bunlar Y'nin
+ * indeksinden okunmuyor. Sonucu "olculmus" saymak, modelin uydurdugu bir
+ * dosya listesini context derleyicisinin ciktisi gibi sunmak olurdu.
+ *
+ * `origin` alani sunucu yanitindan OKUNMAZ, burada SABIT atanir: bir
+ * istemci, yanitin ne oldugunu sunucunun beyanina birakamaz.
+ */
 export async function simulateTask(
   request: AiTaskSimulationRequest
-): Promise<AiSimulationResponse> {
+): Promise<SimulatedAiResult> {
   const response = await fetch("/api/simulate-task", {
     method: "POST",
     headers: {
@@ -126,14 +191,24 @@ export async function simulateTask(
     throw new Error(`AI simulation request failed with HTTP ${response.status}`);
   }
 
-  return response.json();
+  const body = (await response.json()) as AiAnalysisBody;
+
+  return {
+    ...body,
+    origin: "simulation",
+    simulationSource: "llm",
+    simulationReason:
+      body.fallbackReason ??
+      "Sunucu tarafi dil modeli simulasyonu. Dosya yollari ve skorlar " +
+        "repository indeksinden OKUNMADI."
+  };
 }
 
 export function createLocalAiSimulation(
   taskName: string,
   repoUrl = "local workspace",
   reason = "Local deterministic preview generated while provider or network runtime is unavailable."
-): AiSimulationResponse {
+): SimulatedAiResult {
   const normalizedTask = taskName.trim() || "Improve the AI mission control cockpit";
   const lowerTask = normalizedTask.toLowerCase();
   const isUi = /(ui|ux|dashboard|screen|cockpit|tasar|arayüz|görsel)/i.test(lowerTask);
@@ -198,6 +273,10 @@ export function createLocalAiSimulation(
   ];
 
   return {
+    // `origin` SABIT: bu uretecin olculmus sonuc dondurmesi mumkun degil.
+    origin: "simulation",
+    simulationSource: "local",
+    simulationReason: reason,
     isFallback: true,
     fallbackReason: reason,
     taskSummary: {

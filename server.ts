@@ -50,7 +50,7 @@ app.post("/api/simulate-task", async (req, res) => {
   if (!provider) {
     // Elegant fallback simulation generator when no API key is specified - makes the product perfectly demonstrative, safe, and stable
     const mockResponse = generateFallbackSimulation(targetTask, targetRepo);
-    return res.json(mockResponse);
+    return res.json(stripFabricatedMetrics(mockResponse, "local"));
   }
 
   try {
@@ -70,8 +70,8 @@ Interface expected:
     "difficulty": "Easy" | "Medium" | "Hard"
   },
   "contextOS": {
-    "confidenceScore": 92.5,
-    "totalScannedDocs": 1420,
+    "confidenceScore": null,
+    "totalScannedDocs": null,
     "tokensInvolved": null,
     "compressedPackTokens": null,
     "primaryFiles": [
@@ -119,11 +119,11 @@ Interface expected:
   "connectAdvisor": {
     "missingContextAlert": "string",
     "recommendedConnects": [
-      { "tool": "string", "reason": "string", "score": 95 }
+      { "tool": "string", "reason": "string", "score": null }
     ]
   },
   "costGovernance": {
-    "tokenBudget": 150000,
+    "tokenBudget": null,
     "estimatedCost": "string"
   }
 }
@@ -138,13 +138,92 @@ Be creative, hyper-detailed, and technically accurate relative to the requested 
     });
 
     const parsedData = JSON.parse(response.text || "{}");
-    return res.json(parsedData);
+
+    // [P17 / ADR-032 · spec §37] MODELIN URETTIGI SAYI OLCUM DEGILDIR.
+    //
+    // Onceki hali yanitinin tamamini dogrulamadan istemciye geciriyordu.
+    // Model, prompt'ta ornegi verilen `confidenceScore` / `totalScannedDocs`
+    // gibi alanlari doldurmakta serbest — ve doldurdugunda bu sayilar
+    // arayuzde Y'nin OLCUMU gibi gorunuyordu.
+    //
+    // Prompt'tan ornekleri cikarmak yetmez: model yine de bir sayi
+    // uretebilir. Bu yuzden alanlar SUNUCUDA zorla null'lanir. Tek yonlu
+    // bir kural: model bu alanlari dolduramaz.
+    return res.json(stripFabricatedMetrics(parsedData, "llm"));
   } catch (error: any) {
     console.error("Gemini context analysis failed:", error);
     // Gracefully fallback to structured mockup if there is a rate limit or runtime error
-    return res.json(generateFallbackSimulation(targetTask, targetRepo, true, error.message));
+    return res.json(
+      stripFabricatedMetrics(
+        generateFallbackSimulation(targetTask, targetRepo, true, error.message),
+        "local"
+      )
+    );
   }
 });
+
+/**
+ * [P17 / ADR-032 · spec §37] OLCULMEMIS ALANLARI ZORLA null YAPAR.
+ *
+ * `/api/simulate-task` ucunun URETTIGI HICBIR SEY OLCUM DEGILDIR:
+ *
+ *   - Dosya yollari repository indeksinden okunmuyor; prompt modele
+ *     acikca "ilgili gorunen gercek dosya yollari kullan" diyor.
+ *   - Skorlar ve sayilar ya sabit ya model uretimi.
+ *
+ * Bu yuzden yanit, kaynagindan bagimsiz olarak simulasyon isaretiyle ve
+ * olculmemis alanlari null'lanmis halde doner. Alanin silinmesi degil
+ * `null` + sebep olmasi bilincli: tuketici alanin VAR ama OLCULMEMIS
+ * oldugunu gorur (ADR-032).
+ */
+function stripFabricatedMetrics(
+  body: any,
+  simulationSource: "local" | "llm"
+): any {
+  const out = { ...(body ?? {}) };
+
+  out.origin = "simulation";
+  out.simulationSource = simulationSource;
+  out.simulationReason =
+    simulationSource === "llm"
+      ? "Sunucu tarafi dil modeli simulasyonu. Dosya yollari ve skorlar " +
+        "repository indeksinden OKUNMADI."
+      : "Yerel deterministik simulasyon ureteci. Saglayici yapilandirilmamis " +
+        "ya da cagri basarisiz.";
+
+  const UNAVAILABLE =
+    "Bu bir SIMULASYONDUR. Deger olculmedi; olculmus context derlemesi " +
+    "P08 derleyicisinden gelir.";
+
+  out.contextOS = {
+    ...(out.contextOS ?? {}),
+    confidenceScore: null,
+    totalScannedDocs: null,
+    tokensInvolved: null,
+    compressedPackTokens: null,
+    measured: false,
+    unavailableReason: UNAVAILABLE
+  };
+
+  out.costGovernance = {
+    ...(out.costGovernance ?? {}),
+    tokenBudget: null,
+    estimatedCost: null,
+    measured: false,
+    unavailableReason: UNAVAILABLE
+  };
+
+  // connectAdvisor.recommendedConnects[].score de bir olcum degildir.
+  const connects = out.connectAdvisor?.recommendedConnects;
+  if (Array.isArray(connects)) {
+    out.connectAdvisor = {
+      ...out.connectAdvisor,
+      recommendedConnects: connects.map((c: any) => ({ ...c, score: null }))
+    };
+  }
+
+  return out;
+}
 
 // Mock simulation generator for Y OS
 function generateFallbackSimulation(task: string, repo: string, isError = false, errorMsg = ""): any {
@@ -231,10 +310,21 @@ function generateFallbackSimulation(task: string, repo: string, isError = false,
       difficulty: "Medium"
     },
     contextOS: {
-      confidenceScore: tech === "auth" ? 96.2 : 94.1,
-      totalScannedDocs: 840,
-      tokensInvolved: 4250000,
-      compressedPackTokens: 38200,
+      // [P17 / ADR-032] UYDURMA METRIKLER KALDIRILDI.
+      //
+      // Eski degerler: confidenceScore 96.2/94.1, totalScannedDocs 840,
+      // tokensInvolved 4.250.000, compressedPackTokens 38.200. Hicbiri
+      // olculmuyordu; gorev metnindeki bir kelimeye gore secilen
+      // sabitlerdi. Bir guven skorunun 96.2 gibi ONDALIKLI olmasi,
+      // okuyanin arkasinda hesap oldugunu varsaymasina yol acar.
+      confidenceScore: null,
+      totalScannedDocs: null,
+      tokensInvolved: null,
+      compressedPackTokens: null,
+      measured: false,
+      unavailableReason:
+        "Bu bir SIMULASYONDUR. Dosya listesi repository indeksinden " +
+        "okunmadi; olculmus bir context derlemesi yapilmadi.",
       primaryFiles: primary,
       relatedFiles: related
     },
