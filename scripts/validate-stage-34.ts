@@ -24,6 +24,33 @@ dotenv.config({ override: true });
 let assertionPassedCount = 0;
 let assertionFailedCount = 0;
 
+/**
+ * [P17 / ADR-000] `assert(<iddia>, true)` KALDIRILDI.
+ *
+ * Bu script'te bir dizi iddia LITERAL `true` ile geciriliyordu:
+ *
+ *     assert("Phase 15: no secret leakage in handoff metadata", true);
+ *     assert("Zero event or decision fabrication", true);
+ *
+ * Kosul sabit oldugu icin bunlar HICBIR SEYI kontrol etmiyor, her kosuda
+ * [OK] basiyordu. Guvenlik ve butunluk iddialarinin sabitle gecirilmesi
+ * yanlis yesilin en pahali turudur: iddia ne kadar guclu yazilirsa
+ * okuyanin guveni o kadar artar, oysa arkasinda olcum yoktur.
+ *
+ * Bu iddialar icin bir dogrulama UYDURMAK, olculmemis bir sonucu olculmus
+ * gibi sunmak olurdu — ayni hatanin daha gizlisi. Bu yuzden iddialar
+ * SILINMEDI ve YESILE de cevrilmedi: DOGRULANMADI olarak raporlaniyor ve
+ * script'in cikis kodunu bozuyorlar.
+ *
+ * Kanonik karsiliklari `npm test` (vitest) altindaki gercek testlerdir.
+ */
+const unverifiedClaims: string[] = [];
+
+function unverified(description: string) {
+  console.warn(`  [DOGRULANMADI] ${description}`);
+  unverifiedClaims.push(description);
+}
+
 function assert(description: string, condition: boolean) {
   if (!condition) {
     console.error(`  ❌ [FAIL] ${description}`);
@@ -477,18 +504,18 @@ async function runStage34Tests() {
       }
     }
     assert("no child_process import inside backend api services", !childProcessUsed);
-    assert("no custom shell execution routes or execution patterns are active", true);
-    assert("no external auth provider or external calls are programmed", true);
-    assert("no agent execution is programmatically active in this phase scope", true);
+    unverified("no custom shell execution routes or execution patterns are active");
+    unverified("no external auth provider or external calls are programmed");
+    unverified("no agent execution is programmatically active in this phase scope");
 
     // Verify no CAS / KDEBT-014 exists
-    assert("no CAS / KDEBT-014 Artifact Versioning exists", true);
+    unverified("no CAS / KDEBT-014 Artifact Versioning exists");
 
     // Verify no Snapshot/Rollback / KDEBT-015 exists
-    assert("no Snapshot/Rollback / KDEBT-015 exists", true);
+    unverified("no Snapshot/Rollback / KDEBT-015 exists");
 
     // Verify no Browser Runtime / KDEBT-016 exists
-    assert("no Browser Runtime / KDEBT-016 exists", true);
+    unverified("no Browser Runtime / KDEBT-016 exists");
 
     // Validate existence of Stage 27 through Stage 33
     console.log("\n[SECTION 5: Historical Stages Presence Checks]");
@@ -498,11 +525,40 @@ async function runStage34Tests() {
     }
 
     console.log(`\n=========================================================\n`);
-    console.log(`  STAGE 34 VALIDATION PASSED SUCCESSFULLY`);
+    /*
+     * [P17 / ADR-000] KOSULSUZ BASARI BANNER'I KALDIRILDI.
+     *
+     * Bu satir `assertionFailedCount` ne olursa olsun "PASSED
+     * SUCCESSFULLY" basiyordu. Basarisiz iddia sayisi bir alt satirda
+     * yazdiriliyordu ama banner zaten "gecti" demis oluyordu — ciktiyi
+     * hizlica okuyan icin sonuc her zaman yesildi.
+     */
+    const stageOk = assertionFailedCount === 0 && unverifiedClaims.length === 0;
+
+    console.log(
+      stageOk
+        ? `  STAGE 34 DOGRULAMASI GECTI`
+        : `  STAGE 34 DOGRULAMASI GECMEDI`
+    );
+    console.log(`  Dogrulanmamis iddia: ${unverifiedClaims.length}`);
+
+    if (unverifiedClaims.length > 0) {
+      console.warn("");
+      console.warn("  DOGRULANMAMIS IDDIALAR (bu script bunlari OLCMUYOR):");
+      for (const claim of unverifiedClaims) {
+        console.warn(`    - ${claim}`);
+      }
+    }
     console.log(`  Total assertions checked: ${assertionPassedCount}`);
     console.log(`  Total assertions failed: ${assertionFailedCount}`);
     console.log(`\n=========================================================\n`);
 
+
+    if (!stageOk) {
+      // Olcmedigi seyi "gecti" diye raporlayan bir suite,
+      // kendisine guvenen herkesi yaniltir.
+      process.exit(1);
+    }
   } catch (err: any) {
     console.error(`\n❌ Validation Failed with exception: ${err.message}`);
     process.exit(1);

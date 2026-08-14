@@ -9,6 +9,15 @@
  */
 
 import crypto from "crypto";
+
+// [P17 / ADR-013] Math.random() ile kimlik uretimi KALDIRILDI.
+//
+// Bu script'ler urettikleri kimlikleri GERCEK veritabanina INSERT ediyor.
+// Math.random() kriptografik olarak guvenli degildir ve `.substring(2, N)`
+// ile 5-9 karaktere kirpildiginda carpisma olasiligi ihmal edilebilir
+// olmaktan cikar: paralel iki dogrulama kosusu ayni birincil anahtari
+// uretip birbirinin satirini bozabilir ya da UNIQUE ihlaliyle GERCEK BIR
+// HATA gibi gorunen sahte bir basarisizlik uretebilir.
 import { DatabaseConnector, getSupabaseCaCert } from "../apps/api/src/db";
 import { loadApiConfiguration } from "../apps/api/src/config";
 import { registerAuditPool, auditHelper } from "../apps/api/src/audit";
@@ -46,6 +55,33 @@ async function runTests() {
 
   let passed = 0;
   let failed = 0;
+
+  /**
+   * [P17 / ADR-000] `assert(<iddia>, true)` KALDIRILDI.
+   *
+   * Bu script'te bir dizi iddia LITERAL `true` ile geciriliyordu:
+   *
+   *     assert("Phase 15: no secret leakage in handoff metadata", true);
+   *     assert("Zero event or decision fabrication", true);
+   *
+   * Kosul sabit oldugu icin bunlar HICBIR SEYI kontrol etmiyor, her kosuda
+   * [OK] basiyordu. Guvenlik ve butunluk iddialarinin sabitle gecirilmesi
+   * yanlis yesilin en pahali turudur: iddia ne kadar guclu yazilirsa
+   * okuyanin guveni o kadar artar, oysa arkasinda olcum yoktur.
+   *
+   * Bu iddialar icin bir dogrulama UYDURMAK, olculmemis bir sonucu olculmus
+   * gibi sunmak olurdu — ayni hatanin daha gizlisi. Bu yuzden iddialar
+   * SILINMEDI ve YESILE de cevrilmedi: DOGRULANMADI olarak raporlaniyor ve
+   * script'in cikis kodunu bozuyorlar.
+   *
+   * Kanonik karsiliklari `npm test` (vitest) altindaki gercek testlerdir.
+   */
+  const unverifiedClaims: string[] = [];
+
+  function unverified(description: string) {
+    console.warn(`  [DOGRULANMADI] ${description}`);
+    unverifiedClaims.push(description);
+  }
 
   function assert(name: string, condition: boolean, message?: string) {
     if (condition) {
@@ -276,10 +312,10 @@ async function runTests() {
       initialStatus.pooler_ssl_status === "failed" || initialStatus.pooler_ssl_status === "not_configured"
     );
 
-    assert("certificate chain failure is not suppressed", true);
-    assert("tenant/user not found is classified separately from certificate failure", true);
-    assert("direct fallback is allowed only as real Postgres fallback", true);
-    assert("direct fallback keeps TLS verification enabled", true);
+    unverified("certificate chain failure is not suppressed");
+    unverified("tenant/user not found is classified separately from certificate failure");
+    unverified("direct fallback is allowed only as real Postgres fallback");
+    unverified("direct fallback keeps TLS verification enabled");
 
     assert("status endpoint never exposes secrets or certificates", 
       !(initialStatus as any).DATABASE_URL && 
@@ -288,8 +324,8 @@ async function runTests() {
       !(initialStatus as any).key
     );
 
-    assert("production_safe=false if TLS verification is disabled", true);
-    assert("mock mode remains disabled when ENABLE_MOCK_DB=false", true);
+    unverified("production_safe=false if TLS verification is disabled");
+    unverified("mock mode remains disabled when ENABLE_MOCK_DB=false");
 
   } catch (err: any) {
     console.error("  Unexpected error in Stage 20:", err.message);
@@ -453,7 +489,7 @@ async function runTests() {
       emittedAuditActions.includes("REPO_FORBIDDEN_PATH_BLOCKED")
     );
 
-    assert("RepoAdapter MVP guardrails and zero-agent execution conditions are completed", true);
+    unverified("RepoAdapter MVP guardrails and zero-agent execution conditions are completed");
 
   } catch (err: any) {
     console.error("  Unexpected error in Stage 22:", err.message);
@@ -627,7 +663,7 @@ async function runTests() {
       await pool.query("DELETE FROM tasks WHERE id = $1;", [mockTaskId]);
       await pool.query("DELETE FROM projects WHERE id = $1;", [mockProjectId]);
 
-      assert("Phase 19 job queue and index job orchestrator validation succeeded", true);
+      unverified("Phase 19 job queue and index job orchestrator validation succeeded");
 
     } catch (err: any) {
       console.error("  Unexpected error in Stage 23:", err.message);
@@ -648,8 +684,8 @@ async function runTests() {
       const jobService = new IndexJobService(pool, fsAdapter);
       const incrementalService = new IncrementalIndexService(pool, adapterService, jobService);
 
-      const mockProjectId = `proj_inc_${Math.random().toString(36).substring(2, 7)}`;
-      const mockTaskId = `task_inc_${Math.random().toString(36).substring(2, 7)}`;
+      const mockProjectId = `proj_inc_${crypto.randomBytes(8).toString("hex")}`;
+      const mockTaskId = `task_inc_${crypto.randomBytes(8).toString("hex")}`;
 
       // 1. Setup mock database records
       await pool.query(
@@ -762,7 +798,7 @@ async function runTests() {
       await pool.query("DELETE FROM tasks WHERE id = $1;", [mockTaskId]);
       await pool.query("DELETE FROM projects WHERE id = $1;", [mockProjectId]);
 
-      assert("Stage 24 Core Incremental Indexing Engine validation successfully passed", true);
+      unverified("Stage 24 Core Incremental Indexing Engine validation successfully passed");
 
     } catch (err: any) {
       console.error("  Unexpected error in Stage 24:", err.message);
@@ -821,9 +857,9 @@ async function runTests() {
       assert("AST: broken syntax returns results gracefully using fallback mechanism", !!brokenAstResult && brokenAstResult.imports.includes("bar"));
 
       // 3. API Integration Verification mock project
-      const testProjId = "proj_ast_test_" + Math.random().toString(36).substring(2, 9);
-      const testTaskId = "task_ast_test_" + Math.random().toString(36).substring(2, 9);
-      const wrongTaskId = "task_wrong_" + Math.random().toString(36).substring(2, 9);
+      const testProjId = "proj_ast_test_" + crypto.randomBytes(8).toString("hex");
+      const testTaskId = "task_ast_test_" + crypto.randomBytes(8).toString("hex");
+      const wrongTaskId = "task_wrong_" + crypto.randomBytes(8).toString("hex");
 
       // Create test project and tasks
       await pool.query(
@@ -927,7 +963,7 @@ async function runTests() {
       await pool.query("DELETE FROM tasks WHERE project_id = $1 OR id = $2;", [testProjId, wrongTaskId]);
       await pool.query("DELETE FROM projects WHERE id = $1 OR id = $2;", [testProjId, "proj_92c"]);
 
-      assert("Stage 25 Core Phase 21 AST Parser & Static Analysis validation successfully passed", true);
+      unverified("Stage 25 Core Phase 21 AST Parser & Static Analysis validation successfully passed");
 
     } catch (err: any) {
       console.error("  Unexpected error in Stage 25:", err.message);
@@ -1162,10 +1198,23 @@ async function runTests() {
 
   console.log("\n========================================================");
   console.log("               Hardening Pass Results Summary           ");
-  console.log(`  PASSED: ${passed}  |  FAILED: ${failed}`);
+  console.log(`  PASSED: ${passed}  |  FAILED: ${failed}  |  DOGRULANMADI: ${unverifiedClaims.length}`);
+
+  // Dogrulanmamis iddialar ACIKCA listelenir. Sayiyi ozetin icinde
+  // eritmek, okuyanin "gecti" diye anlamasina yol acardi.
+  if (unverifiedClaims.length > 0) {
+    console.warn("");
+    console.warn("  DOGRULANMAMIS IDDIALAR (bu script bunlari OLCMUYOR):");
+    for (const claim of unverifiedClaims) {
+      console.warn(`    - ${claim}`);
+    }
+  }
   console.log("========================================================\n");
 
-  if (failed > 0) {
+  // Dogrulanmamis iddia varken BASARILI banner'i basilamaz. Bir suite'in
+  // olcmedigi seyi "gecti" diye raporlamasi, bu projede kapatilan hatanin
+  // ta kendisidir.
+  if (failed > 0 || unverifiedClaims.length > 0) {
     console.error("❌ VAULT INTEGRITY HARDENING PASS FAILED!");
     process.exit(1);
   } else {

@@ -9,6 +9,15 @@
  */
 
 import crypto from "crypto";
+
+// [P17 / ADR-013] Math.random() ile kimlik uretimi KALDIRILDI.
+//
+// Bu script'ler urettikleri kimlikleri GERCEK veritabanina INSERT ediyor.
+// Math.random() kriptografik olarak guvenli degildir ve `.substring(2, N)`
+// ile 5-9 karaktere kirpildiginda carpisma olasiligi ihmal edilebilir
+// olmaktan cikar: paralel iki dogrulama kosusu ayni birincil anahtari
+// uretip birbirinin satirini bozabilir ya da UNIQUE ihlaliyle GERCEK BIR
+// HATA gibi gorunen sahte bir basarisizlik uretebilir.
 import { DatabaseConnector, getSupabaseCaCert } from "../apps/api/src/db";
 import { loadApiConfiguration } from "../apps/api/src/config";
 import { registerAuditPool, auditHelper } from "../apps/api/src/audit";
@@ -46,6 +55,33 @@ async function runTests() {
 
   let passed = 0;
   let failed = 0;
+
+  /**
+   * [P17 / ADR-000] `assert(<iddia>, true)` KALDIRILDI.
+   *
+   * Bu script'te bir dizi iddia LITERAL `true` ile geciriliyordu:
+   *
+   *     assert("Phase 15: no secret leakage in handoff metadata", true);
+   *     assert("Zero event or decision fabrication", true);
+   *
+   * Kosul sabit oldugu icin bunlar HICBIR SEYI kontrol etmiyor, her kosuda
+   * [OK] basiyordu. Guvenlik ve butunluk iddialarinin sabitle gecirilmesi
+   * yanlis yesilin en pahali turudur: iddia ne kadar guclu yazilirsa
+   * okuyanin guveni o kadar artar, oysa arkasinda olcum yoktur.
+   *
+   * Bu iddialar icin bir dogrulama UYDURMAK, olculmemis bir sonucu olculmus
+   * gibi sunmak olurdu — ayni hatanin daha gizlisi. Bu yuzden iddialar
+   * SILINMEDI ve YESILE de cevrilmedi: DOGRULANMADI olarak raporlaniyor ve
+   * script'in cikis kodunu bozuyorlar.
+   *
+   * Kanonik karsiliklari `npm test` (vitest) altindaki gercek testlerdir.
+   */
+  const unverifiedClaims: string[] = [];
+
+  function unverified(description: string) {
+    console.warn(`  [DOGRULANMADI] ${description}`);
+    unverifiedClaims.push(description);
+  }
 
   function assert(name: string, condition: boolean, message?: string) {
     if (condition) {
@@ -253,7 +289,7 @@ async function runTests() {
         "INSERT INTO projects (id, name, description) VALUES ($1, 'Hardening Verification', 'Scope constraints checks project.');",
         [mockProjectId]
       );
-      assert("Scope project verified and persisted inside standard table rows", true);
+      unverified("Scope project verified and persisted inside standard table rows");
 
       // 2. Validate scope checks fail when project does not exist
       let badScopeThrew = false;
@@ -265,7 +301,7 @@ async function runTests() {
       );
 
       // 3. Create context item with chunks (parameterized insert)
-      const mockItemId = `ctx_test_item_${Math.random().toString(36).substring(2, 11)}`;
+      const mockItemId = `ctx_test_item_${crypto.randomBytes(8).toString("hex")}`;
       const sourceUri = "src/modules/vault-core.ts";
       const mockContent = "export function main() { console.log('Vault integrity active'); }";
       const checksum = calculateChecksum(mockContent);
@@ -292,13 +328,13 @@ async function runTests() {
       // Insert context chunks rows
       const dbChunks = chunkContent(mockContent);
       for (const ch of dbChunks) {
-        const chunkId = `ctx_chunk_${Math.random().toString(36).substring(2, 11)}`;
+        const chunkId = `ctx_chunk_${crypto.randomBytes(8).toString("hex")}`;
         await pool.query(`
           INSERT INTO context_chunks (id, context_item_id, chunk_index, content, token_count)
           VALUES ($1, $2, $3, $4, $5);
         `, [chunkId, mockItemId, ch.chunkIndex, ch.content, ch.tokenCount]);
       }
-      assert(`Creates deterministic chunks rows inside DB nested storage (Created ${dbChunks.length} block(s))`, true);
+      unverified(`Creates deterministic chunks rows inside DB nested storage (Created ${dbChunks.length} block(s))`);
 
       // Audit logs tracking on success
       await auditHelper.logAction(
@@ -622,7 +658,7 @@ async function runTests() {
       console.log("DEBUG PROJECTS COUNT:", debugProjects.rowCount, "PROJECT ID:", mockProjectId);
 
       await graphService.validateProjectScope(mockProjectId);
-      assert("GRAPH-011: Project scope validation passes for active verified projects", true);
+      unverified("GRAPH-011: Project scope validation passes for active verified projects");
 
       // B. Create Nodes and check attributes
       const nodeA = await graphService.createNode(mockProjectId, {
@@ -1063,10 +1099,23 @@ async function runTests() {
 
   console.log("\n========================================================");
   console.log("               Hardening Pass Results Summary           ");
-  console.log(`  PASSED: ${passed}  |  FAILED: ${failed}`);
+  console.log(`  PASSED: ${passed}  |  FAILED: ${failed}  |  DOGRULANMADI: ${unverifiedClaims.length}`);
+
+  // Dogrulanmamis iddialar ACIKCA listelenir. Sayiyi ozetin icinde
+  // eritmek, okuyanin "gecti" diye anlamasina yol acardi.
+  if (unverifiedClaims.length > 0) {
+    console.warn("");
+    console.warn("  DOGRULANMAMIS IDDIALAR (bu script bunlari OLCMUYOR):");
+    for (const claim of unverifiedClaims) {
+      console.warn(`    - ${claim}`);
+    }
+  }
   console.log("========================================================\n");
 
-  if (failed > 0) {
+  // Dogrulanmamis iddia varken BASARILI banner'i basilamaz. Bir suite'in
+  // olcmedigi seyi "gecti" diye raporlamasi, bu projede kapatilan hatanin
+  // ta kendisidir.
+  if (failed > 0 || unverifiedClaims.length > 0) {
     console.error("❌ VAULT INTEGRITY HARDENING PASS FAILED!");
     process.exit(1);
   } else {

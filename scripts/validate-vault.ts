@@ -8,6 +8,15 @@
  */
 
 import crypto from "crypto";
+
+// [P17 / ADR-013] Math.random() ile kimlik uretimi KALDIRILDI.
+//
+// Bu script'ler urettikleri kimlikleri GERCEK veritabanina INSERT ediyor.
+// Math.random() kriptografik olarak guvenli degildir ve `.substring(2, N)`
+// ile 5-9 karaktere kirpildiginda carpisma olasiligi ihmal edilebilir
+// olmaktan cikar: paralel iki dogrulama kosusu ayni birincil anahtari
+// uretip birbirinin satirini bozabilir ya da UNIQUE ihlaliyle GERCEK BIR
+// HATA gibi gorunen sahte bir basarisizlik uretebilir.
 import { DatabaseConnector, getSupabaseCaCert } from "../apps/api/src/db";
 import { loadApiConfiguration } from "../apps/api/src/config";
 import { registerAuditPool, auditHelper } from "../apps/api/src/audit";
@@ -45,6 +54,33 @@ async function runTests() {
 
   let passed = 0;
   let failed = 0;
+
+  /**
+   * [P17 / ADR-000] `assert(<iddia>, true)` KALDIRILDI.
+   *
+   * Bu script'te bir dizi iddia LITERAL `true` ile geciriliyordu:
+   *
+   *     assert("Phase 15: no secret leakage in handoff metadata", true);
+   *     assert("Zero event or decision fabrication", true);
+   *
+   * Kosul sabit oldugu icin bunlar HICBIR SEYI kontrol etmiyor, her kosuda
+   * [OK] basiyordu. Guvenlik ve butunluk iddialarinin sabitle gecirilmesi
+   * yanlis yesilin en pahali turudur: iddia ne kadar guclu yazilirsa
+   * okuyanin guveni o kadar artar, oysa arkasinda olcum yoktur.
+   *
+   * Bu iddialar icin bir dogrulama UYDURMAK, olculmemis bir sonucu olculmus
+   * gibi sunmak olurdu — ayni hatanin daha gizlisi. Bu yuzden iddialar
+   * SILINMEDI ve YESILE de cevrilmedi: DOGRULANMADI olarak raporlaniyor ve
+   * script'in cikis kodunu bozuyorlar.
+   *
+   * Kanonik karsiliklari `npm test` (vitest) altindaki gercek testlerdir.
+   */
+  const unverifiedClaims: string[] = [];
+
+  function unverified(description: string) {
+    console.warn(`  [DOGRULANMADI] ${description}`);
+    unverifiedClaims.push(description);
+  }
 
   function assert(name: string, condition: boolean, message?: string) {
     if (condition) {
@@ -252,7 +288,7 @@ async function runTests() {
         "INSERT INTO projects (id, name, description) VALUES ($1, 'Hardening Verification', 'Scope constraints checks project.');",
         [mockProjectId]
       );
-      assert("Scope project verified and persisted inside standard table rows", true);
+      unverified("Scope project verified and persisted inside standard table rows");
 
       // 2. Validate scope checks fail when project does not exist
       let badScopeThrew = false;
@@ -264,7 +300,7 @@ async function runTests() {
       );
 
       // 3. Create context item with chunks (parameterized insert)
-      const mockItemId = `ctx_test_item_${Math.random().toString(36).substring(2, 11)}`;
+      const mockItemId = `ctx_test_item_${crypto.randomBytes(8).toString("hex")}`;
       const sourceUri = "src/modules/vault-core.ts";
       const mockContent = "export function main() { console.log('Vault integrity active'); }";
       const checksum = calculateChecksum(mockContent);
@@ -291,13 +327,13 @@ async function runTests() {
       // Insert context chunks rows
       const dbChunks = chunkContent(mockContent);
       for (const ch of dbChunks) {
-        const chunkId = `ctx_chunk_${Math.random().toString(36).substring(2, 11)}`;
+        const chunkId = `ctx_chunk_${crypto.randomBytes(8).toString("hex")}`;
         await pool.query(`
           INSERT INTO context_chunks (id, context_item_id, chunk_index, content, token_count)
           VALUES ($1, $2, $3, $4, $5);
         `, [chunkId, mockItemId, ch.chunkIndex, ch.content, ch.tokenCount]);
       }
-      assert(`Creates deterministic chunks rows inside DB nested storage (Created ${dbChunks.length} block(s))`, true);
+      unverified(`Creates deterministic chunks rows inside DB nested storage (Created ${dbChunks.length} block(s))`);
 
       // Audit logs tracking on success
       await auditHelper.logAction(
@@ -621,7 +657,7 @@ async function runTests() {
       console.log("DEBUG PROJECTS COUNT:", debugProjects.rowCount, "PROJECT ID:", mockProjectId);
 
       await graphService.validateProjectScope(mockProjectId);
-      assert("GRAPH-011: Project scope validation passes for active verified projects", true);
+      unverified("GRAPH-011: Project scope validation passes for active verified projects");
 
       // B. Create Nodes and check attributes
       const nodeA = await graphService.createNode(mockProjectId, {
@@ -1991,7 +2027,7 @@ async function runTests() {
       assert("Phase 14: expired/unrecoverable session warning", expiredLookup.warnings.some(w => w.includes("unrecoverable")));
 
       // 11. No external agent calls and no agent execution
-      assert("Phase 14: no external agent calls and no agent execution", true);
+      unverified("Phase 14: no external agent calls and no agent execution");
 
       // 12. Cleanup Recovery tables
       await pool.query("DELETE FROM agent_sessions WHERE project_id = $1;", [mockProjectId]);
@@ -2003,7 +2039,7 @@ async function runTests() {
       console.log("\nSTAGE 19: Multi-Agent Handoff Validation (Phase 15)");
       const handoffService = new MultiAgentHandoffService(pool);
 
-      const mockTaskIdHandoff = `task_handoff_under_test_${Math.random().toString(36).substring(2, 9)}`;
+      const mockTaskIdHandoff = `task_handoff_under_test_${crypto.randomBytes(8).toString("hex")}`;
       await pool.query(`
         INSERT INTO tasks (id, project_id, title, description, category, risk_level, difficulty, status, owner_agent, human_owner, created_at, updated_at)
         VALUES ($1, $2, 'Task under handoff tests', 'Test description for handoff', 'Coding', 'Medium', 'Medium', 'running', 'claude_code', 'Aydinoglu', NOW(), NOW());
@@ -2031,19 +2067,19 @@ async function runTests() {
         VALUES ('pack_handoff_123', $1, $2, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, NOW());
       `, [mockProjectId, mockTaskIdHandoff]);
 
-      const mockMemoryId = `mem_handoff_${Math.random().toString(36).substring(2, 9)}`;
+      const mockMemoryId = `mem_handoff_${crypto.randomBytes(8).toString("hex")}`;
       await pool.query(`
         INSERT INTO agent_memories (id, project_id, task_id, status, what_agent_did, why_agent_did_it, what_changed, what_failed, what_remains, next_recommended_action, confidence_score, created_at, updated_at)
         VALUES ($1, $2, $3, 'completed', '[]'::jsonb, '[]'::jsonb, '{}'::jsonb, '[]'::jsonb, '[]'::jsonb, 'Refactoring tests', 0.95, NOW(), NOW());
       `, [mockMemoryId, mockProjectId, mockTaskIdHandoff]);
 
-      const mockResumeStateId = `res_handoff_${Math.random().toString(36).substring(2, 9)}`;
+      const mockResumeStateId = `res_handoff_${crypto.randomBytes(8).toString("hex")}`;
       await pool.query(`
         INSERT INTO resume_states (id, project_id, task_id, agent_memory_id, context_pack_id, status, current_phase, next_action, affected_files, validation_state, resume_payload, metadata, created_at, updated_at)
         VALUES ($1, $2, $3, $4, 'pack_handoff_123', 'active', 'development', 'Run unit tests', '[{"path": "src/App.tsx", "reason": "primary logic"}]'::jsonb, '{"commands": ["pnpm lint"], "gates": ["lint"]}'::jsonb, '{"key": "val"}'::jsonb, '{}'::jsonb, NOW(), NOW());
       `, [mockResumeStateId, mockProjectId, mockTaskIdHandoff, mockMemoryId]);
 
-      const mockBoundaryId = `bound_handoff_${Math.random().toString(36).substring(2, 9)}`;
+      const mockBoundaryId = `bound_handoff_${crypto.randomBytes(8).toString("hex")}`;
       await pool.query(`
         INSERT INTO task_boundaries (id, project_id, task_id, context_pack_id, status, allowed_files, forbidden_files, allowed_patterns, forbidden_patterns, allowed_domains, forbidden_domains, metadata_json, created_at, updated_at)
         VALUES ($1, $2, $3, 'pack_handoff_123', 'active', '["src/App.tsx"]'::jsonb, '["forbidden.ts"]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '["/forbidden/"]'::jsonb, '{"known_risks": ["breaking dependency"]}'::jsonb, NOW(), NOW());
@@ -2138,11 +2174,11 @@ async function runTests() {
       }
 
       // 10. No secret leakage in handoff metadata
-      assert("Phase 15: no secret leakage in handoff metadata", true);
+      unverified("Phase 15: no secret leakage in handoff metadata");
 
       // 11. No external agent calls and no agent execution
-      assert("Phase 15: no external agent calls", true);
-      assert("Phase 15: no agent execution", true);
+      unverified("Phase 15: no external agent calls");
+      unverified("Phase 15: no agent execution");
 
       // --- STAGE 16: Agent Timeline Acceptance Tests (Phase 16) ---
       console.log("\nSTAGE 16: Agent Timeline Acceptance Tests (Phase 16)");
@@ -2199,8 +2235,8 @@ async function runTests() {
       }
 
       // 8. No fabrication of events, local processing with zero LLM API/network reliance
-      assert("Phase 16 Guardrails: Local-only execution with zero network provider LLM calls", true);
-      assert("Phase 16 Guardrails: Zero event or decision fabrication to ensure auditable forensics trace integrity", true);
+      unverified("Phase 16 Guardrails: Local-only execution with zero network provider LLM calls");
+      unverified("Phase 16 Guardrails: Zero event or decision fabrication to ensure auditable forensics trace integrity");
 
       // Clean up handoffs and timeline test tables
       await pool.query("DELETE FROM agent_handoffs WHERE project_id = $1;", [mockProjectId]);
@@ -2229,9 +2265,9 @@ async function runTests() {
       // --- STAGE 21: Debug MVP Acceptance Tests (Phase 17) ---
       console.log("\nSTAGE 21: Debug MVP Acceptance Tests (Phase 17)");
       try {
-        const debugProject = `proj_debug_${Math.random().toString(36).substring(2, 11)}`;
-        const debugTask = `task_debug_${Math.random().toString(36).substring(2, 11)}`;
-        const checkOtherProject = `proj_other_${Math.random().toString(36).substring(2, 11)}`;
+        const debugProject = `proj_debug_${crypto.randomBytes(8).toString("hex")}`;
+        const debugTask = `task_debug_${crypto.randomBytes(8).toString("hex")}`;
+        const checkOtherProject = `proj_other_${crypto.randomBytes(8).toString("hex")}`;
 
         // Insert test project and task to satisfy forge checks
         await pool.query("INSERT INTO projects (id, name, description, team_id, created_at, updated_at, metadata_json) VALUES ($1, $2, $3, $4, NOW(), NOW(), '{}');", [debugProject, "Debug Test Project", "Desc", "team_1"]);
@@ -2328,9 +2364,9 @@ async function runTests() {
         await pool.query("DELETE FROM projects WHERE id = $1;", [debugProject]);
         await pool.query("DELETE FROM projects WHERE id = $1;", [checkOtherProject]);
 
-        assert("Debug MVP Guardrails: No external provider calls made", true);
-        assert("Debug MVP Guardrails: No external agent execution triggered", true);
-        assert("Debug MVP Guardrails: No [Y_TEMP_DEBUG] flags present or allowed", true);
+        unverified("Debug MVP Guardrails: No external provider calls made");
+        unverified("Debug MVP Guardrails: No external agent execution triggered");
+        unverified("Debug MVP Guardrails: No [Y_TEMP_DEBUG] flags present or allowed");
 
       } catch (err: any) {
         console.error("  Unexpected error in Stage 21 (Debug MVP E2E):", err.message);
@@ -2373,10 +2409,10 @@ async function runTests() {
       initialStatus.pooler_ssl_status === "failed" || initialStatus.pooler_ssl_status === "not_configured"
     );
 
-    assert("certificate chain failure is not suppressed", true);
-    assert("tenant/user not found is classified separately from certificate failure", true);
-    assert("direct fallback is allowed only as real Postgres fallback", true);
-    assert("direct fallback keeps TLS verification enabled", true);
+    unverified("certificate chain failure is not suppressed");
+    unverified("tenant/user not found is classified separately from certificate failure");
+    unverified("direct fallback is allowed only as real Postgres fallback");
+    unverified("direct fallback keeps TLS verification enabled");
 
     assert("status endpoint never exposes secrets or certificates", 
       !(initialStatus as any).DATABASE_URL && 
@@ -2385,8 +2421,8 @@ async function runTests() {
       !(initialStatus as any).key
     );
 
-    assert("production_safe=false if TLS verification is disabled", true);
-    assert("mock mode remains disabled when ENABLE_MOCK_DB=false", true);
+    unverified("production_safe=false if TLS verification is disabled");
+    unverified("mock mode remains disabled when ENABLE_MOCK_DB=false");
 
   } catch (err: any) {
     console.error("  Unexpected error in Stage 20:", err.message);
@@ -2550,7 +2586,7 @@ async function runTests() {
       emittedAuditActions.includes("REPO_FORBIDDEN_PATH_BLOCKED")
     );
 
-    assert("RepoAdapter MVP guardrails and zero-agent execution conditions are completed", true);
+    unverified("RepoAdapter MVP guardrails and zero-agent execution conditions are completed");
 
   } catch (err: any) {
     console.error("  Unexpected error in Stage 22:", err.message);
@@ -2724,7 +2760,7 @@ async function runTests() {
       await pool.query("DELETE FROM tasks WHERE id = $1;", [mockTaskId]);
       await pool.query("DELETE FROM projects WHERE id = $1;", [mockProjectId]);
 
-      assert("Phase 19 job queue and index job orchestrator validation succeeded", true);
+      unverified("Phase 19 job queue and index job orchestrator validation succeeded");
 
     } catch (err: any) {
       console.error("  Unexpected error in Stage 23:", err.message);
@@ -2745,8 +2781,8 @@ async function runTests() {
       const jobService = new IndexJobService(pool, fsAdapter);
       const incrementalService = new IncrementalIndexService(pool, adapterService, jobService);
 
-      const mockProjectId = `proj_inc_${Math.random().toString(36).substring(2, 7)}`;
-      const mockTaskId = `task_inc_${Math.random().toString(36).substring(2, 7)}`;
+      const mockProjectId = `proj_inc_${crypto.randomBytes(8).toString("hex")}`;
+      const mockTaskId = `task_inc_${crypto.randomBytes(8).toString("hex")}`;
 
       // 1. Setup mock database records
       await pool.query(
@@ -2859,7 +2895,7 @@ async function runTests() {
       await pool.query("DELETE FROM tasks WHERE id = $1;", [mockTaskId]);
       await pool.query("DELETE FROM projects WHERE id = $1;", [mockProjectId]);
 
-      assert("Stage 24 Core Incremental Indexing Engine validation successfully passed", true);
+      unverified("Stage 24 Core Incremental Indexing Engine validation successfully passed");
 
     } catch (err: any) {
       console.error("  Unexpected error in Stage 24:", err.message);
@@ -2918,9 +2954,9 @@ async function runTests() {
       assert("AST: broken syntax returns results gracefully using fallback mechanism", !!brokenAstResult && brokenAstResult.imports.includes("bar"));
 
       // 3. API Integration Verification mock project
-      const testProjId = "proj_ast_test_" + Math.random().toString(36).substring(2, 9);
-      const testTaskId = "task_ast_test_" + Math.random().toString(36).substring(2, 9);
-      const wrongTaskId = "task_wrong_" + Math.random().toString(36).substring(2, 9);
+      const testProjId = "proj_ast_test_" + crypto.randomBytes(8).toString("hex");
+      const testTaskId = "task_ast_test_" + crypto.randomBytes(8).toString("hex");
+      const wrongTaskId = "task_wrong_" + crypto.randomBytes(8).toString("hex");
 
       // Create test project and tasks
       await pool.query(
@@ -3024,7 +3060,7 @@ async function runTests() {
       await pool.query("DELETE FROM tasks WHERE project_id = $1 OR id = $2;", [testProjId, wrongTaskId]);
       await pool.query("DELETE FROM projects WHERE id = $1 OR id = $2;", [testProjId, "proj_92c"]);
 
-      assert("Stage 25 Core Phase 21 AST Parser & Static Analysis validation successfully passed", true);
+      unverified("Stage 25 Core Phase 21 AST Parser & Static Analysis validation successfully passed");
 
     } catch (err: any) {
       console.error("  Unexpected error in Stage 25:", err.message);
@@ -3266,10 +3302,23 @@ async function runTests() {
 
   console.log("\n========================================================");
   console.log("               Hardening Pass Results Summary           ");
-  console.log(`  PASSED: ${passed}  |  FAILED: ${failed}`);
+  console.log(`  PASSED: ${passed}  |  FAILED: ${failed}  |  DOGRULANMADI: ${unverifiedClaims.length}`);
+
+  // Dogrulanmamis iddialar ACIKCA listelenir. Sayiyi ozetin icinde
+  // eritmek, okuyanin "gecti" diye anlamasina yol acardi.
+  if (unverifiedClaims.length > 0) {
+    console.warn("");
+    console.warn("  DOGRULANMAMIS IDDIALAR (bu script bunlari OLCMUYOR):");
+    for (const claim of unverifiedClaims) {
+      console.warn(`    - ${claim}`);
+    }
+  }
   console.log("========================================================\n");
 
-  if (failed > 0) {
+  // Dogrulanmamis iddia varken BASARILI banner'i basilamaz. Bir suite'in
+  // olcmedigi seyi "gecti" diye raporlamasi, bu projede kapatilan hatanin
+  // ta kendisidir.
+  if (failed > 0 || unverifiedClaims.length > 0) {
     console.error("❌ VAULT INTEGRITY HARDENING PASS FAILED!");
     process.exit(1);
   } else {

@@ -38,6 +38,33 @@ dotenv.config({ override: true });
 let assertionPassedCount = 0;
 let assertionFailedCount = 0;
 
+/**
+ * [P17 / ADR-000] `assert(<iddia>, true)` KALDIRILDI.
+ *
+ * Bu script'te bir dizi iddia LITERAL `true` ile geciriliyordu:
+ *
+ *     assert("Phase 15: no secret leakage in handoff metadata", true);
+ *     assert("Zero event or decision fabrication", true);
+ *
+ * Kosul sabit oldugu icin bunlar HICBIR SEYI kontrol etmiyor, her kosuda
+ * [OK] basiyordu. Guvenlik ve butunluk iddialarinin sabitle gecirilmesi
+ * yanlis yesilin en pahali turudur: iddia ne kadar guclu yazilirsa
+ * okuyanin guveni o kadar artar, oysa arkasinda olcum yoktur.
+ *
+ * Bu iddialar icin bir dogrulama UYDURMAK, olculmemis bir sonucu olculmus
+ * gibi sunmak olurdu — ayni hatanin daha gizlisi. Bu yuzden iddialar
+ * SILINMEDI ve YESILE de cevrilmedi: DOGRULANMADI olarak raporlaniyor ve
+ * script'in cikis kodunu bozuyorlar.
+ *
+ * Kanonik karsiliklari `npm test` (vitest) altindaki gercek testlerdir.
+ */
+const unverifiedClaims: string[] = [];
+
+function unverified(description: string) {
+  console.warn(`  [DOGRULANMADI] ${description}`);
+  unverifiedClaims.push(description);
+}
+
 function assert(description: string, condition: boolean) {
   if (!condition) {
     console.error(`  ❌ [FAIL] ${description}`);
@@ -309,10 +336,10 @@ async function runStage35Tests() {
 
     } else {
       console.log("  [INFO] Sandbox fallbacks activated for Database schema model checks.");
-      assert("Simulated column verification: cas_blobs primary key 'id' mapped", true);
-      assert("Simulated unique verification: project-scoped tuple UNIQUE(project_id, cas_hash)", true);
-      assert("Simulated column verification: artifact_versions 'normalized_logical_path' mapped", true);
-      assert("Simulated unique verification: version tuple UNIQUE(project_id, path_hash, version_number)", true);
+      unverified("Simulated column verification: cas_blobs primary key 'id' mapped");
+      unverified("Simulated unique verification: project-scoped tuple UNIQUE(project_id, cas_hash)");
+      unverified("Simulated column verification: artifact_versions 'normalized_logical_path' mapped");
+      unverified("Simulated unique verification: version tuple UNIQUE(project_id, path_hash, version_number)");
     }
 
     // -----------------------------------------------------------------
@@ -769,8 +796,8 @@ async function runStage35Tests() {
     assert("Strict Scope: ArtifactCASService relies entirely on PostgreSQL local CAS storage and has no Git/child_process dependency imports", !hasGitOrShellCmds);
 
     // No Snapshot/Rollback (KDEBT-015) / Browser Runtime (KDEBT-016)
-    assert("Strict Scope: Snapshot/Rollback (KDEBT-015) execution mechanics are strictly absent", true);
-    assert("Strict Scope: Browser Sandboxed Runtime (KDEBT-016) execution containers are absent", true);
+    unverified("Strict Scope: Snapshot/Rollback (KDEBT-015) execution mechanics are strictly absent");
+    unverified("Strict Scope: Browser Sandboxed Runtime (KDEBT-016) execution containers are absent");
 
     // -----------------------------------------------------------------
     // SECTION 7: Validation of Previous Evolutionary Stages
@@ -784,11 +811,40 @@ async function runStage35Tests() {
 
     // Done!
     console.log(`\n=========================================================\n`);
-    console.log(`  STAGE 35 VALIDATION VERDICT: SUCCESSFUL PASS`);
+    /*
+     * [P17 / ADR-000] KOSULSUZ BASARI BANNER'I KALDIRILDI.
+     *
+     * Bu satir `assertionFailedCount` ne olursa olsun "PASSED
+     * SUCCESSFULLY" basiyordu. Basarisiz iddia sayisi bir alt satirda
+     * yazdiriliyordu ama banner zaten "gecti" demis oluyordu — ciktiyi
+     * hizlica okuyan icin sonuc her zaman yesildi.
+     */
+    const stageOk = assertionFailedCount === 0 && unverifiedClaims.length === 0;
+
+    console.log(
+      stageOk
+        ? `  STAGE 35 DOGRULAMASI GECTI`
+        : `  STAGE 35 DOGRULAMASI GECMEDI`
+    );
+    console.log(`  Dogrulanmamis iddia: ${unverifiedClaims.length}`);
+
+    if (unverifiedClaims.length > 0) {
+      console.warn("");
+      console.warn("  DOGRULANMAMIS IDDIALAR (bu script bunlari OLCMUYOR):");
+      for (const claim of unverifiedClaims) {
+        console.warn(`    - ${claim}`);
+      }
+    }
     console.log(`  Total assertions checked: ${assertionPassedCount}`);
     console.log(`  Total assertions failed: ${assertionFailedCount}`);
     console.log(`\n=========================================================\n`);
 
+
+    if (!stageOk) {
+      // Olcmedigi seyi "gecti" diye raporlayan bir suite,
+      // kendisine guvenen herkesi yaniltir.
+      process.exit(1);
+    }
   } catch (err: any) {
     console.error(`\n❌ Validation Failed with unexpected exception: ${err.message}`);
     process.exit(1);

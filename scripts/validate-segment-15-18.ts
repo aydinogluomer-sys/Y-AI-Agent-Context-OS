@@ -47,6 +47,33 @@ async function runTests() {
   let passed = 0;
   let failed = 0;
 
+  /**
+   * [P17 / ADR-000] `assert(<iddia>, true)` KALDIRILDI.
+   *
+   * Bu script'te bir dizi iddia LITERAL `true` ile geciriliyordu:
+   *
+   *     assert("Phase 15: no secret leakage in handoff metadata", true);
+   *     assert("Zero event or decision fabrication", true);
+   *
+   * Kosul sabit oldugu icin bunlar HICBIR SEYI kontrol etmiyor, her kosuda
+   * [OK] basiyordu. Guvenlik ve butunluk iddialarinin sabitle gecirilmesi
+   * yanlis yesilin en pahali turudur: iddia ne kadar guclu yazilirsa
+   * okuyanin guveni o kadar artar, oysa arkasinda olcum yoktur.
+   *
+   * Bu iddialar icin bir dogrulama UYDURMAK, olculmemis bir sonucu olculmus
+   * gibi sunmak olurdu — ayni hatanin daha gizlisi. Bu yuzden iddialar
+   * SILINMEDI ve YESILE de cevrilmedi: DOGRULANMADI olarak raporlaniyor ve
+   * script'in cikis kodunu bozuyorlar.
+   *
+   * Kanonik karsiliklari `npm test` (vitest) altindaki gercek testlerdir.
+   */
+  const unverifiedClaims: string[] = [];
+
+  function unverified(description: string) {
+    console.warn(`  [DOGRULANMADI] ${description}`);
+    unverifiedClaims.push(description);
+  }
+
   function assert(name: string, condition: boolean, message?: string) {
     if (condition) {
       console.log(`  [OK]   ${name}`);
@@ -916,7 +943,7 @@ async function runTests() {
       assert("Phase 14: expired/unrecoverable session warning", expiredLookup.warnings.some(w => w.includes("unrecoverable")));
 
       // 11. No external agent calls and no agent execution
-      assert("Phase 14: no external agent calls and no agent execution", true);
+      unverified("Phase 14: no external agent calls and no agent execution");
 
       // 12. Cleanup Recovery tables
       await pool.query("DELETE FROM agent_sessions WHERE project_id = $1;", [mockProjectId]);
@@ -1116,10 +1143,23 @@ async function runTests() {
 
   console.log("\n========================================================");
   console.log("               Hardening Pass Results Summary           ");
-  console.log(`  PASSED: ${passed}  |  FAILED: ${failed}`);
+  console.log(`  PASSED: ${passed}  |  FAILED: ${failed}  |  DOGRULANMADI: ${unverifiedClaims.length}`);
+
+  // Dogrulanmamis iddialar ACIKCA listelenir. Sayiyi ozetin icinde
+  // eritmek, okuyanin "gecti" diye anlamasina yol acardi.
+  if (unverifiedClaims.length > 0) {
+    console.warn("");
+    console.warn("  DOGRULANMAMIS IDDIALAR (bu script bunlari OLCMUYOR):");
+    for (const claim of unverifiedClaims) {
+      console.warn(`    - ${claim}`);
+    }
+  }
   console.log("========================================================\n");
 
-  if (failed > 0) {
+  // Dogrulanmamis iddia varken BASARILI banner'i basilamaz. Bir suite'in
+  // olcmedigi seyi "gecti" diye raporlamasi, bu projede kapatilan hatanin
+  // ta kendisidir.
+  if (failed > 0 || unverifiedClaims.length > 0) {
     console.error("❌ VAULT INTEGRITY HARDENING PASS FAILED!");
     process.exit(1);
   } else {

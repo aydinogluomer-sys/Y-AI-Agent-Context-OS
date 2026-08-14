@@ -20,7 +20,7 @@ belgeye de uygulanır: bir madde tamam değilse **TAMAM DEĞİL** yazar.
 | Migration | **82** (35 göç + 47 yeni) | `migrations/*.sql` |
 | Envanter drift | **8/8 kontrol geçti** | `npm run gate:drift` |
 | Sır taraması | **0 yeni bulgu** (70 kabul edilmiş) | `npm run secret-scan` |
-| False-green çırçır | **132 toplam / 100 P0** (taban kilitli) | `npm run gate:false-green` |
+| False-green çırçır | **52 toplam / 48 P0** (taban kilitli; P00'da 135) | `npm run gate:false-green` |
 | UI dürüstlük açığı | **0** (P00'da 103) | `inventory-ui` |
 | 410'a kapatılan legacy route | **17** | API envanteri |
 
@@ -159,6 +159,10 @@ Her biri bir grep testiyle kilitlendi; geri gelmeleri CI'ı kırar.
 | Sahte run handler'ı | 4 olay yazıp `completed` dönüyordu | P12 |
 | Uydurma SHA-256 (×2) | `Math.random()` ve hard-code | P13 |
 | Uydurma metrikler | `92% cheaper`, `92.4`, `12450000`, `48200` | P16 |
+| `assert(<iddia>, true)` ×52 | Güvenlik/bütünlük iddialarını **sabitle** geçiriyordu | P17 |
+| Koşulsuz "PASSED SUCCESSFULLY" ×2 | Başarısız iddia sayısından **bağımsız** basılıyordu | P17 |
+| `Math.random()` birincil anahtar ×28 | Gerçek DB'ye INSERT edilen kimlikler (ADR-013) | P17 |
+| DB kimlik bilgisi formu | Ölü uç noktaya **üretim parolası** topluyordu | P17 |
 
 ---
 

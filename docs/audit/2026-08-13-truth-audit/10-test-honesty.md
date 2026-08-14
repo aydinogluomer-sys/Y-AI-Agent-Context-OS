@@ -8,15 +8,15 @@
 | Ölçüt | Değer |
 |---|---|
 | Taranan dosya | 250 |
-| Toplam bulgu | **132** |
-| P0 (release blocker) | **100** |
-| P1 (production-critical) | **32** |
+| Toplam bulgu | **52** |
+| P0 (release blocker) | **48** |
+| P1 (production-critical) | **4** |
 
 ## Kural bazlı dağılım
 
 | Kural | Şiddet | Bulgu | Açıklama |
 |---|---|---:|---|
-| `assert-true` | P0 | 52 | assert("...", true) — koşulsuz geçen sahte assertion |
+| `assert-true` | P0 | 0 | assert("...", true) — koşulsuz geçen sahte assertion |
 | `skip-then-pass` | P0 | 36 | DB/bağımlılık yoksa atla ve yine de PASS say |
 | `fabricated-hash` | P0 | 0 | Math.random() ile üretilip hash gibi sunulan değer |
 | `settimeout-success` | P0 | 0 | setTimeout/delay sonrası koşulsuz başarı durumu |
@@ -30,26 +30,25 @@
 | `unconditional-flag` | P1 | 0 | Doğrulanmadan true yazılan güvenlik bayrağı |
 | `stub-dependency` | P1 | 0 | Gerçek analiz yerine stub bağımlılık kaydı |
 | `weak-e2e-assertion` | P1 | 0 | toBeLessThan(400/500) — 401/404 dahi geçiren E2E iddiası |
-| `random-primary-key` | P1 | 28 | Math.random() ile primary key üretimi (ADR-013 ihlali) |
+| `random-primary-key` | P1 | 0 | Math.random() ile primary key üretimi (ADR-013 ihlali) |
 
 ## En yoğun 25 dosya
 
 | Dosya | Bulgu |
 |---|---:|
-| `scripts/validate-vault.ts` | 44 |
-| `scripts/validate-segment-20-26.ts` | 22 |
-| `scripts/validate-segment-19-21.ts` | 17 |
-| `scripts/validate-segment-1-10.ts` | 6 |
-| `scripts/validate-stage-34.ts` | 6 |
-| `scripts/validate-stage-35.ts` | 6 |
-| `scripts/validate-segment-15-18.ts` | 5 |
+| `scripts/validate-vault.ts` | 9 |
+| `scripts/validate-segment-20-26.ts` | 7 |
+| `scripts/validate-segment-15-18.ts` | 4 |
 | `scripts/validation-suite.ts` | 4 |
 | `scripts/validate-phase-2-runner.ts` | 3 |
 | `apps/api/src/db.ts` | 2 |
 | `apps/api/src/index.ts` | 2 |
 | `scripts/validate-phase-3-startup.ts` | 2 |
+| `scripts/validate-segment-1-10.ts` | 2 |
 | `scripts/validate-segment-11-14.ts` | 2 |
+| `scripts/validate-segment-19-21.ts` | 2 |
 | `scripts/validate-stage-27.ts` | 2 |
+| `scripts/validate-stage-35.ts` | 2 |
 | `apps/api/src/startup-policy.ts` | 1 |
 | `apps/web/src/lib/api/ai.ts` | 1 |
 | `packages/security/src/secret-scanner/secret-scanner.test.ts` | 1 |
