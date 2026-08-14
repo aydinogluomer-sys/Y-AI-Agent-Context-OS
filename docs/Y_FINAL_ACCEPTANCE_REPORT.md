@@ -13,14 +13,14 @@ belgeye de uygulanır: bir madde tamam değilse **TAMAM DEĞİL** yazar.
 
 | Ölçüm | Değer | Kaynak |
 |---|---|---|
-| Birim/sözleşme testi | **1168 passed, 4 skipped** | `vitest run` |
-| Test dosyası | 47 | `vitest run` |
+| Birim/sözleşme testi | **1175 passed, 4 skipped** | `vitest run` |
+| Test dosyası | 48 | `vitest run` |
 | Typecheck | **0 hata** (loose + strict) | `npm run typecheck` |
 | Build | **OK** | `npm run build` |
 | Migration | **82** (35 göç + 47 yeni) | `migrations/*.sql` |
 | Envanter drift | **8/8 kontrol geçti** | `npm run gate:drift` |
 | Sır taraması | **0 yeni bulgu** (70 kabul edilmiş) | `npm run secret-scan` |
-| False-green çırçır | **44 toplam / 40 P0** (taban kilitli; P00'da 135) | `npm run gate:false-green` |
+| False-green çırçır | **43 toplam / 39 P0** (taban kilitli; P00'da 135) | `npm run gate:false-green` |
 | UI dürüstlük açığı | **0** (P00'da 103) | `inventory-ui` |
 | 410'a kapatılan legacy route | **17** | API envanteri |
 
@@ -164,6 +164,28 @@ Her biri bir grep testiyle kilitlendi; geri gelmeleri CI'ı kırar.
 | `Math.random()` birincil anahtar ×28 | Gerçek DB'ye INSERT edilen kimlikler (ADR-013) | P17 |
 | DB kimlik bilgisi formu | Ölü uç noktaya **üretim parolası** topluyordu | P17 |
 | Sessiz "Failed: 0" verdikti | Atlanan DB kontrolleriyle **yeşil** görünüyordu | P17 |
+| Elle tutulan simülasyon rozeti | `lastRunMode`, gösterdiği sonuçtan **bağımsız** yaşıyordu (ADR-056) | P17 |
+
+---
+
+## 5.1 Çırçırda kalan 43 bulgunun dökümü
+
+Çırçır sayısı **"43 yalan" demek değildir**. Kalanların ne olduğu
+sayılmadan, sayının kendisi yanıltıcıdır:
+
+| Kural | Adet | Ne? | Karar |
+|---|---|---|---|
+| `skip-then-pass` | 28 | Legacy `validate-*` script'leri DB'yi atlayıp **tek başlarına** exit 0 dönüyor | **GERÇEK.** Suite seviyesinde verdiktleri artık "KISMİ" yazıyor; script bazında kapanması P19 (canlı Postgres) |
+| `permissive-fallback` | 10 | `ENABLE_MOCK_DB`, `ALLOW_OFFLINE_API_BOOT`, `DETERMINISTIC_TEST_MODE` adlarının geçtiği satırlar | **TRIPWIRE.** Bunlar adlandırılmış kaçış kapılarıdır ve *bilerek* vardır; hepsi üretim dışına kapatılmış ve testlidir. Kural adı gördüğü yerde uyarır — susturmak, kapıların varlığını gizlemek olurdu |
+| `hardcoded-metric` | 4 | Legacy script'lerde `confidenceScore: 95.0` | **FIXTURE GİRDİSİ**, raporlanan ölçüm değil. P19'da script'lerle birlikte gider |
+| `simulation-generator` | 1 | `createLocalAiSimulation` | **BİLEREK DURUYOR.** Ürün kanıt iddiasında bulunuyor; içinde bir simülasyon üreteci olması sürekli bir bayrağı hak eder. Dürüstlüğü artık yapısal: `isFallback: true` taşıyor ve rozet doğrudan ondan türüyor (ADR-056) |
+
+Susturulanlar yalnız **tespit edicinin kendi kaynağı ve testleri**:
+`validation-suite.ts`, `validate-phase-2-runner.ts`, `secret-scanner.test.ts`.
+Gerekçe tektir: bir kalıbı tespit eden araç o kalıbı içermek zorundadır;
+bunları bulgu saymak, kaçınmanın tek yolunu **tespit ediciyi silmek**
+haline getirir. Her muafiyet, kapsamının **dar** olduğunu kanıtlayan bir
+pozitif kontrolle birlikte testlidir (`scan-false-green.test.ts`, 12 test).
 
 ---
 

@@ -83,6 +83,32 @@ describe("skip-then-pass kurali — tespit edicinin kendisi muaf", () => {
   });
 });
 
+describe("embedded-secret kurali — sir tarayicisinin kendi testi muaf", () => {
+  // Sir adini PARCALARDAN kuruyoruz; aksi halde bu dosya da kendi
+  // kuralini tetikler.
+  const LEAKED_NAME = "obfuscated" + "SecretParts";
+  const ABSENCE_ASSERTION = `    expect(source).not.toContain("${LEAKED_NAME}");`;
+
+  it("sizintinin YOKLUGUNU dogrulayan test bulgu SAYILMAZ", () => {
+    // Bunu bulgu saymak, kacinmanin tek yolunu "sizintinin geri
+    // gelmedigini dogrulayan testi sil" haline getirirdi.
+    expect(
+      matches(
+        "embedded-secret",
+        "packages/security/src/secret-scanner/secret-scanner.test.ts",
+        ABSENCE_ASSERTION
+      )
+    ).toBe(false);
+  });
+
+  it("POZITIF KONTROL: muafiyet DAR — ayni ad baska yerde yakalanir", () => {
+    expect(matches("embedded-secret", "packages/security/src/index.ts", ABSENCE_ASSERTION)).toBe(
+      true
+    );
+    expect(matches("embedded-secret", "apps/api/src/config.ts", ABSENCE_ASSERTION)).toBe(true);
+  });
+});
+
 describe("kural envanteri saglam", () => {
   it("kural kimlikleri benzersiz", () => {
     const ids = RULES.map((r) => r.id);

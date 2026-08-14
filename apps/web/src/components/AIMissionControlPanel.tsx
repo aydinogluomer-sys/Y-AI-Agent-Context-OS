@@ -77,7 +77,20 @@ export function AIMissionControlPanel({
   );
   const [status, setStatus] = useState<"idle" | "running" | "complete">("idle");
   const [error, setError] = useState("");
-  const [lastRunMode, setLastRunMode] = useState<"local" | "provider">("local");
+  /**
+   * [P17 / ADR-056] SIMULASYON ROZETI VERIDEN TURER.
+   *
+   * Onceki hali `lastRunMode` adli AYRI bir state'ti ve her cagri
+   * yerinde ELLE `setLastRunMode(...)` ile guncelleniyordu. Yeni bir
+   * cagri yeri eklenip bu satir unutuldugunda rozet, gosterdigi
+   * sonucla ILGISIZ bir sey soylemeye devam ederdi — ve rozetin yalan
+   * soyledigi, tam olarak rozete guvenildigi anda anlasilirdi.
+   *
+   * `AiSimulationResponse.isFallback` zaten sonucun kendisinde tasiniyor.
+   * Rozet artik dogrudan ondan turetiliyor; senkronizasyon disi kalmasi
+   * yapisal olarak imkansiz.
+   */
+  const isProviderBacked = result.isFallback !== true;
 
   // Advanced HUD Simulator states
   const [model, setModel] = useState("gemini-2.5-flash");
@@ -189,7 +202,6 @@ export function AIMissionControlPanel({
           customInputs,
         }).then(response => {
           setResult(response);
-          setLastRunMode(response.isFallback ? "local" : "provider");
           setStatus("complete");
           setActiveStep(-1);
         }).catch(runError => {
@@ -199,7 +211,6 @@ export function AIMissionControlPanel({
             `API simülasyonu uyarı ile tamamlandı: ${runError?.message || "bilinmeyen hata"}`
           );
           setResult(response);
-          setLastRunMode("local");
           setStatus("complete");
           setActiveStep(-1);
         });
@@ -258,9 +269,9 @@ export function AIMissionControlPanel({
                   <Database className="mr-1 h-3 w-3" />
                   {isDbConnected ? "Aktif Veritabanı" : "Simüle DB"}
                 </Badge>
-                <Badge tone={lastRunMode === "provider" ? "success" : "neutral"} variant="low">
+                <Badge tone={isProviderBacked ? "success" : "neutral"} variant="low">
                   <BrainCircuit className="mr-1 h-3 w-3" />
-                  {lastRunMode === "provider" ? "Sağlayıcı Destekli" : "Belirleyici Algoritma"}
+                  {isProviderBacked ? "Sağlayıcı Destekli" : "Belirleyici Algoritma"}
                 </Badge>
               </div>
 
@@ -637,8 +648,8 @@ export function AIMissionControlPanel({
                 <span className="font-mono text-[10px] uppercase tracking-widest text-steel-muted">
                   Mevcut Yürütme Yolu
                 </span>
-                <Badge tone={lastRunMode === "provider" ? "success" : "warning"} variant="low">
-                  {lastRunMode === "provider" ? "Sağlayıcı" : "Yedek Mod"}
+                <Badge tone={isProviderBacked ? "success" : "warning"} variant="low">
+                  {isProviderBacked ? "Sağlayıcı" : "Yedek Mod"}
                 </Badge>
               </div>
               <p className="mt-3 text-xs leading-6 text-steel-muted">

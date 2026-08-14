@@ -130,7 +130,23 @@ export const RULES: Rule[] = [
     id: "embedded-secret",
     severity: "P0",
     description: "Kaynak kodda gömülü / parçalanmış sır",
-    pattern: /obfuscatedSecretParts|EJfZexrU6o|YdPpxH/
+    pattern: /obfuscatedSecretParts|EJfZexrU6o|YdPpxH/,
+    /**
+     * SIR TARAYICISININ KENDI TESTI MUAF.
+     *
+     * `secret-scanner.test.ts` sızdırılan sırrın ADINI, o adın kaynakta
+     * artık BULUNMADIĞINI kanıtlamak için içerir:
+     *
+     *   expect(source).not.toContain("obfuscatedSecretParts");
+     *
+     * Yani satır, sırrın yokluğunu doğrulayan testin ta kendisidir.
+     * Bunu bulgu saymak, bulgudan kaçınmanın tek yolunu "sızıntının geri
+     * gelmediğini doğrulayan testi sil" haline getirir.
+     *
+     * Aynı gerekçe sır tarama baseline'ında da kayıtlıdır; buradaki
+     * muafiyet o kararla aynı hizada.
+     */
+    exclude: /secret-scanner\.test\.ts$/
   },
   {
     id: "permissive-fallback",
