@@ -5,7 +5,7 @@
 | İddia | Kaynak | Ölçülen gerçek | Kanıt |
 |---|---|---|---|
 | "15 navigation categories and 78 UI routes" | `docs/audit/02-route-inventory.md` | 15 kategori, **113 item** | `03-ui-inventory.csv` |
-| 12 API endpoint | `docs/audit/03-api-inventory.md` | **185 route** | `02-api-inventory.csv` |
+| 12 API endpoint | `docs/audit/03-api-inventory.md` | **184 route** | `02-api-inventory.csv` |
 | "Tüm 15 kategori PASS" | `docs/audit/10-feature-traceability-matrix.md` | 103/113 ekran fabrikasyon | `03-ui-inventory.csv` |
 | "162 assertion, 0 failure" | `docs/audit/08-test-inventory.md` | 52 adet `assert("...", true)` | `10-false-green-findings.csv` |
 | Stage 27–35 "SUCCESSFUL PASS" | `docs/stages/*.md` | Suite CI'da migration'lardan **önce** çalışıyor; DB dalları sandbox'a düşüyor | `.github/workflows/ci.yml`, 36 skip-then-pass bulgusu |

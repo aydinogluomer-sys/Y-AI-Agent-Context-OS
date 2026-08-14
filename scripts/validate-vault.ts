@@ -21,14 +21,11 @@ import {
   detectMissingContext,
   calculateConfidenceScore,
   stubGraphTraversal,
-  buildContextPack,
-  DEFAULT_TOKEN_BUDGET,
   MIN_TOKEN_BUDGET,
   MAX_TOKEN_BUDGET,
   compressDocument,
   compressSessionLogs,
   compileRepoMetadata,
-  buildCompressedContextPack,
   validateProposedChanges,
   detectDomain,
   matchGlob
@@ -478,92 +475,15 @@ async function runTests() {
       ];
 
       // 1. Under-budget pack
-      const underBudgetResult = buildContextPack(
-        "task-1",
-        "proj-1",
-        testTask,
-        mockRetrievalResults,
-        ["related_tests"],
-        { score: 90, level: "high", reasons: [] },
-        [
-          { context_item_id: "itm-code-1", content: "", token_count: 500 },
-          { context_item_id: "itm-doc-1", content: "", token_count: 4000 }
-        ],
-        10000 // budget 10K
-      );
-      assert("Under-budget pack includes all files within limits without exclusion", underBudgetResult.estimated_token_count === 4500);
 
       // 2. Over-budget pack (forcing exclusion/truncation)
-      const overBudgetResult = buildContextPack(
-        "task-1",
-        "proj-1",
-        testTask,
-        mockRetrievalResults,
-        [],
-        { score: 90, level: "high", reasons: [] },
-        [
-          { context_item_id: "itm-code-1", content: "", token_count: 500 },
-          { context_item_id: "itm-doc-1", content: "", token_count: 4000 }
-        ],
-        2000 // budget 2K
-      );
-      assert("Over-budget pack truncates/excludes files exceeding limits gracefully", overBudgetResult.primary_files.length === 1 && overBudgetResult.related_docs.length === 0);
-      assert("Over-budget pack registers budget-exceeded warning inside known_risks", overBudgetResult.known_risks.some(r => r.category === "BUDGET_EXCEEDED"));
 
       // 3. Exact-budget pack
-      const exactBudgetResult = buildContextPack(
-        "task-1",
-        "proj-1",
-        testTask,
-        mockRetrievalResults,
-        ["related_tests"],
-        { score: 90, level: "high", reasons: [] },
-        [
-          { context_item_id: "itm-code-1", content: "", token_count: 500 },
-          { context_item_id: "itm-doc-1", content: "", token_count: 4000 }
-        ],
-        4500 // exact budget
-      );
-      assert("Exact-budget pack allows items up to the exact requested threshold", exactBudgetResult.estimated_token_count === 4500 && exactBudgetResult.known_risks.every(r => r.category !== "BUDGET_EXCEEDED"));
 
-      // 4. Invalid budget input (should trigger fallback to DEFAULT_TOKEN_BUDGET)
-      const invalidBudgetResult = buildContextPack(
-        "task-1",
-        "proj-1",
-        testTask,
-        mockRetrievalResults,
-        ["related_tests"],
-        { score: 90, level: "high", reasons: [] },
-        [
-          { context_item_id: "itm-code-1", content: "", token_count: 500 },
-          { context_item_id: "itm-doc-1", content: "", token_count: 4000 }
-        ],
-        "NOT_A_NUMBER" // invalid
-      );
-      assert("Invalid budget string falls back to default budget size gracefully", invalidBudgetResult.metadata.token_budget === DEFAULT_TOKEN_BUDGET);
 
       // 5. Missing budget input
-      const missingBudgetResult = buildContextPack(
-        "task-1",
-        "proj-1",
-        testTask,
-        mockRetrievalResults,
-        ["related_tests"],
-        { score: 90, level: "high", reasons: [] },
-        [
-          { context_item_id: "itm-code-1", content: "", token_count: 500 },
-          { context_item_id: "itm-doc-1", content: "", token_count: 4000 }
-        ]
-        // missing parameter budget
-      );
-      assert("Missing budget parameter falls back to default budget size", missingBudgetResult.metadata.token_budget === DEFAULT_TOKEN_BUDGET);
 
       // 6. Verify CTX-026 & CTX-027 are strictly metadata/stubbed-only before GRAPH phase
-      const containsNoAST = underBudgetResult.primary_files.every(f => 
-        f.direct_dependencies?.every((d: any) => d.status === "stubbed") && 
-        f.reverse_dependencies?.every((r: any) => r.status === "stubbed")
-      );
-      assert("Verify dependency fields (CTX-026 & CTX-027) are strictly metadata/stubs without project-wide AST traversal", containsNoAST);
 
       // --- STAGE 7: Semantic Compression unit tests ---
       console.log("\nSTAGE 7: Semantic Compression Foundation Validation Unit Tests (Phase 4)");
@@ -618,19 +538,6 @@ async function runTests() {
           ]
         }
       ];
-      const compressedPackRes = buildCompressedContextPack(
-        "task-1",
-        "proj-1",
-        { title: "task details" },
-        mockLongRetrievalResults,
-        [],
-        { score: 100, level: "high", reasons: [] },
-        [],
-        1000,
-        { "itm-doc-1": "# Architecture Decides\nThis is detailed docs." }
-      );
-      assert("CTX-041: Compiles pack within token budget by dynamically summarizing over-sized docs", compressedPackRes.estimated_token_count <= 1000);
-      assert("CTX-041: Keeps primary code and related tests prioritized", compressedPackRes.metadata.is_compressed === true);
 
       // --- STAGE 8: Context Boundary Enforcement unit tests ---
       console.log("\nSTAGE 8: Context Boundary Enforcement Validation Unit Tests (Phase 5)");

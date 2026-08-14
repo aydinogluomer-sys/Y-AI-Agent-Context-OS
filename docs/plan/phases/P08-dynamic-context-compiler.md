@@ -259,3 +259,122 @@ pnpm run test:e2e -- tests/e2e/context-compile.spec.ts
 ```
 
 **`CompiledContext` sözleşmesi bu gate'te donar** — P09 buna bağımlıdır. P08 ve P09 **paralel çalıştırılamaz**.
+
+---
+
+## Uygulama Kaydı (2026-08-14)
+
+### Tamamlanan görevler
+
+| Görev | Durum | Kanıt |
+|---|---|---|
+| Y-P08-001 `Tokenizer` arayüzü + registry | Tamam | `tokenizer/{types,registry}.ts` |
+| Y-P08-002 provider tokenizer'ları | Kısmen | arayüz dondu, heuristic kalibre edildi; gerçek BPE P11'de |
+| Y-P08-003 bütçe motoru | Tamam | `budget/engine.ts` + 9 test |
+| Y-P08-004 fit algoritması | Tamam | `compiler/compile.ts` |
+| Y-P08-005 compiler (saf fonksiyon) | Tamam | mock'suz test dosyası |
+| Y-P08-006 özetleme | **YAPILMADI** | provider çağrısı gerektiriyor, P11/P14 |
+| Y-P08-007 git sinyalleri | Tamam (sözleşme) | `recentDiffs: null` + `unavailableReason` |
+| Y-P08-008 compile worker | **YAPILMADI** | P09 manifest'i olmadan yazılamaz |
+| Y-P08-009 legacy pack yolunun kapatılması | Tamam | 4 route 410, `p08-no-fabricated-fields.test.ts` |
+| Y-P08-010 bütçe/tokenizer migration'ları | **YAPILMADI** | P09 ile ortak blok; orada yazılacak |
+
+### Silinenler
+
+- **`buildContextPack` ve sıkıştırılmış varyantı** (~550 satır). Pack'in
+  birçok alanı üretilmiş değil **uydurulmuştu**:
+  bağımlılık listeleri sabit stub nesneleri, "son değişiklikler" sabit
+  bir yazar adı ve sabit satır sayısı (git'e hiç bakılmıyordu), sır
+  tarama bayrağı koşulsuz `true`, chunk metni bulunamadığında temsili
+  bir cümle. Bu veri `context_packs` tablosuna yazılıyordu — sahte
+  içerik kalıcıydı ve okuyanın ayırt etme yolu yoktu.
+- **`CANONICAL_TOKEN_BUDGET` ve `DEFAULT_TOKEN_BUDGET`.** `50000` üç
+  ayrı yerde hard-code'du ve dördüncü bir yerde **4000** ile
+  çelişiyordu.
+- **4 legacy route** 410: `POST /tasks/:id/context-pack`,
+  `GET /projects/:id/context-packs`, `POST /context-packs/:id/rehydrate`,
+  `POST /tasks/:id/compressed-pack`.
+
+`p08-no-fabricated-fields.test.ts` altı literalin kaynak ağacına geri
+dönmediğini doğrular; iki **pozitif kontrol** taramanın kendisini
+denetler.
+
+### Karar 1 — Bütçe adapter'dan, tavan policy'den (ADR-031)
+
+`available = provider_limit − rezervler − yaklaşıklık payı`, sonra policy
+tavanıyla clamp. 50.000 bir **ürün sabiti değil**, olsa olsa bir
+organizasyon tavanıdır.
+
+Rezervler artık provider limitiyle **orantılı**: eski kod her model için
+aynı 5000/5000/8000/2000 kullanıyordu; 8K'lık bir modelde bu bütçenin
+tamamını yerdi.
+
+**Sıfır bütçeyle devam edilmez.** Rezervler limiti aşarsa
+`INSUFFICIENT_BUDGET` fırlatılır. Clamp edip devam etmek, boş bir
+context'i başarılı bir compile gibi göstermek olurdu — ve boş context,
+kötü context'ten zararlıdır çünkü agent hiçbir şey bilmeden çalışır.
+
+### Karar 2 — Yaklaşıklık gizlenmez, PAYA dönüşür
+
+Gerçek BPE tokenizer'ı yoksa heuristic kullanılır ama:
+- sonuç `approximate: true` ile işaretlenir,
+- bütçe motoru güvenlik payını **%15 artırır**,
+- bayrak manifest'e (P09) yazılır.
+
+P00'daki hata tahmin yapmak değil, tahmini gerçek gibi sunmaktı.
+
+**Ölçüm:** heuristic ile eski `chars/4` arasındaki fark test edildi ve
+bulgu şu: seyrek sembollü kodda **ikisi aynı sonucu veriyor**; fark
+yalnızca sembol yoğun kodda ortaya çıkıyor. Yani heuristic `chars/4`ü her
+yerde düzeltme iddiasında bulunmuyor — test bunu açıkça yazıyor.
+
+### Karar 3 — Uydurma alan yasağı (ADR-032)
+
+Bir alan hesaplanamıyorsa `null` + `unavailableReason`. Temsili değer
+asla yazılmaz. `recentDiffs` gerçek git çıktısından gelir ya da
+`unavailableFields` listesinde görünür.
+
+### Karar 4 — Derleme saf fonksiyondur (ADR-033)
+
+Compiler I/O yapmaz. Testin somut biçimi: `compiler.test.ts` **hiçbir
+mock kullanmaz**. Mock gerektirmesi, saflığın bozulduğunun kanıtı olurdu.
+
+Determinizm testi: aynı girdi **100 kez** derlenir ve çıktı byte düzeyinde
+karşılaştırılır. Ayrıca aday sırasının çıktıyı değiştirmediği, ve
+`(commit, policy, weights, parser sürümleri, universe)` girdilerinden
+her birinin değişiminin hash'i değiştirdiği ayrı ayrı doğrulanır.
+
+### Yapılmayanlar ve sebepleri
+
+- **Y-P08-006 özetleme.** Özet üretimi bir provider çağrısıdır; provider
+  adapter'ları P11'de geliyor. Bugün yazılacak şey, özet yerine kırpma
+  yapıp ona "özet" demek olurdu — P00'daki sıkıştırma yolunun aynısı.
+- **Y-P08-008 compile worker.** Worker'ın son adımı manifest yazmaktır ve
+  manifest şeması **P09'un konusu**. Manifestsiz bir worker, sonucu
+  hiçbir yere bağlamadan üretirdi.
+- **Y-P08-010 migration'lar.** Faz dosyası bu bloğu zaten "P09 ile ortak"
+  olarak işaretliyor; orada yazılacak.
+
+Bu üçü kabul kriterlerinde **"HAYIR"** olarak işaretlendi.
+
+### Kabul kriterlerinin durumu
+
+| Kriter | Durum | Not |
+|---|---|---|
+| Gerçek tokenizer | Kısmi | Arayüz dondu; heuristic `approximate: true`, registry BOŞ (gerçek tokenizer iddiası yok) |
+| Sabit 50K kaldırıldı | Evet | Grep testiyle kilitli |
+| Bütçe adapter+policy'den | Evet | `computeBudget` |
+| Uydurma alan yok | Evet | 6 literal için grep testi |
+| Compile deterministik | Evet | 100 tekrar, byte karşılaştırması |
+| Compile senkron HTTP'den çıktı | Kısmi | Legacy route'lar 410; kanonik worker P09'da |
+| Özetleme | **HAYIR** | P11/P14 |
+
+### Gate sonuçları
+
+```text
+typecheck (loose + strict)   0 hata
+vitest                       891 passed | 4 skipped (895)
+build                        OK (bundle 862 KB -> 828 KB)
+secret-scan                  0 yeni bulgu
+drift (verify-inventories)   8/8 kontrol geçti
+```

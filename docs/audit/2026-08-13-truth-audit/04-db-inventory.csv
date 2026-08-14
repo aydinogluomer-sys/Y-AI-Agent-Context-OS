@@ -1,16 +1,16 @@
 table,migration_version,defined_at_line,column_count,has_project_id,has_org_id,reads,writes,verdict
-projects,1.0.0-projects-foundation,10,7,false,true,89,50,KEEP
+projects,1.0.0-projects-foundation,10,7,false,true,88,50,KEEP
 memberships,1.0.1-memberships-foundation,10,6,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
-tasks,1.0.2-tasks-foundation,10,13,true,true,101,78,KEEP
-context_items,1.0.3-context-vault-foundation,10,13,true,false,41,28,KEEP + ALTER (needs organization_id)
-context_chunks,1.0.3-context-vault-foundation,27,6,false,false,14,10,KEEP + ALTER (needs organization_id)
+tasks,1.0.2-tasks-foundation,10,13,true,true,99,78,KEEP
+context_items,1.0.3-context-vault-foundation,10,13,true,false,37,28,KEEP + ALTER (needs organization_id)
+context_chunks,1.0.3-context-vault-foundation,27,6,false,false,12,10,KEEP + ALTER (needs organization_id)
 graph_nodes,1.0.4-knowledge-graph-foundation,10,7,true,true,21,14,KEEP
 graph_edges,1.0.4-knowledge-graph-foundation,21,7,true,true,19,19,KEEP
 audit_logs,1.0.5-audit-and-telemetry-foundation,10,11,true,true,66,33,KEEP
 artifacts,1.0.6-artifacts-debug-connections,10,8,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
 debug_logs,1.0.6-artifacts-debug-connections,22,9,false,false,1,0,READ-ONLY (never written) -> investigate
 connections,1.0.6-artifacts-debug-connections,35,9,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
-context_packs,1.0.7-context-packs-foundation,10,22,true,false,8,10,KEEP + ALTER (needs organization_id)
+context_packs,1.0.7-context-packs-foundation,10,22,true,false,8,8,KEEP + ALTER (needs organization_id)
 context_summaries,1.0.8-context-summaries-foundation,10,15,true,false,0,0,"DEAD (0 read, 0 write) -> DROP"
 durable_memories,1.0.8-context-summaries-foundation,30,11,true,false,0,1,WRITE-ONLY (never read) -> DROP
 task_boundaries,1.0.9-context-boundaries,10,16,true,false,21,22,KEEP + ALTER (needs organization_id)

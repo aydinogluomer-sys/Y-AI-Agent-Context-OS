@@ -1,6 +1,6 @@
 # 05 — Subsystem Verdict'leri
 
-> Baseline commit: `d157d3c47ea39aaa2dcd966ec96280a866398078` · Verdict skalası: REAL · PARTIAL · SIMULATED · ABSENT
+> Baseline commit: `f83a80b9b6680ff51f51b293bbbe892cf86665b5` · Verdict skalası: REAL · PARTIAL · SIMULATED · ABSENT
 
 | Subsystem | Verdict | Kanıt |
 |---|---|---|

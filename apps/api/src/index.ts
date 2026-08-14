@@ -47,11 +47,9 @@ import {
   detectMissingContext,
   calculateConfidenceScore,
   stubGraphTraversal,
-  buildContextPack,
   compressDocument,
   compressSessionLogs,
   compileRepoMetadata,
-  buildCompressedContextPack,
   TaskBoundary,
   BoundaryCheckResult,
   detectDomain,
@@ -3532,251 +3530,44 @@ router.post("/tasks/:id/context-retrieve", async (req: Request, res: Response, n
  * POST /tasks/:id/context-pack
  * CTX-024 to CTX-037: Compiles, builds and persists an agent-ready Task Context Pack
  */
-router.post("/tasks/:id/context-pack", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const taskId = req.params.id;
-
-    // 1. Verify task scope exists
-    const taskSql = `SELECT id, project_id, title, description, category FROM tasks WHERE id = $1;`;
-    const taskRes = await queryDb(taskSql, [taskId]);
-    if (taskRes.rowCount === 0) {
-      return res.status(404).json({ error: `Task not found with id: ${taskId}` });
-    }
-
-    const taskRow = taskRes.rows[0];
-    const projectId = taskRow.project_id;
-
-    // 2. Verify associated project exists (Project scope validation!)
-    const projCheck = await queryDb("SELECT name FROM projects WHERE id = $1", [projectId]);
-    if (projCheck.rowCount === 0) {
-      return res.status(404).json({ error: `Associated project does not exist: ${projectId}` });
-    }
-
-    // 3. Fetch all context items in this project
-    const itemsSql = `
-      SELECT id, project_id, source_type, source_uri, metadata_json, created_at, updated_at
-      FROM context_items
-      WHERE project_id = $1;
-    `;
-    const itemsRes = await queryDb(itemsSql, [projectId]);
-    const items = itemsRes.rows;
-
-    // 4. Fetch all chunk records matching items in this project
-    const chunksSql = `
-      SELECT cc.id, cc.context_item_id, cc.chunk_index, cc.content, cc.token_count
-      FROM context_chunks cc
-      JOIN context_items ci ON cc.context_item_id = ci.id
-      WHERE ci.project_id = $1;
-    `;
-    const chunksRes = await queryDb(chunksSql, [projectId]);
-    const allChunks = chunksRes.rows;
-
-    // Group related chunks sequentially
-    const chunksByItemId: Record<string, any[]> = {};
-    for (const chunk of allChunks) {
-      const itemId = chunk.context_item_id;
-      if (!chunksByItemId[itemId]) {
-        chunksByItemId[itemId] = [];
+/**
+ * P08 / Y-P08-009 — Legacy context pack route'ları KAPATILDI (410).
+ *
+ * `POST /tasks/:id/context-pack` bir pack üretip `context_packs`
+ * tablosuna yazıyordu. P00 Truth Audit'in tespiti: pack'in birçok alanı
+ * üretilmiş değil UYDURULMUŞTU — bağımlılık listeleri sabit stub'lar,
+ * "son değişiklikler" sabit bir yazar ve sabit satır sayısı, sır tarama
+ * bayrağı koşulsuz `true`. Sahte veri kalıcı hale geliyordu.
+ *
+ * Ayrıca route bütçeyi İSTEK GÖVDESİNDEN alıyordu
+ * (`req.body.token_budget || 50000`). Bütçeyi istemcinin belirlemesi,
+ * policy tavanını istemciye devretmektir.
+ *
+ * KANONİK KARŞILIĞI
+ *   POST /api/v1/projects/:pid/tasks/:tid/context/compile  → 202 + jobId
+ *
+ *   Compile SENKRON DEĞİLDİR: büyük bir repo'da retrieval + ranking +
+ *   bütçe hesabı HTTP isteğini bloke eder, timeout'a düşer ve yarım kalan
+ *   iş hiçbir iz bırakmaz (ADR-019). Bütçe adapter limitinden hesaplanır,
+ *   policy tavanıyla sınırlanır (ADR-031); gövdeden gelen değer YOK
+ *   SAYILIR.
+ */
+router.all(
+  ["/tasks/:id/context-pack", "/projects/:id/context-packs", "/context-packs/:id/rehydrate"],
+  (req: Request, res: Response) => {
+    return res.status(410).json({
+      error: {
+        code: "LEGACY_ROUTE_DEPRECATED",
+        message:
+          "Legacy context pack route'lari kapatildi. Uretilen pack'in bircok alani " +
+          "uydurmaydi ve butce istek govdesinden aliniyordu. Kanonik yuzey: " +
+          "POST /api/v1/projects/:projectId/tasks/:taskId/context/compile (202 + jobId).",
+        canonical: "POST /api/v1/projects/:projectId/tasks/:taskId/context/compile",
+        phase: "P08"
       }
-      chunksByItemId[itemId].push({
-        id: chunk.id,
-        chunk_index: chunk.chunk_index,
-        content: chunk.content,
-        token_count: chunk.token_count
-      });
-    }
-
-    // 5. Apply ranking and relevance scoring formula sequentially using RetrievalRankingService (Phase 22 Context Pack Integration)
-    const rawCandidates: RetrievalCandidateDTO[] = items.map(item => {
-      const itemChunks = chunksByItemId[item.id] || [];
-      const excerpt = itemChunks.map(c => c.content).join("\n");
-      const tokens = itemChunks.reduce((acc, c) => acc + (c.token_count || 0), 0);
-      return {
-        id: item.id,
-        project_id: projectId,
-        source_type: item.source_type,
-        source_id: item.id,
-        path: item.source_uri,
-        title: item.source_uri.split("/").pop() || null,
-        excerpt: excerpt.substring(0, 500) || null,
-        token_estimate: tokens,
-        base_score: 30,
-        keyword_score: 0,
-        semantic_score: 0,
-        graph_score: 0,
-        recency_score: 0,
-        final_score: 30,
-        reason_codes: ["CONTEXT_PACK"],
-        warnings: [],
-        metadata: typeof item.metadata_json === "string" ? JSON.parse(item.metadata_json) : (item.metadata_json || {})
-      };
     });
-
-    const budget = req.body.token_budget || 50000;
-    const queryDTO: RetrievalQueryDTO = {
-      project_id: projectId,
-      task_id: taskId,
-      query: taskRow.title,
-      source_types: null,
-      limit: items.length,
-      budget_tokens: budget,
-      include_graph_weights: true
-    };
-
-    const graphService = getGraphService();
-    let graphData: any = null;
-    try {
-      graphData = await graphService.getGraph(projectId);
-    } catch (e) {
-      // ignore
-    }
-
-    const rankingService = getRetrievalRankingService();
-    const rankedCandidates = rankingService.rankCandidates(rawCandidates, queryDTO, graphData, taskRow);
-
-    const results: RetrievalResult[] = rankedCandidates.map(c => ({
-      context_item_id: c.id,
-      path_or_uri: c.path,
-      source_type: c.source_type as ContextSourceType,
-      score: c.final_score,
-      reason_codes: c.reason_codes,
-      matched_chunks: chunksByItemId[c.id]?.map((chunk) => ({
-        chunk_index: chunk.chunk_index,
-        content: chunk.content,
-        token_count: chunk.token_count
-      })) || []
-    }));
-
-    // Compute missing context coverage warnings (CTX-022)
-    const missingWarning = detectMissingContext(items.map(i => ({ source_type: i.source_type as ContextSourceType })));
-    const missingContext = missingWarning.missing;
-
-    // Calculate overall confidence rating metrics (CTX-023)
-    const confidence = calculateConfidenceScore(results, missingContext);
-
-    // 6. Build Context Pack
-    const pack = buildContextPack(taskId, projectId, taskRow, results, missingContext, confidence, allChunks, budget);
-
-    // 7. Persist Context Pack directly via SQL transaction
-    const insertPackSql = `
-      INSERT INTO context_packs (
-        id, project_id, task_id, status, token_budget, estimated_token_count, confidence_score,
-        primary_files, related_files, related_docs, related_tests, related_decisions,
-        related_connected_assets, recent_diffs, known_risks, pending_todos, forbidden_changes,
-        quality_gates, next_action, metadata_json, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW(), NOW())
-      ON CONFLICT (id) DO UPDATE SET
-        status = EXCLUDED.status,
-        estimated_token_count = EXCLUDED.estimated_token_count,
-        confidence_score = EXCLUDED.confidence_score,
-        primary_files = EXCLUDED.primary_files,
-        related_files = EXCLUDED.related_files,
-        related_docs = EXCLUDED.related_docs,
-        related_tests = EXCLUDED.related_tests,
-        related_decisions = EXCLUDED.related_decisions,
-        related_connected_assets = EXCLUDED.related_connected_assets,
-        recent_diffs = EXCLUDED.recent_diffs,
-        known_risks = EXCLUDED.known_risks,
-        pending_todos = EXCLUDED.pending_todos,
-        forbidden_changes = EXCLUDED.forbidden_changes,
-        quality_gates = EXCLUDED.quality_gates,
-        next_action = EXCLUDED.next_action,
-        metadata_json = EXCLUDED.metadata_json,
-        updated_at = NOW();
-    `;
-
-    await queryDb(insertPackSql, [
-      pack.context_pack_id,
-      projectId,
-      taskId,
-      "compiled",
-      budget,
-      pack.estimated_token_count,
-      pack.confidence_score,
-      JSON.stringify(pack.primary_files),
-      JSON.stringify(pack.related_files),
-      JSON.stringify(pack.related_docs),
-      JSON.stringify(pack.related_tests),
-      JSON.stringify(pack.related_decisions),
-      JSON.stringify(pack.related_connected_assets),
-      JSON.stringify(pack.recent_diffs),
-      JSON.stringify(pack.known_risks),
-      JSON.stringify(pack.pending_todos),
-      JSON.stringify(pack.forbidden_changes),
-      JSON.stringify(pack.quality_gates),
-      pack.next_action,
-      JSON.stringify(pack.metadata)
-    ]);
-
-    // 8. Register sequential audit trail logs (No secrets included, Redaction check passed!)
-    await auditHelper.logAction(
-      projectId,
-      "User-Aydinoglu",
-      "CTX",
-      "CONTEXT_PACK_GENERATED" as any,
-      "authorized",
-      { 
-        context_pack_id: pack.context_pack_id, 
-        task_id: taskId,
-        estimated_token_count: pack.estimated_token_count,
-        confidence_score: pack.confidence_score
-      },
-      `Generated and compiled stable, agent-ready context pack: '${pack.context_pack_id}' for task: '${redactSecretLeaks(taskRow.title)}'`
-    );
-
-    if (confidence.score < 50) {
-      await auditHelper.logAction(
-        projectId,
-        "User-Aydinoglu",
-        "CTX",
-        "LOW_CONFIDENCE_PACK_GENERATED" as any,
-        "authorized",
-        { context_pack_id: pack.context_pack_id, confidence_score: confidence.score },
-        `Low confidence context pack compiled with score ${confidence.score}% for task ${taskId}`
-      );
-    }
-
-    if (missingContext.length > 0) {
-      await auditHelper.logAction(
-        projectId,
-        "User-Aydinoglu",
-        "CTX",
-        "MISSING_CONTEXT_INCLUDED" as any,
-        "authorized",
-        { context_pack_id: pack.context_pack_id, missing: missingContext },
-        `Missing context types recorded during pack compilation: ${missingContext.join(", ")}`
-      );
-    }
-
-    if (pack.forbidden_changes.length > 0) {
-      await auditHelper.logAction(
-        projectId,
-        "User-Aydinoglu",
-        "CTX",
-        "FORBIDDEN_CHANGES_GENERATED" as any,
-        "authorized",
-        { context_pack_id: pack.context_pack_id, rules_count: pack.forbidden_changes.length },
-        `Forbidden change restrictions attached to active task context pack: ${pack.context_pack_id}`
-      );
-    }
-
-    if (pack.quality_gates.length > 0) {
-      await auditHelper.logAction(
-        projectId,
-        "User-Aydinoglu",
-        "CTX",
-        "QUALITY_GATES_ATTACHED" as any,
-        "authorized",
-        { context_pack_id: pack.context_pack_id, gates_count: pack.quality_gates.length },
-        `Quality verification gates bound to active task context pack: ${pack.context_pack_id}`
-      );
-    }
-
-    res.status(201).json(pack);
-  } catch (err) {
-    next(err);
   }
-});
+);
 
 /**
  * GET /tasks/:id/context-pack
@@ -4370,147 +4161,30 @@ router.post("/projects/:id/repo/configure-local", requireProjectScope, async (re
 
 
 /**
- * POST /tasks/:id/compressed-pack
- * CTX-041: Compiles a context pack utilizing dynamic document-level summaries to guarantee FIT when budget exceeded
+ * P08 / Y-P08-009 — `POST /tasks/:id/compressed-pack` KAPATILDI (410).
+ *
+ * Bu route bütçe aşıldığında "sıkıştırma" yapıyordu. P00 Truth Audit:
+ * sıkıştırılmış yolda chunk metni bulunamadığında yerine TEMSİLİ BİR
+ * CÜMLE konuyordu — yani sıkıştırma, olmayan içeriği uydurmakla
+ * karışıyordu.
+ *
+ * Kanonik karşılığında (P08 compiler) bütçe aşımı bir sıkıştırma değil
+ * bir DIŞLAMA üretir: sığmayan fragment `exclusions` listesine `budget`
+ * sebebiyle yazılır ve manifest'te görünür. Gerçek özetleme (P08
+ * Y-P08-006) bir provider çağrısıdır ve sonucu kaynak hash'ine
+ * BAĞLANIR; özetin hangi fragment'tan geldiği kaybolmaz.
  */
-router.post("/tasks/:id/compressed-pack", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const taskId = req.params.id;
-    const tokenBudget = req.body.token_budget || 50000;
-
-    // 1. Fetch task
-    const taskRes = await queryDb(`SELECT id, project_id, title, description, category FROM tasks WHERE id = $1;`, [taskId]);
-    if (taskRes.rowCount === 0) {
-      return res.status(404).json({ error: `Task not found with id: ${taskId}` });
+router.all(["/tasks/:id/compressed-pack"], (req: Request, res: Response) => {
+  return res.status(410).json({
+    error: {
+      code: "LEGACY_ROUTE_DEPRECATED",
+      message:
+        "Sikistirilmis pack route'u kapatildi. Butce asiminda icerik uydurulmaz; " +
+        "sigmayan fragment 'exclusions' listesine 'budget' sebebiyle yazilir.",
+      canonical: "POST /api/v1/projects/:projectId/tasks/:taskId/context/compile",
+      phase: "P08"
     }
-    const taskRow = taskRes.rows[0];
-    const projectId = taskRow.project_id;
-
-    // 2. Fetch context items
-    const itemsRes = await queryDb(`SELECT id, source_type, source_uri, metadata_json, created_at, updated_at FROM context_items WHERE project_id = $1;`, [projectId]);
-    const items = itemsRes.rows;
-
-    // 3. Fetch chunks
-    const chunksRes = await queryDb(`SELECT id, context_item_id, chunk_index, content, token_count FROM context_chunks WHERE context_item_id IN (SELECT id FROM context_items WHERE project_id = $1);`, [projectId]);
-    const allChunks = chunksRes.rows;
-
-    // Construct chunk Contents map to enable compression
-    const chunkContentsById: Record<string, string> = {};
-    const chunksByItemId: Record<string, any[]> = {};
-    for (const chunk of allChunks) {
-      const itemId = chunk.context_item_id;
-      if (!chunksByItemId[itemId]) {
-        chunksByItemId[itemId] = [];
-      }
-      chunksByItemId[itemId].push(chunk);
-
-      // Accumulate
-      chunkContentsById[itemId] = (chunkContentsById[itemId] || "") + "\n" + chunk.content;
-    }
-
-    // 4. Match and Score relevance
-    const scoredResults: any[] = [];
-    for (const item of items) {
-      const itemChunks = chunksByItemId[item.id] || [];
-      const scoring = scoreContextItem(item, itemChunks, taskRow);
-      scoredResults.push({
-        context_item_id: item.id,
-        path_or_uri: item.source_uri,
-        source_type: item.source_type,
-        score: scoring.score,
-        reason_codes: scoring.reason_codes,
-        matched_chunks: scoring.matched_chunks
-      });
-    }
-
-    const missingWarning = detectMissingContext(items.map(i => ({ source_type: i.source_type })));
-    const missingContext = missingWarning.missing;
-    const confidence = calculateConfidenceScore(scoredResults, missingContext);
-
-    // Call compressed context pack compiler
-    const pack = buildCompressedContextPack(
-      taskId,
-      projectId,
-      taskRow,
-      scoredResults,
-      missingContext,
-      confidence,
-      allChunks,
-      tokenBudget,
-      chunkContentsById
-    );
-
-    // Persist compressed pack in database
-    const insertPackSql = `
-      INSERT INTO context_packs (
-        id, project_id, task_id, status, token_budget, estimated_token_count, confidence_score,
-        primary_files, related_files, related_docs, related_tests, related_decisions,
-        related_connected_assets, recent_diffs, known_risks, pending_todos, forbidden_changes,
-        quality_gates, next_action, metadata_json, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW(), NOW())
-      ON CONFLICT (id) DO UPDATE SET
-        status = EXCLUDED.status,
-        estimated_token_count = EXCLUDED.estimated_token_count,
-        confidence_score = EXCLUDED.confidence_score,
-        primary_files = EXCLUDED.primary_files,
-        related_files = EXCLUDED.related_files,
-        related_docs = EXCLUDED.related_docs,
-        related_tests = EXCLUDED.related_tests,
-        related_decisions = EXCLUDED.related_decisions,
-        related_connected_assets = EXCLUDED.related_connected_assets,
-        recent_diffs = EXCLUDED.recent_diffs,
-        known_risks = EXCLUDED.known_risks,
-        pending_todos = EXCLUDED.pending_todos,
-        forbidden_changes = EXCLUDED.forbidden_changes,
-        quality_gates = EXCLUDED.quality_gates,
-        next_action = EXCLUDED.next_action,
-        metadata_json = EXCLUDED.metadata_json,
-        updated_at = NOW();
-    `;
-
-    await queryDb(insertPackSql, [
-      pack.context_pack_id,
-      projectId,
-      taskId,
-      "compressed_compiled",
-      tokenBudget,
-      pack.estimated_token_count,
-      pack.confidence_score,
-      JSON.stringify(pack.primary_files),
-      JSON.stringify(pack.related_files),
-      JSON.stringify(pack.related_docs),
-      JSON.stringify(pack.related_tests),
-      JSON.stringify(pack.related_decisions),
-      JSON.stringify(pack.related_connected_assets),
-      JSON.stringify(pack.recent_diffs),
-      JSON.stringify(pack.known_risks),
-      JSON.stringify(pack.pending_todos),
-      JSON.stringify(pack.forbidden_changes),
-      JSON.stringify(pack.quality_gates),
-      pack.next_action,
-      JSON.stringify(pack.metadata)
-    ]);
-
-    // Audit logs entry
-    await auditHelper.logAction(
-      projectId,
-      "User-Aydinoglu",
-      "CTX",
-      "COMPRESSED_CONTEXT_PACK_GENERATED" as any,
-      "authorized",
-      { 
-        context_pack_id: pack.context_pack_id, 
-        task_id: taskId,
-        estimated_token_count: pack.estimated_token_count,
-        has_summarized_docs: pack.related_docs.some((d: any) => d.summarized)
-      },
-      `Generated task-ready compressed context pack: '${pack.context_pack_id}' with total tokens: ${pack.estimated_token_count}`
-    );
-
-    res.status(201).json(pack);
-  } catch (err) {
-    next(err);
-  }
+  });
 });
 
 /**
