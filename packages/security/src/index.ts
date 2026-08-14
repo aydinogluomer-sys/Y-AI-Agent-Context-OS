@@ -42,6 +42,22 @@ export {
   type SecretKind
 } from "./secret-scanner/index";
 
+// P17 / T-15 — Worker kimligi imzalidir; imzasiz = DENY (spec §54).
+// Dogrulama CLAIM NOKTASINDA yapilir, worker baslangicinda degil:
+// baslangicta dogrulanan bir kimlik, suresi dolduktan sonra da is alir.
+export {
+  issueWorkerCredential,
+  verifyWorkerCredential,
+  WorkerIdentityError,
+  MissingSigningKeyError,
+  MAX_TTL_SECONDS,
+  type WorkerIdentity,
+  type WorkerCredential,
+  type WorkerIdentityRejection,
+  type IssueOptions,
+  type VerifyOptions
+} from "./worker-identity/identity";
+
 // P17 / T-05 · ADR-063 — Repository icerigi DATA'dir.
 // Azaltim YAPISALDIR: repo icerigi tip duzeyinde talimattan ayrilir ve
 // talimat kanalina konamaz. Tespit bir GOZLEMDIR, bir kapi degil.

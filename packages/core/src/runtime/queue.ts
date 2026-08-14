@@ -23,6 +23,7 @@
  */
 
 import { newId } from "@y/shared";
+import { verifyWorkerCredential, type WorkerIdentity } from "@y/security";
 
 export const JOB_TYPES = [
   "context-compile",
@@ -67,8 +68,17 @@ const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_LEASE_SECONDS = 300;
 
 export class JobQueue {
+  /**
+   * [P17 / T-15] `signingKey` ZORUNLUDUR.
+   *
+   * Opsiyonel yapmak, "anahtar yoksa dogrulamayi atla" davranisini
+   * kacinilmaz kilardi — ve o davranis, korumanin kendisini opsiyonel
+   * yapar: T-15 kapatilmis gorunur, acik kalir. Anahtarsiz kuyruk
+   * calistirilamaz (fail closed).
+   */
   constructor(
     private readonly db: QueueDb,
+    private readonly signingKey: string,
     private readonly leaseSeconds: number = DEFAULT_LEASE_SECONDS
   ) {}
 
@@ -119,8 +129,38 @@ export class JobQueue {
    * Aynı sorgu ZAMAN AŞIMINA UĞRAMIŞ işleri de geri alır: bir worker
    * lease'ini yenilemeden çöktüyse, işi başka biri devralır. Aksi halde
    * iş sonsuza kadar `running` kalırdı.
+   *
+   * ## [P17 / T-15] KİMLİK BURADA DOĞRULANIR
+   *
+   * Önceki imza `claim(workerId: string, ...)` idi ve **herhangi bir
+   * dizeyi** worker kimliği olarak kabul ediyordu. Kuyruk API'sine ulaşan
+   * biri kendini var olan bir worker gibi tanıtıp bekleyen işleri üzerine
+   * alabilirdi. Çalınan iş bir agent run'ıdır: manifest'e, boundary'ye ve
+   * yazma yetkisine erişim demektir.
+   *
+   * Doğrulama **claim noktasındadır**, worker başlangıcında değil:
+   * başlangıçta doğrulanan bir kimlik, süresi dolduktan sonra da iş almaya
+   * devam ederdi (ADR-039'un kuyruk yüzeyindeki karşılığı).
+   *
+   * `jobTypes` ayrıca kimliğe karşı kontrol edilir: geçerli bir kimlik,
+   * HER işi alma yetkisi değildir. Index worker'ının `run-execute`
+   * alması, kimliği doğru olsa bile yetki aşımıdır.
    */
-  async claim(workerId: string, jobTypes: readonly JobType[]): Promise<ClaimedJob | null> {
+  async claim(
+    credential: string,
+    jobTypes: readonly JobType[]
+  ): Promise<ClaimedJob | null> {
+    let identity: WorkerIdentity;
+    for (const jobType of jobTypes) {
+      // Talep edilen HER tur icin ayri kontrol: bir turu almaya yetkili
+      // olmak, digerlerini almaya yetki vermez.
+      identity = verifyWorkerCredential(credential, this.signingKey, {
+        requiredJobType: jobType
+      });
+    }
+    identity = verifyWorkerCredential(credential, this.signingKey);
+    const workerId = identity.workerId;
+
     const result = await this.db.query(
       `UPDATE jobs
           SET status = 'running',
@@ -167,7 +207,15 @@ export class JobQueue {
    * Uzun süren bir iş, lease'ini periyodik yenilemelidir; aksi halde
    * hâlâ çalışırken başka bir worker tarafından devralınır.
    */
-  async renewLease(jobId: string, workerId: string): Promise<boolean> {
+  /**
+   * [P17 / T-15] Lease yenileme de kimlik ister.
+   *
+   * Yenileme doğrulanmazsa, saldırgan başka bir worker'ın lease'ini
+   * süresiz uzatarak işi rehin alabilir — ya da tersine, çöken bir
+   * worker'ın işini kurtarma mekanizmasını bloklayabilir.
+   */
+  async renewLease(jobId: string, credential: string): Promise<boolean> {
+    const workerId = verifyWorkerCredential(credential, this.signingKey).workerId;
     const result = await this.db.query(
       `UPDATE jobs
           SET lease_expires_at = NOW() + ($3 || ' seconds')::interval, updated_at = NOW()

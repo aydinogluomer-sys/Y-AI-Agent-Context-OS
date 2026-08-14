@@ -8,8 +8,9 @@
 
 import { describe, it, expect } from "vitest";
 import { RunError, RunService, type RunDb } from "./run-service";
-import { JobQueue, type QueueDb } from "./queue";
+import { JobQueue, JOB_TYPES, type QueueDb } from "./queue";
 import { canTransition, guardTransition, isTerminal, RUN_STATES } from "@y/shared";
+import { issueWorkerCredential } from "@y/security";
 
 // --- Sahte DB (durum tutan, dürüst) ---------------------------------------
 
@@ -129,6 +130,24 @@ const CREATE_INPUT = {
   idempotencyKey: "key_1",
   requestedBy: "user_alice"
 };
+
+/**
+ * [P17 / T-15] Kuyruk artik IMZALI worker kimligi istiyor.
+ *
+ * Testlerde gercek imzalama kullaniliyor, mock DEGIL: dogrulamanin
+ * atlanabilir oldugunu gosteren bir test, dogrulamayi test etmis olmaz.
+ */
+const TEST_SIGNING_KEY = "test-signing-key-at-least-32-chars-long!!";
+
+function testCredential(
+  workerId: string,
+  jobTypes: readonly string[] = [...JOB_TYPES]
+): string {
+  return issueWorkerCredential(
+    { workerId, jobTypes, ttlSeconds: 300 },
+    TEST_SIGNING_KEY
+  );
+}
 
 describe("FSM sözleşmesi (P01'de donduruldu)", () => {
   it("13 durum tanımlı", () => {
@@ -430,7 +449,7 @@ const ENQUEUE = {
 describe("JobQueue — idempotency", () => {
   it("aynı anahtarla ikinci iş kuyruğa girmez", async () => {
     const db = createQueueDb();
-    const queue = new JobQueue(db);
+    const queue = new JobQueue(db, TEST_SIGNING_KEY);
 
     const first = await queue.enqueue(ENQUEUE);
     const second = await queue.enqueue(ENQUEUE);
@@ -445,9 +464,9 @@ describe("JobQueue — idempotency", () => {
 describe("JobQueue — claim", () => {
   it("SKIP LOCKED kullanır", async () => {
     const db = createQueueDb();
-    const queue = new JobQueue(db);
+    const queue = new JobQueue(db, TEST_SIGNING_KEY);
     await queue.enqueue(ENQUEUE);
-    await queue.claim("worker_1", ["context-compile"]);
+    await queue.claim(testCredential("worker_1"), ["context-compile"]);
 
     const claim = db.calls.find((c) => /UPDATE jobs SET status = 'running'/i.test(c.sql));
     expect(claim?.sql).toContain("FOR UPDATE SKIP LOCKED");
@@ -455,9 +474,9 @@ describe("JobQueue — claim", () => {
 
   it("çökme kurtarma sorguda var", async () => {
     const db = createQueueDb();
-    const queue = new JobQueue(db);
+    const queue = new JobQueue(db, TEST_SIGNING_KEY);
     await queue.enqueue(ENQUEUE);
-    await queue.claim("worker_1", ["context-compile"]);
+    await queue.claim(testCredential("worker_1"), ["context-compile"]);
 
     const claim = db.calls.find((c) => /UPDATE jobs SET status = 'running'/i.test(c.sql));
     // Lease suresi dolmus is geri alinir; aksi halde sonsuza kadar
@@ -467,75 +486,75 @@ describe("JobQueue — claim", () => {
 
   it("aynı iş iki kez claim edilmez", async () => {
     const db = createQueueDb();
-    const queue = new JobQueue(db);
+    const queue = new JobQueue(db, TEST_SIGNING_KEY);
     await queue.enqueue(ENQUEUE);
 
-    const first = await queue.claim("worker_1", ["context-compile"]);
-    const second = await queue.claim("worker_2", ["context-compile"]);
+    const first = await queue.claim(testCredential("worker_1"), ["context-compile"]);
+    const second = await queue.claim(testCredential("worker_2"), ["context-compile"]);
 
     expect(first).not.toBeNull();
     expect(second).toBeNull();
   });
 
   it("kuyruk boşsa null döner", async () => {
-    expect(await new JobQueue(createQueueDb()).claim("w", ["index"])).toBeNull();
+    expect(await new JobQueue(createQueueDb(), TEST_SIGNING_KEY).claim(testCredential("w"), ["index"])).toBeNull();
   });
 
   it("istenmeyen türdeki işi almaz", async () => {
     const db = createQueueDb();
-    const queue = new JobQueue(db);
+    const queue = new JobQueue(db, TEST_SIGNING_KEY);
     await queue.enqueue(ENQUEUE);
 
-    expect(await queue.claim("worker_1", ["index"])).toBeNull();
+    expect(await queue.claim(testCredential("worker_1"), ["index"])).toBeNull();
   });
 });
 
 describe("JobQueue — lease", () => {
   it("sahibi lease'i yenileyebilir", async () => {
     const db = createQueueDb();
-    const queue = new JobQueue(db);
+    const queue = new JobQueue(db, TEST_SIGNING_KEY);
     await queue.enqueue(ENQUEUE);
-    const job = await queue.claim("worker_1", ["context-compile"]);
+    const job = await queue.claim(testCredential("worker_1"), ["context-compile"]);
 
-    expect(await queue.renewLease(job!.id, "worker_1")).toBe(true);
+    expect(await queue.renewLease(job!.id, testCredential("worker_1"))).toBe(true);
   });
 
   it("başkası lease'i yenileyemez (iş devralınmış olabilir)", async () => {
     const db = createQueueDb();
-    const queue = new JobQueue(db);
+    const queue = new JobQueue(db, TEST_SIGNING_KEY);
     await queue.enqueue(ENQUEUE);
-    const job = await queue.claim("worker_1", ["context-compile"]);
+    const job = await queue.claim(testCredential("worker_1"), ["context-compile"]);
 
     // `false` donerse cagiran calismayi DURDURMALIDIR; aksi halde iki
     // worker ayni isi yapar.
-    expect(await queue.renewLease(job!.id, "worker_2")).toBe(false);
+    expect(await queue.renewLease(job!.id, testCredential("worker_2"))).toBe(false);
   });
 });
 
 describe("JobQueue — başarısızlık ve retry", () => {
   it("deneme hakkı kalmışsa kuyruğa döner", async () => {
     const db = createQueueDb();
-    const queue = new JobQueue(db);
+    const queue = new JobQueue(db, TEST_SIGNING_KEY);
     await queue.enqueue({ ...ENQUEUE, maxAttempts: 3 });
-    const job = await queue.claim("worker_1", ["context-compile"]);
+    const job = await queue.claim(testCredential("worker_1"), ["context-compile"]);
 
     expect(await queue.fail(job!.id, "gecici hata")).toBe("retry");
   });
 
   it("deneme hakkı bittiyse failed olur (sonsuz döngü yok)", async () => {
     const db = createQueueDb();
-    const queue = new JobQueue(db);
+    const queue = new JobQueue(db, TEST_SIGNING_KEY);
     await queue.enqueue({ ...ENQUEUE, maxAttempts: 1 });
-    const job = await queue.claim("worker_1", ["context-compile"]);
+    const job = await queue.claim(testCredential("worker_1"), ["context-compile"]);
 
     expect(await queue.fail(job!.id, "kalici hata")).toBe("failed");
   });
 
   it("başarılı iş tamamlanır", async () => {
     const db = createQueueDb();
-    const queue = new JobQueue(db);
+    const queue = new JobQueue(db, TEST_SIGNING_KEY);
     await queue.enqueue(ENQUEUE);
-    const job = await queue.claim("worker_1", ["context-compile"]);
+    const job = await queue.claim(testCredential("worker_1"), ["context-compile"]);
     await queue.complete(job!.id, { manifestId: "m_1" });
 
     expect(db.jobs.get(job!.id)?.status).toBe("completed");
@@ -545,7 +564,7 @@ describe("JobQueue — başarısızlık ve retry", () => {
 describe("JobQueue — backlog metriği", () => {
   it("bekleyen iş sayısını döndürür", async () => {
     const db = createQueueDb();
-    const queue = new JobQueue(db);
+    const queue = new JobQueue(db, TEST_SIGNING_KEY);
     await queue.enqueue(ENQUEUE);
     await queue.enqueue({ ...ENQUEUE, idempotencyKey: "k2" });
 
