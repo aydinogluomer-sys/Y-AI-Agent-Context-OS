@@ -167,12 +167,54 @@ export type TabId =
   | "human-review-requirements"
   | "release-sign-off";
 
+/**
+ * spec §38 feature registry durum kumesi.
+ *
+ * | Durum          | Anlami                                              |
+ * |----------------|-----------------------------------------------------|
+ * | `MISSING`      | Nav kaydi var, uygulama yok                         |
+ * | `STUB`         | Iskelet var, davranis yok                           |
+ * | `SIMULATED`    | Calisiyor ama verisi olcum degil                    |
+ * | `PARTIAL`      | Gercek calisiyor, PASS kriterlerinin bir kismi eksik|
+ * | `BACKEND_ONLY` | Backend yetenegi var, UI yuzeyi yok                 |
+ * | `UI_ONLY`      | UI var, arkasinda yetenek yok                       |
+ * | `BLOCKED`      | Dis bagimlilik nedeniyle ilerleyemiyor              |
+ * | `BROKEN`       | Vardi, artik calismiyor                             |
+ * | `PASS`         | §38'in TAMAMINI karsilar                            |
+ */
+export type NavStatus =
+  | "MISSING"
+  | "STUB"
+  | "SIMULATED"
+  | "PARTIAL"
+  | "BACKEND_ONLY"
+  | "UI_ONLY"
+  | "BLOCKED"
+  | "BROKEN"
+  | "PASS";
+
 export interface NavigationItem {
   id: TabId;
   label: string;
   route: string;
   description: string;
-  status: "implemented" | "placeholder";
+  /**
+   * [P17 / A3 · spec §38] DOKUZ DURUM.
+   *
+   * Onceki hali iki degerdi: `implemented` | `placeholder`. 104 kalem tek
+   * "placeholder" kelimesine sikisiyordu ve bu, aralarindaki GERCEK farki
+   * gizliyordu: hicbir sey olmayan bir kalem ile calisan bir backend'i
+   * olup yuzeyi olmayan kalem ayni gorunuyordu.
+   *
+   * Spec §38 PASS icin sunlari zorunlu kilar: implementation, persistence,
+   * policy, unit test, integration test, E2E (kullaniciya donukse),
+   * negative test, evidence, commit SHA, verification timestamp.
+   *
+   * BUGUN HICBIR KALEM `PASS` DEGIL: integration ve E2E katmanlari canli
+   * Postgres bekliyor (P19). Bunu `PASS` saymak, spec'in kendi tanimini
+   * gevsetmek olurdu.
+   */
+  status: NavStatus;
   icon: any;
 }
 
@@ -187,203 +229,203 @@ export const NAVIGATION_CATEGORIES: NavigationCategory[] = [
     id: "mission-control",
     label: "Görev Kontrol (Mission Control)",
     items: [
-      { id: "chat-cockpit", label: "Sohbet Kokpiti", route: "/chat", description: "Y-OS Çekirdek AI ajan sohbet kokpiti (pipeline SIMULASYON)", status: "placeholder", icon: Terminal },
-      { id: "project-dashboard", label: "AI Görev Kontrolü", route: "/dashboard", description: "Yüksek doğruluklu yapay zeka durum telemetrisi HUD paneli", status: "implemented", icon: Cpu },
-      { id: "active-project", label: "Aktif Proje", route: "/active-project", description: "Şu anda aktif olan çalışma alanı koordinatları", status: "placeholder", icon: FolderOpen },
-      { id: "system-health", label: "Sistem Sağlığı", route: "/system-health", description: "Küresel motor yaşamsal belirtileri izleme monitörü", status: "placeholder", icon: Activity },
-      { id: "token-budget-status", label: "Token Bütçe Durumu", route: "/budget", description: "Gerçek zamanlı bağlam paketleme token göstergeleri", status: "placeholder", icon: Sliders },
-      { id: "cost-compression-chart", label: "Maliyet ve Sıkıştırma", route: "/cost-chart", description: "Compactor maliyet analizi grafik ve tabloları", status: "placeholder", icon: BarChart2 }
+      { id: "chat-cockpit", label: "Sohbet Kokpiti", route: "/chat", description: "Y-OS Çekirdek AI ajan sohbet kokpiti (pipeline SIMULASYON)", status: "SIMULATED", icon: Terminal },
+      { id: "project-dashboard", label: "AI Görev Kontrolü", route: "/dashboard", description: "Yüksek doğruluklu yapay zeka durum telemetrisi HUD paneli", status: "SIMULATED", icon: Cpu },
+      { id: "active-project", label: "Aktif Proje", route: "/active-project", description: "Şu anda aktif olan çalışma alanı koordinatları", status: "MISSING", icon: FolderOpen },
+      { id: "system-health", label: "Sistem Sağlığı", route: "/system-health", description: "Küresel motor yaşamsal belirtileri izleme monitörü", status: "MISSING", icon: Activity },
+      { id: "token-budget-status", label: "Token Bütçe Durumu", route: "/budget", description: "Gerçek zamanlı bağlam paketleme token göstergeleri", status: "MISSING", icon: Sliders },
+      { id: "cost-compression-chart", label: "Maliyet ve Sıkıştırma", route: "/cost-chart", description: "Compactor maliyet analizi grafik ve tabloları", status: "MISSING", icon: BarChart2 }
     ]
   },
   {
     id: "projects-workspace",
     label: "Projeler ve Çalışma Alanı",
     items: [
-      { id: "projects", label: "Projeler Kaydı", route: "/projects", description: "Çalışma alanı proje tanımları veritabanı", status: "placeholder", icon: FolderOpen },
-      { id: "memberships", label: "Üyelik Yetkilendirmeleri", route: "/memberships", description: "Kullanıcı rol parametreleri ve yetki sınırları eşleşmesi", status: "placeholder", icon: Users },
-      { id: "scoped-paths", label: "Kapsam Belirlenmiş Yollar", route: "/scoped-paths", description: "Erişim sınırı olan klasörlerin kısıtlamaları", status: "placeholder", icon: Compass },
-      { id: "repo-adapter", label: "Repo Adaptör Motoru", route: "/repo-adapter", description: "Düşük seviyeli çalışma alanı dosya sürücüleri", status: "placeholder", icon: Server },
-      { id: "file-explorer", label: "Dosya Gezgini", route: "/explorer", description: "Etkileşimli dizin tarayıcı arayüzü", status: "placeholder", icon: FolderOpen },
-      { id: "allowed-paths", label: "İzin Verilen Yollar", route: "/allowed-paths", description: "Geliştirici görev yazma dizinleri beyaz listesi (Whitelist)", status: "placeholder", icon: Lock },
-      { id: "workspace-boundaries", label: "Çalışma Alanı Sınırları", route: "/boundaries", description: "Mantıksal yürütme limitleri kısıtlamaları", status: "placeholder", icon: Shield }
+      { id: "projects", label: "Projeler Kaydı", route: "/projects", description: "Çalışma alanı proje tanımları veritabanı", status: "MISSING", icon: FolderOpen },
+      { id: "memberships", label: "Üyelik Yetkilendirmeleri", route: "/memberships", description: "Kullanıcı rol parametreleri ve yetki sınırları eşleşmesi", status: "MISSING", icon: Users },
+      { id: "scoped-paths", label: "Kapsam Belirlenmiş Yollar", route: "/scoped-paths", description: "Erişim sınırı olan klasörlerin kısıtlamaları", status: "MISSING", icon: Compass },
+      { id: "repo-adapter", label: "Repo Adaptör Motoru", route: "/repo-adapter", description: "Düşük seviyeli çalışma alanı dosya sürücüleri", status: "MISSING", icon: Server },
+      { id: "file-explorer", label: "Dosya Gezgini", route: "/explorer", description: "Etkileşimli dizin tarayıcı arayüzü", status: "MISSING", icon: FolderOpen },
+      { id: "allowed-paths", label: "İzin Verilen Yollar", route: "/allowed-paths", description: "Geliştirici görev yazma dizinleri beyaz listesi (Whitelist)", status: "MISSING", icon: Lock },
+      { id: "workspace-boundaries", label: "Çalışma Alanı Sınırları", route: "/boundaries", description: "Mantıksal yürütme limitleri kısıtlamaları", status: "MISSING", icon: Shield }
     ]
   },
   {
     id: "context-os",
     label: "Context OS (Bağlam OS)",
     items: [
-      { id: "index-job-orchestrator", label: "Dizin İşi Orkestratörü", route: "/index-jobs", description: "Dizin oluşturma kuyruğu izleme ekranı", status: "implemented", icon: FolderOpen },
-      { id: "context-objects", label: "Bağlam Nesneleri", route: "/ctx-objects", description: "Normalize edilmiş kaynak kod nesneleri kataloğu", status: "placeholder", icon: Database },
-      { id: "context-items", label: "Bağlam Öğeleri", route: "/ctx-items", description: "Kaynak tamponları eşleme meta verileri", status: "placeholder", icon: FileText },
-      { id: "context-chunks", label: "Bağlam Parçaları (Chunks)", route: "/ctx-chunks", description: "Hesaplanmış hash ve token metrikleri listesi", status: "placeholder", icon: Layers },
-      { id: "context-pack-builder", label: "50K Bağlam Paketi Oluşturucu", route: "/pack-builder", description: "Ajan modelleri için bağlam derleyici motoru", status: "placeholder", icon: Cpu },
-      { id: "compression-ratios", label: "Sıkıştırma Oranları", route: "/ratios", description: "Compactor dosya ölçeklendirme göstergeleri", status: "placeholder", icon: BarChart2 },
-      { id: "segment-ranking", label: "Segment Sıralaması", route: "/ranking", description: "Bağımlılık ağırlığına göre benzerlik puanı sıralayıcısı", status: "placeholder", icon: Sliders },
-      { id: "context-registry", label: "Bağlam Sicili", route: "/registry", description: "Obsidian hafıza kasası kayıt kütüphanesi", status: "placeholder", icon: Database },
-      { id: "context-export", label: "Bağlam Dışa Aktarma", route: "/export", description: "Derlenmeye hazır segment dışa aktarma sihirbazı", status: "placeholder", icon: FileText }
+      { id: "index-job-orchestrator", label: "Dizin İşi Orkestratörü", route: "/index-jobs", description: "Dizin oluşturma kuyruğu izleme ekranı", status: "PARTIAL", icon: FolderOpen },
+      { id: "context-objects", label: "Bağlam Nesneleri", route: "/ctx-objects", description: "Normalize edilmiş kaynak kod nesneleri kataloğu", status: "MISSING", icon: Database },
+      { id: "context-items", label: "Bağlam Öğeleri", route: "/ctx-items", description: "Kaynak tamponları eşleme meta verileri", status: "MISSING", icon: FileText },
+      { id: "context-chunks", label: "Bağlam Parçaları (Chunks)", route: "/ctx-chunks", description: "Hesaplanmış hash ve token metrikleri listesi", status: "MISSING", icon: Layers },
+      { id: "context-pack-builder", label: "50K Bağlam Paketi Oluşturucu", route: "/pack-builder", description: "Ajan modelleri için bağlam derleyici motoru", status: "MISSING", icon: Cpu },
+      { id: "compression-ratios", label: "Sıkıştırma Oranları", route: "/ratios", description: "Compactor dosya ölçeklendirme göstergeleri", status: "MISSING", icon: BarChart2 },
+      { id: "segment-ranking", label: "Segment Sıralaması", route: "/ranking", description: "Bağımlılık ağırlığına göre benzerlik puanı sıralayıcısı", status: "MISSING", icon: Sliders },
+      { id: "context-registry", label: "Bağlam Sicili", route: "/registry", description: "Obsidian hafıza kasası kayıt kütüphanesi", status: "MISSING", icon: Database },
+      { id: "context-export", label: "Bağlam Dışa Aktarma", route: "/export", description: "Derlenmeye hazır segment dışa aktarma sihirbazı", status: "MISSING", icon: FileText }
     ]
   },
   {
     id: "graph-intelligence",
     label: "Grafik Zekası (Graph)",
     items: [
-      { id: "impact-analysis", label: "Etki Analizi Paneli", route: "/impact-analysis", description: "AST modül bağımlılıkları etki yarıçapı tarayıcısı", status: "implemented", icon: Layers },
-      { id: "ast-map", label: "AST Haritası", route: "/ast-map", description: "ES modülü import/export bağlantıları görselleştiricisi", status: "placeholder", icon: Network },
-      { id: "dependency-graph", label: "Bağımlılık Grafiği", route: "/dependency-graph", description: "Etkileşimli çalışma alanı mantıksal ilişki grafiği", status: "placeholder", icon: Network },
-      { id: "symbol-index", label: "Sembol Dizini", route: "/symbols", description: "Çıkartılmış değişken ve sınıf token'ları kataloğu", status: "placeholder", icon: Search },
-      { id: "import-export-resolver", label: "İthalat/İhracat Çözücü", route: "/resolver", description: "Dosya bağlantı eşlemeleri ve bağımlılık ayrıştırıcısı", status: "placeholder", icon: Compass },
-      { id: "impact-radius", label: "Etki Yarıçapı", route: "/radius", description: "Değişiklik yayılma tahmini derleyici motoru", status: "placeholder", icon: Layers },
-      { id: "incremental-index", label: "Artımlı Dizinleme", route: "/incremental-idx", description: "Dinamik dosya değişiklikleri eşitleyicisi", status: "placeholder", icon: RefreshCw },
-      { id: "syntax-recovery", label: "Sözdizimi Kurtarma", route: "/recovery", description: "Hatalı kaynak dosyalar için AST yedek derleyicisi", status: "placeholder", icon: HelpCircle }
+      { id: "impact-analysis", label: "Etki Analizi Paneli", route: "/impact-analysis", description: "AST modül bağımlılıkları etki yarıçapı tarayıcısı", status: "PARTIAL", icon: Layers },
+      { id: "ast-map", label: "AST Haritası", route: "/ast-map", description: "ES modülü import/export bağlantıları görselleştiricisi", status: "MISSING", icon: Network },
+      { id: "dependency-graph", label: "Bağımlılık Grafiği", route: "/dependency-graph", description: "Etkileşimli çalışma alanı mantıksal ilişki grafiği", status: "MISSING", icon: Network },
+      { id: "symbol-index", label: "Sembol Dizini", route: "/symbols", description: "Çıkartılmış değişken ve sınıf token'ları kataloğu", status: "MISSING", icon: Search },
+      { id: "import-export-resolver", label: "İthalat/İhracat Çözücü", route: "/resolver", description: "Dosya bağlantı eşlemeleri ve bağımlılık ayrıştırıcısı", status: "MISSING", icon: Compass },
+      { id: "impact-radius", label: "Etki Yarıçapı", route: "/radius", description: "Değişiklik yayılma tahmini derleyici motoru", status: "MISSING", icon: Layers },
+      { id: "incremental-index", label: "Artımlı Dizinleme", route: "/incremental-idx", description: "Dinamik dosya değişiklikleri eşitleyicisi", status: "MISSING", icon: RefreshCw },
+      { id: "syntax-recovery", label: "Sözdizimi Kurtarma", route: "/recovery", description: "Hatalı kaynak dosyalar için AST yedek derleyicisi", status: "MISSING", icon: HelpCircle }
     ]
   },
   {
     id: "artifact-cas",
     label: "Artefakt CAS (Depolama)",
     items: [
-      { id: "artifact-center", label: "Artefakt Merkezi CAS", route: "/artifacts", description: "İçerik Adreslemeli Depolama (CAS) yöneticisi", status: "implemented", icon: Layers },
-      { id: "workspace-files", label: "Çalışma Alanı Dosyaları", route: "/ws-files", description: "Hazırlanmış uygulama kaynakları kataloğu", status: "placeholder", icon: FolderOpen },
-      { id: "cas-blobs", label: "CAS İkili Verileri (Blobs)", route: "/blobs", description: "Benzersiz şekilde indekslenmiş ikili CAS veri blokları", status: "placeholder", icon: Database },
-      { id: "dedup-chunks", label: "Tekilleştirilmiş Parçalar", route: "/dedup", description: "Dosya altı bayt seviyesinde eşlenmiş segmentler", status: "placeholder", icon: Layers },
-      { id: "hash-verification", label: "Hash Doğrulama", route: "/hash-verify", description: "SHA-256 bütünlük doğrulayıcı test motoru", status: "placeholder", icon: CheckSquare },
-      { id: "integrity-audit", label: "Bütünlük Denetimi", route: "/integrity-audit", description: "CAS bozulma ve tarama raporlama aracı", status: "placeholder", icon: ShieldAlert },
-      { id: "quarantine", label: "Karantina Kayıtları", route: "/quarantine", description: "Paketlenememiş bozuk veya engellenmiş dosyalar listesi", status: "placeholder", icon: AlertTriangle }
+      { id: "artifact-center", label: "Artefakt Merkezi CAS", route: "/artifacts", description: "İçerik Adreslemeli Depolama (CAS) yöneticisi", status: "PARTIAL", icon: Layers },
+      { id: "workspace-files", label: "Çalışma Alanı Dosyaları", route: "/ws-files", description: "Hazırlanmış uygulama kaynakları kataloğu", status: "MISSING", icon: FolderOpen },
+      { id: "cas-blobs", label: "CAS İkili Verileri (Blobs)", route: "/blobs", description: "Benzersiz şekilde indekslenmiş ikili CAS veri blokları", status: "MISSING", icon: Database },
+      { id: "dedup-chunks", label: "Tekilleştirilmiş Parçalar", route: "/dedup", description: "Dosya altı bayt seviyesinde eşlenmiş segmentler", status: "MISSING", icon: Layers },
+      { id: "hash-verification", label: "Hash Doğrulama", route: "/hash-verify", description: "SHA-256 bütünlük doğrulayıcı test motoru", status: "MISSING", icon: CheckSquare },
+      { id: "integrity-audit", label: "Bütünlük Denetimi", route: "/integrity-audit", description: "CAS bozulma ve tarama raporlama aracı", status: "MISSING", icon: ShieldAlert },
+      { id: "quarantine", label: "Karantina Kayıtları", route: "/quarantine", description: "Paketlenememiş bozuk veya engellenmiş dosyalar listesi", status: "MISSING", icon: AlertTriangle }
     ]
   },
   {
     id: "task-lifecycle",
     label: "Görev Yaşam Döngüsü",
     items: [
-      { id: "file-locks", label: "Dosya Kilitleri ve Kiraları", route: "/file-locks", description: "Kilit mekanizması ve yazma kiralamaları paneli", status: "implemented", icon: Lock },
-      { id: "task-board", label: "Görev Panosu (Task Board)", route: "/tasks", description: "FSM adımları görev yaşam döngüsü panosu", status: "placeholder", icon: Layout },
-      { id: "backlog", label: "Yapılacaklar Kuyruğu", route: "/backlog", description: "Ön analizi yapılmış proje görev kuyruğu", status: "placeholder", icon: Sliders },
-      { id: "active-tasks", label: "Aktif Görevler", route: "/active-tasks", description: "Şu anda çalışan AI ajan süreçleri izleyicisi", status: "placeholder", icon: SlidersHorizontal },
-      { id: "verified-tasks", label: "Doğrulanmış Görevler", route: "/verified", description: "Tamamlanmış ve testlerden geçmiş hedefler", status: "placeholder", icon: CheckSquare },
-      { id: "closed-tasks", label: "Kapatılmış Görevler", route: "/closed", description: "Arşivlenmiş adli günlük (audit) kayıtları", status: "placeholder", icon: History },
-      { id: "fsm-transitions", label: "FSM Durum Geçişleri", route: "/fsm", description: "Görev durum makinesi geçiş logları akışı", status: "placeholder", icon: RefreshCw }
+      { id: "file-locks", label: "Dosya Kilitleri ve Kiraları", route: "/file-locks", description: "Kilit mekanizması ve yazma kiralamaları paneli", status: "PARTIAL", icon: Lock },
+      { id: "task-board", label: "Görev Panosu (Task Board)", route: "/tasks", description: "FSM adımları görev yaşam döngüsü panosu", status: "MISSING", icon: Layout },
+      { id: "backlog", label: "Yapılacaklar Kuyruğu", route: "/backlog", description: "Ön analizi yapılmış proje görev kuyruğu", status: "MISSING", icon: Sliders },
+      { id: "active-tasks", label: "Aktif Görevler", route: "/active-tasks", description: "Şu anda çalışan AI ajan süreçleri izleyicisi", status: "MISSING", icon: SlidersHorizontal },
+      { id: "verified-tasks", label: "Doğrulanmış Görevler", route: "/verified", description: "Tamamlanmış ve testlerden geçmiş hedefler", status: "MISSING", icon: CheckSquare },
+      { id: "closed-tasks", label: "Kapatılmış Görevler", route: "/closed", description: "Arşivlenmiş adli günlük (audit) kayıtları", status: "MISSING", icon: History },
+      { id: "fsm-transitions", label: "FSM Durum Geçişleri", route: "/fsm", description: "Görev durum makinesi geçiş logları akışı", status: "MISSING", icon: RefreshCw }
     ]
   },
   {
     id: "agent-network",
     label: "Yapay Zeka Ajan Ağı",
     items: [
-      { id: "dispatcher-agent", label: "Yönlendirici Ajan (Dispatcher)", route: "/dispatcher", description: "Görev analizi ve koordinasyon ajanı stüdyosu", status: "placeholder", icon: Cpu },
-      { id: "context-builder-agent", label: "Bağlam Yapılandırıcı Ajan", route: "/ctx-builder", description: "Kod tabanını sıkıştırıp bağlam paketi hazırlayan ajan", status: "placeholder", icon: Cpu },
-      { id: "developer-agent", label: "Geliştirici Ajan (Developer)", route: "/developer", description: "İzinli yollarda kod değişiklikleri yapan ajan", status: "placeholder", icon: Cpu },
-      { id: "qa-agent", label: "QA Test Ajanı", route: "/qa-agent", description: "İzole alanda testleri ve güvenlik taramasını çalıştıran ajan", status: "placeholder", icon: Cpu },
-      { id: "director-agent", label: "Yönetici Ajan (Director)", route: "/director", description: "Kanıtları denetleyen ve sürüm imzalayan yönetici ajan", status: "placeholder", icon: Cpu },
-      { id: "session-checkpoints", label: "Oturum Denetim Noktaları", route: "/checkpoints", description: "Süreç izleme denetim noktaları geçmişi", status: "placeholder", icon: History },
-      { id: "continuation-handoff", label: "Devamlılık Handoff Dosyası", route: "/handoff", description: "Ajanlar arası durum aktarım bellek paketi", status: "placeholder", icon: RefreshCw },
-      { id: "chronological-autochecks", label: "Otomatik Zamanlanmış Kontroller", route: "/autochecks", description: "Zamanlanmış otonom doğrulama adımları listesi", status: "placeholder", icon: CheckSquare }
+      { id: "dispatcher-agent", label: "Yönlendirici Ajan (Dispatcher)", route: "/dispatcher", description: "Görev analizi ve koordinasyon ajanı stüdyosu", status: "MISSING", icon: Cpu },
+      { id: "context-builder-agent", label: "Bağlam Yapılandırıcı Ajan", route: "/ctx-builder", description: "Kod tabanını sıkıştırıp bağlam paketi hazırlayan ajan", status: "MISSING", icon: Cpu },
+      { id: "developer-agent", label: "Geliştirici Ajan (Developer)", route: "/developer", description: "İzinli yollarda kod değişiklikleri yapan ajan", status: "MISSING", icon: Cpu },
+      { id: "qa-agent", label: "QA Test Ajanı", route: "/qa-agent", description: "İzole alanda testleri ve güvenlik taramasını çalıştıran ajan", status: "MISSING", icon: Cpu },
+      { id: "director-agent", label: "Yönetici Ajan (Director)", route: "/director", description: "Kanıtları denetleyen ve sürüm imzalayan yönetici ajan", status: "MISSING", icon: Cpu },
+      { id: "session-checkpoints", label: "Oturum Denetim Noktaları", route: "/checkpoints", description: "Süreç izleme denetim noktaları geçmişi", status: "MISSING", icon: History },
+      { id: "continuation-handoff", label: "Devamlılık Handoff Dosyası", route: "/handoff", description: "Ajanlar arası durum aktarım bellek paketi", status: "MISSING", icon: RefreshCw },
+      { id: "chronological-autochecks", label: "Otomatik Zamanlanmış Kontroller", route: "/autochecks", description: "Zamanlanmış otonom doğrulama adımları listesi", status: "MISSING", icon: CheckSquare }
     ]
   },
   {
     id: "security-kernel",
     label: "Güvenlik Çekirdeği (Security)",
     items: [
-      { id: "permission-kernel", label: "Erişim Yetki Çekirdeği", route: "/security", description: "ABAC rol erişim yetki denetleyicisi panel arayüzü", status: "implemented", icon: ShieldAlert },
-      { id: "abac-matrix", label: "ABAC Matrisi", route: "/abac-matrix", description: "Kullanıcı-Kaynak ayrıcalık eşleştirme tabloları", status: "placeholder", icon: Shield },
-      { id: "role-policies", label: "Rol Politikaları", route: "/policies", description: "Salt okunur varsayılan politika şablonları", status: "placeholder", icon: Lock },
-      { id: "human-approval-gate", label: "İnsan Onay Geçidi", route: "/human-approval", description: "Yazma eylemleri için insan onayı talep kuyruğu", status: "placeholder", icon: Users },
-      { id: "path-traversal-guard", label: "Dizin Kaçış Koruması", route: "/traversal-guard", description: "Dizin dışına çıkma engelleyici engelleme logları", status: "placeholder", icon: Shield },
-      { id: "secret-redactor", label: "Sır Ayıklayıcı (Redactor)", route: "/redactor", description: "Sır ve şifre maskeleme istatistikleri arayüzü", status: "placeholder", icon: Search },
-      { id: "default-deny-rules", label: "Varsayılan Reddetme Kuralları", route: "/default-deny", description: "Taban kısıtlama profilleri ve güvenlik sınırları", status: "placeholder", icon: Lock },
-      { id: "read-only-policies", label: "Salt Okunur Kurallar", route: "/read-only", description: "Güvenli okuma sınırı ve politika haritaları", status: "placeholder", icon: Eye }
+      { id: "permission-kernel", label: "Erişim Yetki Çekirdeği", route: "/security", description: "ABAC rol erişim yetki denetleyicisi panel arayüzü", status: "PARTIAL", icon: ShieldAlert },
+      { id: "abac-matrix", label: "ABAC Matrisi", route: "/abac-matrix", description: "Kullanıcı-Kaynak ayrıcalık eşleştirme tabloları", status: "MISSING", icon: Shield },
+      { id: "role-policies", label: "Rol Politikaları", route: "/policies", description: "Salt okunur varsayılan politika şablonları", status: "MISSING", icon: Lock },
+      { id: "human-approval-gate", label: "İnsan Onay Geçidi", route: "/human-approval", description: "Yazma eylemleri için insan onayı talep kuyruğu", status: "MISSING", icon: Users },
+      { id: "path-traversal-guard", label: "Dizin Kaçış Koruması", route: "/traversal-guard", description: "Dizin dışına çıkma engelleyici engelleme logları", status: "MISSING", icon: Shield },
+      { id: "secret-redactor", label: "Sır Ayıklayıcı (Redactor)", route: "/redactor", description: "Sır ve şifre maskeleme istatistikleri arayüzü", status: "MISSING", icon: Search },
+      { id: "default-deny-rules", label: "Varsayılan Reddetme Kuralları", route: "/default-deny", description: "Taban kısıtlama profilleri ve güvenlik sınırları", status: "MISSING", icon: Lock },
+      { id: "read-only-policies", label: "Salt Okunur Kurallar", route: "/read-only", description: "Güvenli okuma sınırı ve politika haritaları", status: "MISSING", icon: Eye }
     ]
   },
   {
     id: "evidence-audit",
     label: "Kanıt ve Adli Denetim",
     items: [
-      { id: "evidence-store", label: "Kanıt Deposu Paneli", route: "/evidence", description: "Y-OS merkezi doğrulama kanıtları veri kasası", status: "implemented", icon: FileText },
-      { id: "event-journal", label: "Ajan Olay Günlüğü", route: "/events", description: "SHA-256 ile zincirlenmiş olay günlüğü (audit log)", status: "implemented", icon: History },
-      { id: "event-store", label: "Olay Deposu", route: "/event-store", description: "Salt eklenebilir veritabanı olay kayıt sicili", status: "placeholder", icon: Database },
-      { id: "evidence-health-gauge", label: "Kanıt Sağlık Göstergesi", route: "/health-gauge", description: "Kriptografik bütünlük sağlık oranı gösterge paneli", status: "placeholder", icon: Activity },
-      { id: "corruption-reports", label: "Bozulma Raporları", route: "/corruption", description: "Bütünlük hataları ve sapma (drift) analizi alarmları", status: "placeholder", icon: AlertTriangle },
-      { id: "cryptographic-ledger", label: "Kriptografik Defter", route: "/ledger", description: "Değiştirilemez olay kayıt zinciri dizini", status: "placeholder", icon: History },
-      { id: "signed-logs", label: "İmzalı Loglar", route: "/signed-logs", description: "SHA-256 imzasıyla mühürlenmiş sistem logları", status: "placeholder", icon: CheckSquare }
+      { id: "evidence-store", label: "Kanıt Deposu Paneli", route: "/evidence", description: "Y-OS merkezi doğrulama kanıtları veri kasası", status: "PARTIAL", icon: FileText },
+      { id: "event-journal", label: "Ajan Olay Günlüğü", route: "/events", description: "SHA-256 ile zincirlenmiş olay günlüğü (audit log)", status: "PARTIAL", icon: History },
+      { id: "event-store", label: "Olay Deposu", route: "/event-store", description: "Salt eklenebilir veritabanı olay kayıt sicili", status: "MISSING", icon: Database },
+      { id: "evidence-health-gauge", label: "Kanıt Sağlık Göstergesi", route: "/health-gauge", description: "Kriptografik bütünlük sağlık oranı gösterge paneli", status: "MISSING", icon: Activity },
+      { id: "corruption-reports", label: "Bozulma Raporları", route: "/corruption", description: "Bütünlük hataları ve sapma (drift) analizi alarmları", status: "MISSING", icon: AlertTriangle },
+      { id: "cryptographic-ledger", label: "Kriptografik Defter", route: "/ledger", description: "Değiştirilemez olay kayıt zinciri dizini", status: "MISSING", icon: History },
+      { id: "signed-logs", label: "İmzalı Loglar", route: "/signed-logs", description: "SHA-256 imzasıyla mühürlenmiş sistem logları", status: "MISSING", icon: CheckSquare }
     ]
   },
   {
     id: "worker-runtime",
     label: "Çalışma Zamanı İzleme (Runtime)",
     items: [
-      { id: "worker-runtime", label: "İşçi Çalışma Zamanı HUD", route: "/workers", description: "Arka plan işçileri ve çalışan görev yükleri", status: "implemented", icon: SlidersHorizontal },
-      { id: "index-sync", label: "Dizin Eşitleme İşleri", route: "/index-sync", description: "Aktif Git depoları izleme aracı", status: "placeholder", icon: RefreshCw },
-      { id: "git-tracking", label: "Git Takibi", route: "/git-tracking", description: "Commit geçmişi ve dizin derleyici motoru", status: "placeholder", icon: GitBranch },
-      { id: "ast-compilation-jobs", label: "AST Derleme İşleri", route: "/ast-jobs", description: "Statik analiz işçi kuyruğu durum ekranı", status: "placeholder", icon: Cpu },
-      { id: "load-metrics", label: "Yük Metrikleri", route: "/load", description: "Sistem CPU ve bellek limitleri izleme paneli", status: "placeholder", icon: Activity },
-      { id: "runtime-telemetry", label: "Çalışma Zamanı Telemetrisi", route: "/telemetry", description: "Express ve Vite sunucu yürütme logları konsolu", status: "placeholder", icon: Terminal }
+      { id: "worker-runtime", label: "İşçi Çalışma Zamanı HUD", route: "/workers", description: "Arka plan işçileri ve çalışan görev yükleri", status: "PARTIAL", icon: SlidersHorizontal },
+      { id: "index-sync", label: "Dizin Eşitleme İşleri", route: "/index-sync", description: "Aktif Git depoları izleme aracı", status: "MISSING", icon: RefreshCw },
+      { id: "git-tracking", label: "Git Takibi", route: "/git-tracking", description: "Commit geçmişi ve dizin derleyici motoru", status: "MISSING", icon: GitBranch },
+      { id: "ast-compilation-jobs", label: "AST Derleme İşleri", route: "/ast-jobs", description: "Statik analiz işçi kuyruğu durum ekranı", status: "MISSING", icon: Cpu },
+      { id: "load-metrics", label: "Yük Metrikleri", route: "/load", description: "Sistem CPU ve bellek limitleri izleme paneli", status: "MISSING", icon: Activity },
+      { id: "runtime-telemetry", label: "Çalışma Zamanı Telemetrisi", route: "/telemetry", description: "Express ve Vite sunucu yürütme logları konsolu", status: "MISSING", icon: Terminal }
     ]
   },
   {
     id: "database-migrations",
     label: "Veritabanı ve Migrasyonlar",
     items: [
-      { id: "db-status", label: "Veritabanı Durumu", route: "/db-status", description: "Supabase bağlantıları ve satır sayıları metrikleri", status: "placeholder", icon: Database },
-      { id: "supabase-pool-manager", label: "Supabase Havuz Yöneticisi", route: "/db-pool", description: "PostgreSQL istemci havuzu limitleri yapılandırma ekranı", status: "placeholder", icon: Settings },
-      { id: "migrations", label: "Migrasyon Defteri", route: "/migrations", description: "Çalıştırılmış veritabanı migrasyon kayıtları günlüğü", status: "placeholder", icon: History },
-      { id: "schema-browser", label: "Şema Tarayıcısı", route: "/schema", description: "Tablo yapıları ve veritabanı sütunları tarayıcısı", status: "placeholder", icon: FolderOpen },
-      { id: "dev-reset-utility", label: "Geliştirici Sıfırlama Aracı", route: "/dev-reset", description: "ALLOW_DESTRUCTIVE_DB_RESET kontrol paneli", status: "placeholder", icon: AlertTriangle },
-      { id: "public-tables", label: "Genel Tablolar", route: "/tables", description: "Projeler, görevler ve üyelikler tabloları listesi", status: "placeholder", icon: Database }
+      { id: "db-status", label: "Veritabanı Durumu", route: "/db-status", description: "Supabase bağlantıları ve satır sayıları metrikleri", status: "MISSING", icon: Database },
+      { id: "supabase-pool-manager", label: "Supabase Havuz Yöneticisi", route: "/db-pool", description: "PostgreSQL istemci havuzu limitleri yapılandırma ekranı", status: "MISSING", icon: Settings },
+      { id: "migrations", label: "Migrasyon Defteri", route: "/migrations", description: "Çalıştırılmış veritabanı migrasyon kayıtları günlüğü", status: "MISSING", icon: History },
+      { id: "schema-browser", label: "Şema Tarayıcısı", route: "/schema", description: "Tablo yapıları ve veritabanı sütunları tarayıcısı", status: "MISSING", icon: FolderOpen },
+      { id: "dev-reset-utility", label: "Geliştirici Sıfırlama Aracı", route: "/dev-reset", description: "ALLOW_DESTRUCTIVE_DB_RESET kontrol paneli", status: "MISSING", icon: AlertTriangle },
+      { id: "public-tables", label: "Genel Tablolar", route: "/tables", description: "Projeler, görevler ve üyelikler tabloları listesi", status: "MISSING", icon: Database }
     ]
   },
   {
     id: "providers-connectors",
     label: "Sağlayıcılar ve Konektörler",
     items: [
-      { id: "model-routing", label: "Model Yönlendirme", route: "/model-routing", description: "Gemini / Claude / fallbacks yapay zeka modeli seçici", status: "placeholder", icon: RefreshCw },
-      { id: "google-sdk-adapter", label: "Google SDK Adaptörü", route: "/google-sdk", description: "Vertex AI entegrasyon kancaları izleyicisi", status: "placeholder", icon: Cpu },
-      { id: "saas-sync-states", label: "SaaS Eşitleme Durumları", route: "/saas-sync", description: "Üçüncü taraf SaaS senkronizasyon verileri paneli", status: "placeholder", icon: FolderOpen },
-      { id: "credential-stubs", label: "Kimlik Bilgisi Taslakları", route: "/credentials", description: "SaaS kimlik doğrulama taslakları izleyicisi", status: "placeholder", icon: Lock },
-      { id: "connect-center", label: "Bağlantı Merkezi", route: "/connectors", description: "Dış servis bağlantıları yapılandırmaları paneli", status: "placeholder", icon: Compass }
+      { id: "model-routing", label: "Model Yönlendirme", route: "/model-routing", description: "Gemini / Claude / fallbacks yapay zeka modeli seçici", status: "MISSING", icon: RefreshCw },
+      { id: "google-sdk-adapter", label: "Google SDK Adaptörü", route: "/google-sdk", description: "Vertex AI entegrasyon kancaları izleyicisi", status: "MISSING", icon: Cpu },
+      { id: "saas-sync-states", label: "SaaS Eşitleme Durumları", route: "/saas-sync", description: "Üçüncü taraf SaaS senkronizasyon verileri paneli", status: "MISSING", icon: FolderOpen },
+      { id: "credential-stubs", label: "Kimlik Bilgisi Taslakları", route: "/credentials", description: "SaaS kimlik doğrulama taslakları izleyicisi", status: "MISSING", icon: Lock },
+      { id: "connect-center", label: "Bağlantı Merkezi", route: "/connectors", description: "Dış servis bağlantıları yapılandırmaları paneli", status: "MISSING", icon: Compass }
     ]
   },
   {
     id: "qa-validation",
     label: "QA ve Doğrulama Suite'i",
     items: [
-      { id: "quality-gate-report", label: "Kalite Geçidi Raporu", route: "/quality-gates", description: "Statik kontroller ve hata ayıklama etiketi denetleyicileri", status: "implemented", icon: BadgeAlert },
-      { id: "test-runner", label: "Test Koşturucu", route: "/test-runner", description: "Çalışma alanı test motoru kontrol arayüzü", status: "placeholder", icon: Terminal },
-      { id: "deterministic-tests", label: "Belirleyici Testler", route: "/test-det", description: "Çevrimdışı verifikasyon iddiaları koşturucusu", status: "placeholder", icon: CheckSquare },
-      { id: "db-integration-tests", label: "Veritabanı Entegrasyon Testleri", route: "/test-db", description: "Supabase bağlantı ve şema doğrulama koşturucusu", status: "placeholder", icon: Database },
-      { id: "secret-scan", label: "Sır Tarayıcısı (Secret Scan)", route: "/secret-scan", description: "Regex token ve veritabanı şifreleri tarayıcı paneli", status: "placeholder", icon: Search },
-      { id: "debug-tag-gate", label: "Debug Etiketi Engeli", route: "/debug-gate", description: "PR'larda fdescribe ve fit kodlarını engelleyen kalite geçidi", status: "placeholder", icon: AlertTriangle },
-      { id: "manual-qa-checklist", label: "Manuel QA Kontrol Listesi", route: "/manual-qa", description: "Arayüz butonları manuel kalite kontrol listesi", status: "placeholder", icon: FileText },
-      { id: "stage-27-validation", label: "Erişim Yetki Çekirdeği (ABAC) Doğrulaması", route: "/stage-27", description: "ABAC rolleri, yol normalizasyonu ve varsayılan reddetme kuralları testi", status: "placeholder", icon: CheckSquare },
-      { id: "stage-28-validation", label: "Bağlam Paketleyici (50K Pack) Doğrulaması", route: "/stage-28", description: "50K token bütçesi altında semantik sıralama ve compactor testi", status: "placeholder", icon: CheckSquare },
-      { id: "stage-29-validation", label: "Repo Adaptörü ve Kapsamlı Yollar Doğrulaması", route: "/stage-29", description: "Dizin sınırı kısıtlamaları, allowlist/denylist ve repo adaptör testi", status: "placeholder", icon: CheckSquare },
-      { id: "stage-30-validation", label: "Kriptografik Olay Günlüğü Doğrulaması", route: "/stage-30", description: "Append-only adli defter ve SHA-256 zincirlenmiş loglar testi", status: "placeholder", icon: CheckSquare },
-      { id: "stage-31-validation", label: "Obsidian Bellek Kasası Doğrulaması", route: "/stage-31", description: "Obsidian hafıza kasası ve ContextObject soy ağacı testi", status: "placeholder", icon: CheckSquare },
-      { id: "stage-32-validation", label: "Ajan Devamlılık Handoff Doğrulaması", route: "/stage-32", description: "Yapay zeka ajanları arası durum aktarım bellek paketi testi", status: "placeholder", icon: CheckSquare },
-      { id: "stage-33-validation", label: "Görev Yaşam Döngüsü FSM Doğrulaması", route: "/stage-33", description: "FSM durum makinesi geçişleri ve atomik dosya kilitleri testi", status: "placeholder", icon: CheckSquare },
-      { id: "stage-34-validation", label: "İşçi Çalışma Zamanı Telemetrisi Doğrulaması", route: "/stage-34", description: "Worker HUD canlı bellek/CPU yük metrikleri testi", status: "placeholder", icon: CheckSquare },
-      { id: "stage-35-validation", label: "Artefakt CAS Tekilleştirme Doğrulaması", route: "/stage-35", description: "İçerik adreslemeli CAS ikili veri tekilleştirme ve hash doğrulaması", status: "placeholder", icon: CheckSquare }
+      { id: "quality-gate-report", label: "Kalite Geçidi Raporu", route: "/quality-gates", description: "Statik kontroller ve hata ayıklama etiketi denetleyicileri", status: "PARTIAL", icon: BadgeAlert },
+      { id: "test-runner", label: "Test Koşturucu", route: "/test-runner", description: "Çalışma alanı test motoru kontrol arayüzü", status: "MISSING", icon: Terminal },
+      { id: "deterministic-tests", label: "Belirleyici Testler", route: "/test-det", description: "Çevrimdışı verifikasyon iddiaları koşturucusu", status: "MISSING", icon: CheckSquare },
+      { id: "db-integration-tests", label: "Veritabanı Entegrasyon Testleri", route: "/test-db", description: "Supabase bağlantı ve şema doğrulama koşturucusu", status: "MISSING", icon: Database },
+      { id: "secret-scan", label: "Sır Tarayıcısı (Secret Scan)", route: "/secret-scan", description: "Regex token ve veritabanı şifreleri tarayıcı paneli", status: "MISSING", icon: Search },
+      { id: "debug-tag-gate", label: "Debug Etiketi Engeli", route: "/debug-gate", description: "PR'larda fdescribe ve fit kodlarını engelleyen kalite geçidi", status: "MISSING", icon: AlertTriangle },
+      { id: "manual-qa-checklist", label: "Manuel QA Kontrol Listesi", route: "/manual-qa", description: "Arayüz butonları manuel kalite kontrol listesi", status: "MISSING", icon: FileText },
+      { id: "stage-27-validation", label: "Erişim Yetki Çekirdeği (ABAC) Doğrulaması", route: "/stage-27", description: "ABAC rolleri, yol normalizasyonu ve varsayılan reddetme kuralları testi", status: "MISSING", icon: CheckSquare },
+      { id: "stage-28-validation", label: "Bağlam Paketleyici (50K Pack) Doğrulaması", route: "/stage-28", description: "50K token bütçesi altında semantik sıralama ve compactor testi", status: "MISSING", icon: CheckSquare },
+      { id: "stage-29-validation", label: "Repo Adaptörü ve Kapsamlı Yollar Doğrulaması", route: "/stage-29", description: "Dizin sınırı kısıtlamaları, allowlist/denylist ve repo adaptör testi", status: "MISSING", icon: CheckSquare },
+      { id: "stage-30-validation", label: "Kriptografik Olay Günlüğü Doğrulaması", route: "/stage-30", description: "Append-only adli defter ve SHA-256 zincirlenmiş loglar testi", status: "MISSING", icon: CheckSquare },
+      { id: "stage-31-validation", label: "Obsidian Bellek Kasası Doğrulaması", route: "/stage-31", description: "Obsidian hafıza kasası ve ContextObject soy ağacı testi", status: "MISSING", icon: CheckSquare },
+      { id: "stage-32-validation", label: "Ajan Devamlılık Handoff Doğrulaması", route: "/stage-32", description: "Yapay zeka ajanları arası durum aktarım bellek paketi testi", status: "MISSING", icon: CheckSquare },
+      { id: "stage-33-validation", label: "Görev Yaşam Döngüsü FSM Doğrulaması", route: "/stage-33", description: "FSM durum makinesi geçişleri ve atomik dosya kilitleri testi", status: "MISSING", icon: CheckSquare },
+      { id: "stage-34-validation", label: "İşçi Çalışma Zamanı Telemetrisi Doğrulaması", route: "/stage-34", description: "Worker HUD canlı bellek/CPU yük metrikleri testi", status: "MISSING", icon: CheckSquare },
+      { id: "stage-35-validation", label: "Artefakt CAS Tekilleştirme Doğrulaması", route: "/stage-35", description: "İçerik adreslemeli CAS ikili veri tekilleştirme ve hash doğrulaması", status: "MISSING", icon: CheckSquare }
     ]
   },
   {
     id: "documentation",
     label: "Sistem Dokümantasyonu",
     items: [
-      { id: "architecture-index", label: "Mimari Dizini", route: "/docs/arch-idx", description: "Küresel monorepo paketleri ve veri türleri dizini", status: "placeholder", icon: FolderOpen },
-      { id: "architecture-schema", label: "Mimari Şeması", route: "/docs/arch-schema", description: "Vite istemcisinden Express ve PostgreSQL veri akışları", status: "placeholder", icon: Network },
-      { id: "kernel-explanation", label: "Çekirdek Çalışma Tezi", route: "/docs/kernel-explain", description: "Sır ayıklayıcı, compactor ve güvenlik çekirdeği açıklaması", status: "placeholder", icon: FileText },
-      { id: "context-execution-plan", label: "Bağlam Yürütme Planı", route: "/docs/execution-plan", description: "AST token oluşturma hattı zaman planı", status: "placeholder", icon: Layers },
-      { id: "ui-accessibility-notes", label: "Arayüz Erişilebilirlik Notları", route: "/docs/accessibility", description: "WCAG renk kontrastı ve tasarım kuralları kılavuzu", status: "placeholder", icon: Eye },
-      { id: "quality-gates", label: "Kalite Geçitleri Kuralları", route: "/docs/quality-gates", description: "Commit engelleme ve kod kalitesi politikaları dokümanı", status: "placeholder", icon: BadgeAlert },
-      { id: "manual-qa", label: "Manuel QA Rehberi", route: "/docs/manual-qa", description: "Butonlar ve form alanları manuel tarama kılavuzu", status: "placeholder", icon: FileText },
-      { id: "implementation-log", label: "Uygulama Günlüğü", route: "/docs/impl-log", description: "Kararlılık ve aşama aşama iyileştirme arşivi logu", status: "placeholder", icon: History }
+      { id: "architecture-index", label: "Mimari Dizini", route: "/docs/arch-idx", description: "Küresel monorepo paketleri ve veri türleri dizini", status: "MISSING", icon: FolderOpen },
+      { id: "architecture-schema", label: "Mimari Şeması", route: "/docs/arch-schema", description: "Vite istemcisinden Express ve PostgreSQL veri akışları", status: "MISSING", icon: Network },
+      { id: "kernel-explanation", label: "Çekirdek Çalışma Tezi", route: "/docs/kernel-explain", description: "Sır ayıklayıcı, compactor ve güvenlik çekirdeği açıklaması", status: "MISSING", icon: FileText },
+      { id: "context-execution-plan", label: "Bağlam Yürütme Planı", route: "/docs/execution-plan", description: "AST token oluşturma hattı zaman planı", status: "MISSING", icon: Layers },
+      { id: "ui-accessibility-notes", label: "Arayüz Erişilebilirlik Notları", route: "/docs/accessibility", description: "WCAG renk kontrastı ve tasarım kuralları kılavuzu", status: "MISSING", icon: Eye },
+      { id: "quality-gates", label: "Kalite Geçitleri Kuralları", route: "/docs/quality-gates", description: "Commit engelleme ve kod kalitesi politikaları dokümanı", status: "MISSING", icon: BadgeAlert },
+      { id: "manual-qa", label: "Manuel QA Rehberi", route: "/docs/manual-qa", description: "Butonlar ve form alanları manuel tarama kılavuzu", status: "MISSING", icon: FileText },
+      { id: "implementation-log", label: "Uygulama Günlüğü", route: "/docs/impl-log", description: "Kararlılık ve aşama aşama iyileştirme arşivi logu", status: "MISSING", icon: History }
     ]
   },
   {
     id: "governance-kernel-debt",
     label: "Yönetişim ve Çekirdek Borcu",
     items: [
-      { id: "kernel-awareness-note", label: "Çekirdek Farkındalık Notu", route: "/gov/awareness", description: "Sır taraması ve kimlik bilgisi maskeleme kılavuzu", status: "placeholder", icon: ShieldAlert },
-      { id: "kernel-debt-register", label: "Çekirdek Borç Sicili", route: "/gov/debt", description: "Eksik yetkilendirme ve refaktör edilecek kodlar sicili", status: "placeholder", icon: Settings },
-      { id: "permission-kernel-audit", label: "Erişim Çekirdeği Denetimi", route: "/gov/audit", description: "Admin vs Guest erişim logları karşılaştırma raporu", status: "placeholder", icon: History },
-      { id: "human-review-requirements", label: "İnsan İnceleme Koşulları", route: "/gov/human-review", description: "Kritik işlemler için gereken manuel imza kuralları", status: "placeholder", icon: Users },
-      { id: "release-sign-off", label: "Sürüm İmza Defteri", route: "/gov/signoff", description: "Kriptografik doğrulama sürümü imza defteri kontrol listesi", status: "placeholder", icon: Lock }
+      { id: "kernel-awareness-note", label: "Çekirdek Farkındalık Notu", route: "/gov/awareness", description: "Sır taraması ve kimlik bilgisi maskeleme kılavuzu", status: "MISSING", icon: ShieldAlert },
+      { id: "kernel-debt-register", label: "Çekirdek Borç Sicili", route: "/gov/debt", description: "Eksik yetkilendirme ve refaktör edilecek kodlar sicili", status: "MISSING", icon: Settings },
+      { id: "permission-kernel-audit", label: "Erişim Çekirdeği Denetimi", route: "/gov/audit", description: "Admin vs Guest erişim logları karşılaştırma raporu", status: "MISSING", icon: History },
+      { id: "human-review-requirements", label: "İnsan İnceleme Koşulları", route: "/gov/human-review", description: "Kritik işlemler için gereken manuel imza kuralları", status: "MISSING", icon: Users },
+      { id: "release-sign-off", label: "Sürüm İmza Defteri", route: "/gov/signoff", description: "Kriptografik doğrulama sürümü imza defteri kontrol listesi", status: "MISSING", icon: Lock }
     ]
   }
 ];

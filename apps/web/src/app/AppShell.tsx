@@ -6,7 +6,8 @@
 import React, { useState } from "react";
 import { 
   NAVIGATION_CATEGORIES, 
-  TabId 
+  TabId,
+  type NavStatus
 } from "./navigation";
 import { 
   Badge 
@@ -36,6 +37,53 @@ interface AppShellProps {
   metrics: any;
   setShowConfigModal?: (show: boolean) => void;
 }
+
+/**
+ * [P17 / A3 · spec §38] Durum -> kenar cubugu rozeti.
+ *
+ * `PARTIAL` rozet TASIMAZ: gercek calisan bir yuzeyi her seferinde bir
+ * uyari isaretiyle gostermek, gurultu uretir ve asil uyarilari degersizlestirir.
+ * Eksigi kabul raporunda ve navigation.ts'te yazili.
+ */
+const NAV_STATUS_BADGE: Partial<
+  Record<NavStatus, { label: string; title: string; className: string }>
+> = {
+  MISSING: {
+    label: "Yok",
+    title: "Nav kaydi var, uygulama yok. Ekranda yer tutucu gosterilir.",
+    className: "border-zinc-600/40 text-zinc-500"
+  },
+  STUB: {
+    label: "Taslak",
+    title: "Iskelet var, davranis yok.",
+    className: "border-zinc-600/40 text-zinc-500"
+  },
+  SIMULATED: {
+    label: "Simule",
+    title: "Calisiyor ama gosterdigi veri OLCUM DEGIL.",
+    className: "border-amber-500/30 text-amber-400/80"
+  },
+  BACKEND_ONLY: {
+    label: "Backend",
+    title: "Backend yetenegi var, UI yuzeyi yok.",
+    className: "border-sky-500/30 text-sky-400/80"
+  },
+  UI_ONLY: {
+    label: "UI",
+    title: "UI var, arkasinda yetenek yok.",
+    className: "border-amber-500/30 text-amber-400/80"
+  },
+  BLOCKED: {
+    label: "Bloke",
+    title: "Dis bagimlilik nedeniyle ilerleyemiyor.",
+    className: "border-rose-500/30 text-rose-400/80"
+  },
+  BROKEN: {
+    label: "Bozuk",
+    title: "Vardi, artik calismiyor.",
+    className: "border-rose-500/30 text-rose-400/80"
+  }
+};
 
 export function AppShell({
   children,
@@ -187,7 +235,14 @@ export function AppShell({
                       {category.items.map(item => {
                         const active = activeTab === item.id;
                         const Icon = item.icon;
-                        const isPlaceholder = item.status === "placeholder";
+                        // [P17 / A3] Rozet ARTIK GERCEK DURUMU gosteriyor.
+                        //
+                        // Onceki hali her `placeholder` icin "Simule"
+                        // yaziyordu. Oysa bu kalemlerin cogu simule DEGIL,
+                        // hic YOK: App.tsx durust bir "Henuz Kodlanmadi"
+                        // yer tutucusu gosteriyor. "Simule" demek, olmayan
+                        // bir seyi calisiyor gibi tanitiyordu.
+                        const statusBadge = NAV_STATUS_BADGE[item.status];
                         return (
                           <li key={item.id}>
                             <button
@@ -207,9 +262,12 @@ export function AppShell({
                                 <Icon className={`w-4 h-4 shrink-0 ${active ? "text-optic-cyan" : "text-steel-muted"}`} />
                                 <span className="truncate">{item.label}</span>
                               </div>
-                              {isPlaceholder && (
-                                <span className="text-[8px] font-mono border border-optic-cyan/25 text-optic-cyan/80 px-1 py-0.2 rounded uppercase select-none shrink-0 scale-90">
-                                  Simüle
+                              {statusBadge && (
+                                <span
+                                  title={statusBadge.title}
+                                  className={`text-[8px] font-mono border px-1 py-0.2 rounded uppercase select-none shrink-0 scale-90 ${statusBadge.className}`}
+                                >
+                                  {statusBadge.label}
                                 </span>
                               )}
                             </button>

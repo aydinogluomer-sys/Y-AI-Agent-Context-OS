@@ -22,7 +22,10 @@ import { FileLockingPanel } from "./components/FileLockingPanel";
 import { QualityGateReportPanel } from "./components/QualityGateReportPanel";
 import { ImpactAnalysisPanel } from "./components/ImpactAnalysisPanel";
 import { IndexJobOrchestratorPanel } from "./components/IndexJobOrchestratorPanel";
-import { ModuleSimulationPanel } from "./components/ModuleSimulationPanel";
+// [P17 / A3] `ModuleSimulationPanel` import'u KALDIRILDI: P15'te switch
+// varsayilani durust yer tutucuya cevrildiginden bu bilesen hic render
+// EDILMIYORDU. Kullanilmayan bir simulasyon bileseni import'ta durursa,
+// bir sonraki okuyan onun canli oldugunu sanir.
 
 // Primitives
 import { Card } from "./components/primitives/Card";
