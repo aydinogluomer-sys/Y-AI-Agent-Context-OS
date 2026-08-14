@@ -311,3 +311,134 @@ pnpm --filter @y/db run test:migrations:upgrade
 ```
 
 **Bu gate geçilmeden ürün "çalışıyor" denemez.** `RunEvent` sözleşmesi burada donar — P13 buna bağımlıdır.
+
+---
+
+## Uygulama Kaydı (2026-08-14)
+
+### Tamamlanan görevler
+
+| Görev | Durum | Kanıt |
+|---|---|---|
+| Y-P12-001 `runs` tablosu + FSM | Tamam | migration `0079`, `RunService` |
+| Y-P12-002 `run_events` zinciri | Tamam | migration `0080`, append-only trigger |
+| Y-P12-003 genel `jobs` kuyruğu | Tamam | migration `0081`, `JobQueue` + 12 test |
+| Y-P12-004 idempotency | Tamam | run ve job düzeyinde ayrı ayrı |
+| Y-P12-005 çökme kurtarma | Tamam | lease + `lease_expires_at < NOW()` |
+| Y-P12-009 sahte run route'ları | Tamam | 3 route 410 |
+| Worker havuzu (execute) | **YAPILMADI** | adapter `start()` bağlanmadan çalıştıracak iş yok |
+| Onay akışı uçtan uca | **YAPILMADI** | aynı sebep |
+
+### Migration numaralandırması
+
+| Plan | Gerçek |
+|---|---|
+| 0091 runs | `0079_runs.sql` |
+| 0092 run_events | `0080_run_events.sql` |
+| 0093 jobs | `0081_jobs.sql` |
+| 0094+ worker havuzu, agent_sessions | **ERTELENDİ** |
+
+### P00'un en kritik bulgusu kapandı
+
+Eski `POST .../runs` handler'ı:
+
+1. Bir run kimliği üretiyordu.
+2. Dört olay yazıyordu: queued → running → (sabit payload) → completed.
+3. `res.json({ ok: true, run: { status: "completed" } })` dönüyordu.
+
+Hiçbir context derlenmiyordu, hiçbir model çağrılmıyordu, hiçbir dosyaya
+dokunulmuyordu. `selectedItemsCount: 3` ve `tokenBudget: 50000`
+**literaldi**. Handler her çağrıda "başarıyla tamamlandı" diyordu.
+
+`cancel` route'u zaten "completed" olmuş bir run'a `cancelled` olayı
+ekliyordu — durum kontrolü yoktu. Bu artık **veritabanı trigger'ıyla**
+imkânsız.
+
+### Karar 1 — Terminal durumlar üç katmanda korunuyor
+
+1. `isTerminal()` kontrolü servis katmanında.
+2. `guardTransition()` FSM tablosunda (`completed: []`).
+3. Veritabanı trigger'ı (`block_terminal_run_transition`).
+
+Üç katman fazla görünebilir; değil. Servis atlanabilir (doğrudan SQL),
+FSM tablosu bir kod hatasıyla değişebilir. Trigger son savunmadır ve
+kanıt zincirinin (P14) dayandığı varsayımdır.
+
+### Karar 2 — Durum güncellemesi KOŞULLU
+
+`UPDATE runs SET state = $2 WHERE id = $1 AND state = $3`
+
+Eşzamanlı iki geçişin ikisinin de başarılı olmasını engeller (lost
+update). Beklenen durum tutmuyorsa geçiş reddedilir ve çağıran bunu
+öğrenir — sessizce ezmez.
+
+### Karar 3 — Kuyruk Postgres'te (ADR-004)
+
+İş kuyruğunu Redis/SQS'e koymak, iş durumu ile veri durumunu iki ayrı
+transaction sınırına böler. "İş tamamlandı" yazıldı ama sonuç
+yazılamadı (ya da tersi) durumu ortaya çıkar; çözümü dağıtık transaction
+ya da uzlaşma mantığıdır — ikisi de bu ölçekte gereksiz karmaşıklık.
+
+### Karar 4 — Çökme kurtarma lease ile
+
+Bir worker lease'ini yenilemeden çökerse, işi başka bir worker
+`lease_expires_at < NOW()` koşuluyla geri alır. Lease süresi dolmuş bir
+iş sonsuza kadar `running` **kalmaz**.
+
+`renewLease` `false` dönerse çağıran çalışmayı **durdurmalıdır**: iş
+devralınmış demektir ve devam etmek iki worker'ın aynı işi yapması
+olurdu.
+
+### Karar 5 — İdempotency iki düzeyde
+
+- **Run:** `(task_id, idempotency_key)` tekil. Aynı task için `POST
+  /runs` iki kez çağrılırsa iki run oluşmaz.
+- **Job:** `idempotency_key` tekil. Bir HTTP isteğinin iki kez gelmesi
+  iki compile başlatmaz.
+
+`ON CONFLICT DO NOTHING` + `SELECT` kullanıldı; `DO UPDATE` ikinci
+isteğin birincinin durumunu ezmesi demek olurdu.
+
+### Kabul kriterlerinin durumu
+
+| Kriter | Durum | Not |
+|---|---|---|
+| 13 durumlu FSM | Evet | P01 sözleşmesi + servis + trigger |
+| Geçersiz geçiş reddediliyor | Evet | 3 katman |
+| Terminal durum geri alınamıyor | Evet | trigger dahil |
+| Her geçiş bir event | Evet | append-only zincir |
+| Postgres kuyruk + SKIP LOCKED | Evet | 12 test |
+| Çökme kurtarma | Evet | lease |
+| Idempotency | Evet | run + job |
+| Worker gerçek iş çalıştırıyor | **HAYIR** | adapter `start()` P11'de bağlanmadı |
+| Onay akışı uçtan uca | **HAYIR** | aynı sebep |
+
+### Gate sonuçları
+
+```text
+typecheck (loose + strict)   0 hata
+vitest                       1049 passed | 4 skipped (1053)
+build                        OK (bundle 828 KB -> 825 KB)
+secret-scan                  0 yeni bulgu
+drift (verify-inventories)   8/8 kontrol geçti
+API envanteri                CHANGE 130 -> 127 (3 route CLOSED'a geçti)
+```
+
+### Bu fazda kapatılmayanlar ve NEDEN
+
+- **`run-execute` worker'ı.** Kuyruk, FSM ve olay zinciri hazır. Ama
+  worker'ın yapacağı iş `adapter.start()` çağırmaktır ve o çağrı P11'de
+  bağlanmadı (SDK yok, doğrulanamaz). Bugün yazılacak worker, `start()`
+  hatasını yakalayıp run'ı `failed` işaretlemekten ibaret olurdu — yani
+  çalışan bir şeyin taklidi.
+- **Onay akışı.** `approval_requests` şeması (P10) ve
+  `awaiting_approval` durumu hazır. Akışı kapatan tek eksik, onayı
+  tetikleyecek gerçek bir mutation girişimi — o da agent oturumuna
+  bağlı.
+- **`agent_sessions` run bağı** ve **`file_locks` + `run_id`** — aynı
+  sebep, P11 SDK wire-up'ına bağlı.
+
+Bu üç madde kabul kriterlerinde **"HAYIR"** işaretlendi. Zincirin
+kırıldığı yer tek bir nokta: `adapter.start()`. Onun ötesindeki her
+katman (kuyruk, FSM, kanıt zinciri, sınır, manifest) yazıldı ve test
+edildi.

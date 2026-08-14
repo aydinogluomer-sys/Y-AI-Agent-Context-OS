@@ -128,3 +128,25 @@ export {
   type PlanParams,
   type PlannerOptions
 } from "./parsers/invalidation";
+
+// ==========================================
+// P12 — Gercek agent runtime (ADR-004, ADR-046..048)
+// ==========================================
+
+export {
+  RunService,
+  RunError,
+  type RunDb,
+  type RunRecord,
+  type CreateRunInput
+} from "./runtime/run-service";
+
+export {
+  JobQueue,
+  JOB_TYPES,
+  type JobType,
+  type JobStatus,
+  type QueueDb,
+  type EnqueueInput,
+  type ClaimedJob
+} from "./runtime/queue";

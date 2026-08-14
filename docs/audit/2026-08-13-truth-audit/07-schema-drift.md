@@ -13,7 +13,7 @@
 
 ## Tenant izolasyonu
 
-`04-db-inventory.csv`: **72 tablonun 42'inde**
+`04-db-inventory.csv`: **75 tablonun 43'inde**
 `organization_id`/`tenant_id` kolonu yok. Cross-tenant izolasyon şema
 seviyesinde mümkün değil.
 

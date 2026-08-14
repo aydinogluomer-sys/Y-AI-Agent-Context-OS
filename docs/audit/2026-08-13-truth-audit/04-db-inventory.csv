@@ -71,3 +71,6 @@ change_boundaries,2.7.0-change-boundaries,26,13,true,true,0,0,"DEAD (0 read, 0 w
 mutation_decisions,2.7.1-mutation-decisions,22,16,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
 approval_requests,2.7.2-approval-requests,20,11,false,true,0,0,"DEAD (0 read, 0 write) -> DROP"
 command_policies,2.7.3-command-policies,22,8,true,true,0,0,"DEAD (0 read, 0 write) -> DROP"
+runs,2.8.0-runs,29,15,true,true,4,10,KEEP
+run_events,2.8.1-run-events,20,8,false,false,4,2,KEEP + ALTER (needs organization_id)
+jobs,2.8.2-jobs,25,21,true,true,5,12,KEEP

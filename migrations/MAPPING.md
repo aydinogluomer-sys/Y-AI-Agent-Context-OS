@@ -102,5 +102,8 @@ migrate edilmiş veritabanları yeniden çalıştırılmaz.
 | 0076 | `0076_mutation_decisions.sql` | `2.7.1-mutation-decisions` | yeni | var |
 | 0077 | `0077_approval_requests.sql` | `2.7.2-approval-requests` | yeni | var |
 | 0078 | `0078_command_policies.sql` | `2.7.3-command-policies` | yeni | var |
+| 0079 | `0079_runs.sql` | `2.8.0-runs` | yeni | var |
+| 0080 | `0080_run_events.sql` | `2.8.1-run-events` | yeni | var |
+| 0081 | `0081_jobs.sql` | `2.8.2-jobs` | yeni | var |
 
-Toplam: **78** migration (35 göç + 43 yeni).
+Toplam: **81** migration (35 göç + 46 yeni).

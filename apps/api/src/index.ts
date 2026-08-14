@@ -296,142 +296,56 @@ router.patch("/projects/:projectId/tasks/:taskId", async (req: Request, res: Res
 });
 
 /**
- * Canonical Agent Run Orchestration Endpoints (Dalga 3 & P0-09)
+ * P12 / Y-P12-009 — Sahte run route'ları KAPATILDI (410).
+ *
+ * P00 Truth Audit'in EN KRİTİK BULGUSU buradaydı.
+ *
+ * `POST .../runs` handler'ı şunu yapıyordu:
+ *   1. Bir run kimliği üret.
+ *   2. Dört olay yaz: queued → running → (sabit payload) → completed.
+ *   3. `res.json({ ok: true, run: { status: "completed" } })`.
+ *
+ * Hiçbir context derlenmiyordu. Hiçbir model çağrılmıyordu. Hiçbir
+ * dosyaya dokunulmuyordu. Payload'daki `selectedItemsCount: 3` ve
+ * `tokenBudget: 50000` LİTERALDİ. Handler HER çağrıda "başarıyla
+ * tamamlandı" diyordu.
+ *
+ * `.../runs/:runId/cancel` ise zaten "completed" olmuş bir run'a
+ * `cancelled` olayı ekliyordu — durum kontrolü YOKTU.
+ *
+ * `.../runs/:runId/events` tüm task olaylarını çekip JS'te
+ * filtreliyordu; run tablosu olmadığı için başka yolu da yoktu.
+ *
+ * KANONİK KARŞILIĞI
+ *   Run artık gerçek bir tablodur (`runs`), 13 durumlu bir FSM'e
+ *   sahiptir ve her geçiş `run_events` zincirine yazılır (ADR-048).
+ *   Bir run manifest ve boundary olmadan `ready` olamaz (ADR-046);
+ *   terminal durumdan çıkamaz (ADR-047).
+ *
+ *   Çalıştırma senkron değildir: `jobs` kuyruğuna girer ve worker
+ *   havuzu işler (ADR-004).
  */
-router.post("/projects/:projectId/tasks/:taskId/runs", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const principal = (req as Request & { authPrincipal: ApiAuthPrincipal }).authPrincipal;
-    const { projectId, taskId } = req.params;
-    const { prompt } = req.body || {};
-
-    if (!principalCanAccessProject(principal, projectId)) {
-      return res.status(403).json({ error: { code: "FORBIDDEN", message: "Access denied to target project." } });
-    }
-
-    const runId = `run_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
-
-    await eventStoreService.appendEvent({
-      project_id: projectId,
-      task_id: taskId,
-      event_type: "TASK_STATE_CHANGED" as any,
-      actor_type: "agent",
-      payload_json: { runId, taskId, prompt: prompt || "Standard task execution", actorId: principal.actorId },
-      idempotency_key: `evt_${runId}_queued`
-    });
-
-    await eventStoreService.appendEvent({
-      project_id: projectId,
-      task_id: taskId,
-      event_type: "TASK_STATE_CHANGED" as any,
-      actor_type: "agent",
-      payload_json: { runId, taskId, status: "running", startedAt: new Date().toISOString() },
-      idempotency_key: `evt_${runId}_started`
-    });
-
-    await eventStoreService.appendEvent({
-      project_id: projectId,
-      task_id: taskId,
-      event_type: "CONTEXT_PACK_GENERATED" as any,
-      actor_type: "agent",
-      payload_json: { runId, selectedItemsCount: 3, tokenBudget: 50000, usableInput: 30000 },
-      idempotency_key: `evt_${runId}_context`
-    });
-
-    const evidenceRes = await evidenceStoreService.createEvidenceRecord({
-      project_id: projectId,
-      task_id: taskId,
-      evidence_type: "RUN_EXECUTION_TRACE",
-      actor_type: "agent",
-      actor_id: principal.actorId,
-      payload_json: { runId, taskId, actorId: principal.actorId, prompt, title: `Run ${runId} Trace Evidence` }
-    });
-
-    await eventStoreService.appendEvent({
-      project_id: projectId,
-      task_id: taskId,
-      event_type: "TASK_STATE_CHANGED" as any,
-      actor_type: "agent",
-      payload_json: { runId, taskId, status: "completed", evidenceId: evidenceRes.id },
-      idempotency_key: `evt_${runId}_completed`
-    });
-
-    await auditHelper.logAction(
-      projectId,
-      principal.actorId,
-      "TASK",
-      "TASK_UPDATED" as AuditActionType,
-      "authorized",
-      { runId, taskId },
-      `Agent run ${runId} initiated for task ${taskId}`
-    );
-
-    res.json({
-      ok: true,
-      run: {
-        runId,
-        projectId,
-        taskId,
-        status: "completed",
-        evidenceId: evidenceRes.id,
-        created_at: new Date().toISOString()
+router.all(
+  [
+    "/projects/:projectId/tasks/:taskId/runs",
+    "/projects/:projectId/tasks/:taskId/runs/:runId/events",
+    "/projects/:projectId/tasks/:taskId/runs/:runId/cancel"
+  ],
+  (req: Request, res: Response) => {
+    return res.status(410).json({
+      error: {
+        code: "LEGACY_ROUTE_DEPRECATED",
+        message:
+          "Sahte run route'lari kapatildi. Eski handler dort olay yazip " +
+          "'completed' donuyordu; hicbir context derlenmiyor, hicbir model " +
+          "cagrilmiyor, hicbir dosyaya dokunulmuyordu. Run artik gercek bir " +
+          "FSM'e ve is kuyruguna sahiptir.",
+        canonical: "POST /api/v1/projects/:projectId/tasks/:taskId/runs",
+        phase: "P12"
       }
     });
-  } catch (err) {
-    next(err);
   }
-});
-
-router.get("/projects/:projectId/tasks/:taskId/runs/:runId/events", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const principal = (req as Request & { authPrincipal: ApiAuthPrincipal }).authPrincipal;
-    const { projectId, taskId, runId } = req.params;
-
-    if (!principalCanAccessProject(principal, projectId)) {
-      return res.status(403).json({ error: { code: "FORBIDDEN", message: "Access denied to target project." } });
-    }
-
-    const eventsList = await eventStoreService.listEvents(projectId, { task_id: taskId });
-    const runEvents = eventsList.filter(e => e.payload_json?.runId === runId);
-
-    res.json({ ok: true, runId, events: runEvents });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.post("/projects/:projectId/tasks/:taskId/runs/:runId/cancel", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const principal = (req as Request & { authPrincipal: ApiAuthPrincipal }).authPrincipal;
-    const { projectId, taskId, runId } = req.params;
-
-    if (!principalCanAccessProject(principal, projectId)) {
-      return res.status(403).json({ error: { code: "FORBIDDEN", message: "Access denied to target project." } });
-    }
-
-    await eventStoreService.appendEvent({
-      project_id: projectId,
-      task_id: taskId,
-      event_type: "TASK_STATE_CHANGED" as any,
-      actor_type: "agent",
-      payload_json: { runId, taskId, cancelledBy: principal.actorId, status: "cancelled" },
-      idempotency_key: `evt_${runId}_cancelled`
-    });
-
-    await auditHelper.logAction(
-      projectId,
-      principal.actorId,
-      "TASK",
-      "TASK_UPDATED" as AuditActionType,
-      "authorized",
-      { runId, taskId },
-      `Agent run ${runId} cancelled by ${principal.actorId}`
-    );
-
-    res.json({ ok: true, runId, status: "cancelled" });
-  } catch (err) {
-    next(err);
-  }
-});
+);
 
 /**
  * Helper to execute raw queries safely
