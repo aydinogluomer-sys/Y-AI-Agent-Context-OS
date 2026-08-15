@@ -37,3 +37,4 @@ yarn.lock
 
 # P18: sentetik performans fixture'lari (deterministik, yeniden uretilebilir)
 .perf/
+.commitmsg.tmp
