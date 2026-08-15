@@ -2,7 +2,15 @@ name: Y-AI-Agent-Context-OS CI Pipeline
 
 on:
   push:
-    branches: [ main ]
+    # `main` DISINDAKI dallarda da kosar.
+    #
+    # Entegrasyon kapisi (pgvector servisi + test:integration) yazildi ama
+    # GitHub Actions'ta hic calismamisti. Yerel Docker ile Actions'in
+    # `services:` blogu ayni sey degil: imaj cekme, saglik kontrolu
+    # zamanlamasi, ag adi ve eklenti kurulumu farkli davranir.
+    #
+    # Kapinin CI'da gercekten calistigi, main'e girmeden ONCE gorulmeli.
+    branches: [ main, 'feat/**' ]
   pull_request:
     branches: [ main ]
 
