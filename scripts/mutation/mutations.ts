@@ -140,6 +140,51 @@ export const MUTATIONS: readonly Mutation[] = [
     why: "Lexical kanalda bu filtre korumasizdi. Ayni predikat semantic kanalda da var; bir kanali kapatip otekini acik birakmak yaygin bir asimetri."
   },
   {
+    id: "event-records-append-only",
+    file: "migrations/0030_event_store_mvp.sql",
+    find: "RAISE EXCEPTION 'Event Store is an append-only ledger. Mutation (UPDATE or DELETE) of event_records is strictly forbidden.';",
+    replace: "RETURN COALESCE(NEW, OLD);",
+    suite: "tests/security/append-only.spec.ts",
+    threat: "T-18",
+    why: "Event Store append-only defteri. Trigger engellemezse gecmis olaylar sonradan degistirilebilir."
+  },
+  {
+    id: "context-universes-immutable",
+    file: "migrations/0070_context_universes.sql",
+    find: "RAISE EXCEPTION 'context_universes degismezdir (ADR-030): bir run''in hangi kurallarla uretildigi kanittir ve sonradan degistirilemez.';",
+    replace: "RETURN COALESCE(NEW, OLD);",
+    suite: "tests/security/append-only.spec.ts",
+    threat: "T-18",
+    why: "ADR-030: universe DEGISMEZ. Degistirilebilirse bir run'in hangi kurallarla derlendigi geriye donuk degistirilebilir."
+  },
+  {
+    id: "context-manifests-immutable",
+    file: "migrations/0072_context_manifests.sql",
+    find: "RAISE EXCEPTION 'context_manifests degismezdir (ADR-034): manifest bir kanittir ve sonradan degistirilemez.';",
+    replace: "RETURN COALESCE(NEW, OLD);",
+    suite: "tests/security/append-only.spec.ts",
+    threat: "T-18",
+    why: "ADR-034: manifest bir KANITTIR. Degistirilebilirse hangi baglamin verildigi ispatlanamaz."
+  },
+  {
+    id: "change-boundaries-immutable",
+    file: "migrations/0075_change_boundaries.sql",
+    find: "RAISE EXCEPTION 'change_boundaries degismezdir (ADR-038): sinir sonradan genisletilemez.';",
+    replace: "RETURN COALESCE(NEW, OLD);",
+    suite: "tests/security/append-only.spec.ts",
+    threat: "T-18",
+    why: "ADR-038: sinir sonradan GENISLETILEMEZ. Degistirilebilirse agent yazma iznini kendisi buyutebilir."
+  },
+  {
+    id: "run-events-append-only",
+    file: "migrations/0080_run_events.sql",
+    find: "RAISE EXCEPTION 'run_events append-only bir zincirdir (ADR-048): gecis kayitlari degistirilemez.';",
+    replace: "RETURN COALESCE(NEW, OLD);",
+    suite: "tests/security/append-only.spec.ts",
+    threat: "T-18",
+    why: "ADR-048: her gecis bir olaydir. Degistirilebilirse FSM gecmisi yeniden yazilabilir."
+  },
+  {
     id: "evidence-append-only",
     file: "migrations/0082_evidence_chain.sql",
     find: `RAISE EXCEPTION 'evidence_chain append-only bir kanit zinciridir: kayitlar degistirilemez ya da silinemez.';`,
