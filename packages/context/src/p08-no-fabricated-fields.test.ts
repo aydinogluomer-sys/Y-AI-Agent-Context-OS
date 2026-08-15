@@ -18,17 +18,31 @@ import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
+/**
+ * [P19/T1] Git cagrisi BELLEKLENIR.
+ *
+ * Onceki hali her `findOccurrences` cagrisinda `git ls-files`
+ * calistiriyordu (4 kez). Windows'ta surec baslatma pahali; Docker
+ * calisirken makine yuklendiginde test 5 sn esigini asti.
+ *
+ * Dosya listesi bir test kosusu icinde degismez; bir kez okumak yeter.
+ */
+let cachedFiles: string[] | null = null;
+
 function scannedFiles(): string[] {
+  if (cachedFiles) return cachedFiles;
+
   const output = execFileSync(
     "git",
     ["ls-files", "--cached", "--others", "--exclude-standard", "*.ts", "*.tsx"],
     { cwd: REPO_ROOT, encoding: "utf-8", maxBuffer: 32 * 1024 * 1024 }
   );
-  return output
+  cachedFiles = output
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
     .filter((file) => !file.endsWith("p08-no-fabricated-fields.test.ts"));
+  return cachedFiles;
 }
 
 function findOccurrences(needle: string): { file: string; line: number; text: string }[] {

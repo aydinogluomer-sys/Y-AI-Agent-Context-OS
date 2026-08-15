@@ -33,6 +33,11 @@ const REPO = resolve(HERE, "../../..");
 const NUL = String.fromCharCode(0);
 
 const SKIP = new Set([
+  // [P19/T1] `.perf` = sentetik performans fixture'lari (185 uretilmis
+  // .ts dosyasi). Tarayicilar DOSYA SISTEMINI yuruyor, git'i degil;
+  // gitignore onlari gizlemez. Fixture'lari taramak hem yavaslatir
+  // hem uretilmis koddan sahte bulgu uretir.
+  ".perf",
   "node_modules",
   ".git",
   "dist",

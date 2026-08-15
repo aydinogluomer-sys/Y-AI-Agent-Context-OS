@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker --version)",
+      "Bash(echo \"docker exit=$?\")",
+      "Bash(docker compose *)",
+      "Bash(echo \"compose exit=$?\")",
+      "Bash(docker info *)"
+    ]
+  }
+}

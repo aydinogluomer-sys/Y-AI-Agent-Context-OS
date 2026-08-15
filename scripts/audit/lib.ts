@@ -21,6 +21,11 @@ export interface SourceLine {
 }
 
 const DEFAULT_SKIP_DIRS = new Set([
+  // [P19/T1] `.perf` = sentetik performans fixture'lari (185 uretilmis
+  // .ts dosyasi). Tarayicilar DOSYA SISTEMINI yuruyor, git'i degil;
+  // gitignore onlari gizlemez. Fixture'lari taramak hem yavaslatir
+  // hem uretilmis koddan sahte bulgu uretir.
+  ".perf",
   "node_modules",
   ".git",
   "dist",

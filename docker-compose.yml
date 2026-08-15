@@ -1,0 +1,55 @@
+# P19 / T1 — Yerel test ve geliştirme veritabanı.
+#
+# Depoda bu dosya YOKTU. Sonucu: `tests/{integration,security,resilience}`
+# dizinleri boştu ve mevcut DB testleri sorgunun yalnız ŞEKLİNİ
+# doğruluyordu, sonucunu değil.
+#
+# NEDEN pgvector/pgvector:pg16
+#   pgvector eklentisi HAZIR gelir. Kendi imajını kurmak, eklenti
+#   sürümünü bir daha kimsenin doğrulamadığı bir Dockerfile'a gömerdi —
+#   ve o sürüm bir gün üretimdekinden ayrışırdı.
+#
+# NEDEN 5433
+#   Geliştiricinin yerel Postgres'ini ezmemek için. 5432'yi kullanmak,
+#   testin yanlışlıkla GERÇEK bir veritabanına bağlanıp onu bozmasına
+#   yol açabilir — ve bu, fark edilmesi en zor hata sınıfıdır.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: y-test-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: y_test_local
+      POSTGRES_DB: y_test
+      # Test veritabaninda fsync kapali: dayaniklilik gerekmiyor, hiz
+      # gerekiyor. URETIMDE ASLA. Bu ayar yalniz bu compose dosyasinda.
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    command:
+      - postgres
+      - -c
+      - fsync=off
+      - -c
+      - synchronous_commit=off
+      - -c
+      - full_page_writes=off
+      # Esszamanli test semalari icin: her test dosyasi kendi semasinda
+      # calisir ve her sema kendi baglantisini ister.
+      - -c
+      - max_connections=200
+    ports:
+      - "5433:5432"
+    healthcheck:
+      # `pg_isready` YETMEZ: port aciliyor ama initdb bitmemis olabilir.
+      # Gercek bir sorgu, veritabaninin KABUL ETTIGINI kanitlar.
+      test: ["CMD-SHELL", "psql -U postgres -d y_test -c 'SELECT 1' || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+    # Kalici volume YOK ve bu bilincli: test veritabani her kosuda
+    # SIFIRDAN kurulur. Kalici bir test DB'si, testlerin birbirinin
+    # verisine bagimli hale gelmesine yol acar ve tek basina calisan test
+    # ile suite'te calisan test farkli sonuc verir.
+    tmpfs:
+      - /var/lib/postgresql/data

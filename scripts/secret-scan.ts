@@ -25,6 +25,11 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 
 /** Taranmayacak dizinler — üretilmiş çıktı ve bağımlılıklar. */
 const SKIP_DIRS = new Set([
+  // [P19/T1] `.perf` = sentetik performans fixture'lari (185 uretilmis
+  // .ts dosyasi). Tarayicilar DOSYA SISTEMINI yuruyor, git'i degil;
+  // gitignore onlari gizlemez. Fixture'lari taramak hem yavaslatir
+  // hem uretilmis koddan sahte bulgu uretir.
+  ".perf",
   "node_modules",
   ".git",
   "dist",
