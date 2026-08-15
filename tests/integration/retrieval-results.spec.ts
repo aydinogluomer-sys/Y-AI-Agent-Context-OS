@@ -122,16 +122,23 @@ describe("T5 — Postgres FTS gerçek sonuç üretiyor", () => {
 
     // SIRALAMA OLCUMU icin bilinen terim yogunlugu.
     //
+    // KIMLIKLER BILEREK TERS YONDE: `a_sparse` alfabetik olarak ONCE
+    // gelir ama skoru DUSUK. Ilk yazimda kimlikler `high`/`low` idi ve
+    // alfabetik sira skor sirasiyla AYNI yone dusuyordu; `ORDER BY rank
+    // DESC` kaldirildiginda test KIRILMADI cunku iki sira ayni sonucu
+    // veriyordu. Iki siralama AYRISMAZSA siralama iddiasi hicbir sey
+    // olcmez.
+    //
     // `cascade` baska hicbir chunk'ta gecmez; boylece siralama testi
     // yalniz bu iki chunk uzerinden olculur ve baska seed'ler sonucu
     // kaydirmaz. Fark SAYIDA: bese karsi bir.
     await seedChunk(db, tenant, {
-      id: "c_rank_high",
+      id: "c_rank_z_dense",
       path: "src/rank/high.ts",
       content: "cascade cascade cascade cascade cascade"
     });
     await seedChunk(db, tenant, {
-      id: "c_rank_low",
+      id: "c_rank_a_sparse",
       path: "src/rank/low.ts",
       content: "cascade tek kez geciyor burada"
     });
@@ -275,16 +282,16 @@ describe("T5 — Postgres FTS gerçek sonuç üretiyor", () => {
 
     // 1. Ikisi de bulunmali: biri eksikse asagidaki karsilastirma
     //    anlamsizlasir.
-    expect(byId.has("c_rank_high")).toBe(true);
-    expect(byId.has("c_rank_low")).toBe(true);
+    expect(byId.has("c_rank_z_dense")).toBe(true);
+    expect(byId.has("c_rank_a_sparse")).toBe(true);
 
     // 2. Skorlar FARKLI olmali — asil eksik olan iddia buydu.
-    expect(byId.get("c_rank_high")).not.toBe(byId.get("c_rank_low"));
+    expect(byId.get("c_rank_z_dense")).not.toBe(byId.get("c_rank_a_sparse"));
 
     // 3. Yon DOGRU olmali: terimi bes kez gecen, bir kez gecenden
     //    yuksek. Ters isaretli bir formul "farkli skor" uretirdi ama
     //    siralamayi bozardi.
-    expect(byId.get("c_rank_high")!).toBeGreaterThan(byId.get("c_rank_low")!);
+    expect(byId.get("c_rank_z_dense")!).toBeGreaterThan(byId.get("c_rank_a_sparse")!);
 
     // 4. Donen liste GERCEKTEN skora gore sirali olmali. Skor dogru
     //    hesaplanip ORDER BY unutulursa 1-3 gecer, bu kirilir.

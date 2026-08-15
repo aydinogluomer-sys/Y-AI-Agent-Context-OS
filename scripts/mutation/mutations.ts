@@ -123,6 +123,14 @@ export const MUTATIONS: readonly Mutation[] = [
     why: "Deneme siniri yoksa surekli basarisiz olan is sonsuz dongude yeniden alinir."
   },
   {
+    id: "lexical-order-by",
+    file: "packages/context/src/retrieval/lexical.ts",
+    find: `ORDER BY rank DESC, c.id`,
+    replace: `ORDER BY c.id`,
+    suite: "tests/integration/retrieval-results.spec.ts",
+    why: "Siralama kaldirilirsa retrieval 'ilk N'i doner ve alaka duzeyi rastgele olur. Skor dogru hesaplanip ORDER BY unutulmasi sessiz bir bozulmadir."
+  },
+  {
     id: "semantic-secret-filter",
     file: "packages/context/src/retrieval/semantic.ts",
     find: `AND ($7::boolean IS NOT TRUE OR COALESCE(f.contains_secret, FALSE) = FALSE)`,
