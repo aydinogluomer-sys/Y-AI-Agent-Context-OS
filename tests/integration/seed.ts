@@ -151,10 +151,10 @@ export async function seedChunk(
     `INSERT INTO chunks
        (id, organization_id, snapshot_id, file_id, path, ordinal, content, content_hash,
         start_line, end_line, start_byte, end_byte, part_index, part_count,
-        estimated_tokens, universe_bucket, contains_secret, embedding, embedding_dim)
+        estimated_tokens, universe_bucket, embedding, embedding_dim)
      VALUES ($1,$2,$3,$4,$5,0,$6,$7,1,10,0,$8,0,1,
-             $9,$10,$11,
-             $12::vector, $13);`,
+             $9,$10,
+             $11::vector, $12);`,
     // `tsv` YAZILMAZ: 0064 onu GENERATED ALWAYS ... STORED yapiyor ve
     // 'simple' konfigurasyonu kullaniyor (kok bulma kod aramasinda
     // zararli: getUser -> getus).
@@ -172,7 +172,6 @@ export async function seedChunk(
       chunk.content.length,
       Math.ceil(chunk.content.length / 4),
       chunk.universeBucket ?? "allow",
-      chunk.containsSecret ?? false,
       chunk.embedding ? `[${chunk.embedding.join(",")}]` : null,
       chunk.embedding ? chunk.embedding.length : null
     ]

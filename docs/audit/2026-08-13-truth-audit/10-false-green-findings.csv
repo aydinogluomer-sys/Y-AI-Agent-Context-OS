@@ -25,14 +25,14 @@ skip-then-pass,P0,scripts/validate-segment-20-26.ts,808,"console.warn(""  Skippi
 skip-then-pass,P0,scripts/validate-segment-20-26.ts,973,"console.warn(""  Skipping Stage 25: database reference is unavailable."");"
 skip-then-pass,P0,scripts/validate-segment-20-26.ts,1010,"console.log(""  Stage 26 database reference bypass; skipping SQL connection checks."");"
 skip-then-pass,P0,scripts/validate-segment-20-26.ts,1191,"console.log(""  Stage 27 live database reference bypass; skipping SQL connection checks."");"
-skip-then-pass,P0,scripts/validate-stage-27.ts,255,console.log(`  ⚠️  [WARNING] Skipping Part B Live DB checks because of database connection issue: ${connectErr.message}`);
-skip-then-pass,P0,scripts/validate-stage-27.ts,416,"console.log(""  ⚠️  [WARNING] Skipping Part B Live DB checks because of database connection issue."");"
-skip-then-pass,P0,scripts/validate-stage-30.ts,523,console.log(`  ⚠️  [WARNING] Skipping Part C Live DB checks because of database connection issue: ${connectErr.message}`);
-skip-then-pass,P0,scripts/validate-stage-31.ts,195,"console.log(""  [INFO] PostgreSQL connection failed. Falling back to simulated memory sandbox."");"
-skip-then-pass,P0,scripts/validate-stage-32.ts,493,"console.log(""  [INFO] No DATABASE_URL found. Skipping real DB assertions."");"
-skip-then-pass,P0,scripts/validate-stage-33.ts,507,"console.log(""  [INFO] No DATABASE_URL found. Skipping real DB assertions."");"
-skip-then-pass,P0,scripts/validate-stage-35.ts,263,"console.log(""  [INFO] PostgreSQL connection failed. Simulating standard Schema representation."");"
-skip-then-pass,P0,scripts/validate-stage-35.ts,338,"console.log(""  [INFO] Sandbox fallbacks activated for Database schema model checks."");"
+skip-then-pass,P0,scripts/validate-stage-27.ts,274,console.log(`  ⚠️  [WARNING] Skipping Part B Live DB checks because of database connection issue: ${connectErr.message}`);
+skip-then-pass,P0,scripts/validate-stage-27.ts,435,"console.log(""  ⚠️  [WARNING] Skipping Part B Live DB checks because of database connection issue."");"
+skip-then-pass,P0,scripts/validate-stage-30.ts,542,console.log(`  ⚠️  [WARNING] Skipping Part C Live DB checks because of database connection issue: ${connectErr.message}`);
+skip-then-pass,P0,scripts/validate-stage-31.ts,214,"console.log(""  [INFO] PostgreSQL connection failed. Falling back to simulated memory sandbox."");"
+skip-then-pass,P0,scripts/validate-stage-32.ts,512,"console.log(""  [INFO] No DATABASE_URL found. Skipping real DB assertions."");"
+skip-then-pass,P0,scripts/validate-stage-33.ts,526,"console.log(""  [INFO] No DATABASE_URL found. Skipping real DB assertions."");"
+skip-then-pass,P0,scripts/validate-stage-35.ts,282,"console.log(""  [INFO] PostgreSQL connection failed. Simulating standard Schema representation."");"
+skip-then-pass,P0,scripts/validate-stage-35.ts,357,"console.log(""  [INFO] Sandbox fallbacks activated for Database schema model checks."");"
 skip-then-pass,P0,scripts/validate-vault.ts,273,"console.warn(""  Skipping integration tests: DATABASE_URL is unavailable or offline."");"
 hardcoded-metric,P1,scripts/validate-vault.ts,1409,"confidenceScore: 95.0,"
 hardcoded-metric,P1,scripts/validate-vault.ts,1570,"confidenceScore: 90.0,"

@@ -39,9 +39,10 @@ import dotenv from "dotenv";
 
 /*
  * `.env.test` yuklenir ama `override` YOK: komut satirindan verilen
- * DATABASE_URL dosyaya YENIK DUSMEMELI. Bu depoda tersi bir kalip var
- * (`dotenv.config({ override: true })`, apps/api/src/scripts/migrate.ts)
- * ve CI ortam degiskenini sessizce ezme riski tasiyor.
+ * DATABASE_URL dosyaya YENIK DUSMEMELI.
+ *
+ * P21/6'da bu kalip depodaki 13 dosyadan KALDIRILDI ve
+ * `gate:dotenv-precedence` ile geri gelmesi engellendi.
  */
 dotenv.config({ path: ".env.test" });
 import { createIntegrationDb, type IntegrationDb } from "../../tests/integration/setup.js";

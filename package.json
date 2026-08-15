@@ -49,11 +49,12 @@
     "perf": "tsx scripts/perf/measure.ts --fixture .perf/small",
     "perf:record": "tsx scripts/perf/measure.ts --fixture .perf/small --record",
     "gate:false-green": "tsx scripts/audit/scan-false-green.ts --gate",
-    "gate:all": "npm run gate:ci-scripts && npm run gate:route-scope && npm run typecheck && npm run gate:drift && npm run gate:false-green && npm run secret-scan && npx vitest run",
+    "gate:all": "npm run gate:ci-scripts && npm run gate:route-scope && npm run gate:dotenv-precedence && npm run typecheck && npm run gate:drift && npm run gate:false-green && npm run secret-scan && npx vitest run",
     "gate:mutation": "tsx scripts/mutation/run.ts",
     "gate:ci-scripts": "tsx scripts/audit/verify-ci-scripts.ts",
     "perf:scale": "tsx scripts/perf/measure-scale.ts --fixture .perf/repo-10k",
-    "gate:route-scope": "tsx scripts/audit/verify-route-scope.ts"
+    "gate:route-scope": "tsx scripts/audit/verify-route-scope.ts",
+    "gate:dotenv-precedence": "tsx scripts/audit/verify-dotenv-precedence.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

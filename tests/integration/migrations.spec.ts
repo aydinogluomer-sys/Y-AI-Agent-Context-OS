@@ -200,21 +200,36 @@ describe("geri alma (`-- +down`)", () => {
      * Yazilmis ama denenmemis bir geri alma, en cok ihtiyac duyuldugu
      * anda patlar.
      *
-     * Hedef tablo SABIT YAZILMAZ, son migration'in `-- +down` metninden
-     * TURETILIR. Ilk yazimimda `retention_policies` sabitti ve bir sonraki
-     * migration eklenince test kirildi — sabit yazmak, her migration'da
-     * testi guncellemeyi gerektirir ve o guncelleme unutulur.
+     * Hedef SABIT YAZILMAZ, son migration'in `-- +down` metninden
+     * TURETILIR. Ilk yazimimda `retention_policies` sabitti ve bir
+     * sonraki migration eklenince test kirildi.
+     *
+     * IKINCI DUZELTME (P21/7): sonra da `DROP TABLE` sabitlenmisti, yani
+     * "son migration DAIMA tablo yaratir" varsayiliyordu. 0085 bir KOLON
+     * dusurunce test yine kirildi — dogru tersi `ADD COLUMN` oldugu icin.
+     *
+     * Artik iki sekil de taniniyor. TANINMAYAN sekil SESSIZCE GECMEZ,
+     * acikca kirilir: yoklamadigi bir seyi yokluyor sanan bir test,
+     * hic olmayan testten kotudur.
      */
     const all = loadMigrations(MIGRATIONS_DIR);
     const last = all[all.length - 1];
     expect(last.down, `${last.version} down bolumu yok`).toBeTruthy();
 
-    const dropped = [...last.down!.matchAll(/DROP TABLE IF EXISTS ([a-z_]+)/gi)].map(
+    const droppedTables = [...last.down!.matchAll(/DROP TABLE IF EXISTS ([a-z_]+)/gi)].map(
       (m) => m[1]
     );
-    expect(dropped.length, `${last.version} down'inda DROP TABLE yok`).toBeGreaterThan(0);
+    const addedColumns = [
+      ...last.down!.matchAll(/ALTER TABLE ([a-z_]+) ADD COLUMN IF NOT EXISTS ([a-z_]+)/gi)
+    ].map((m) => ({ table: m[1], column: m[2] }));
 
-    const exists = async (table: string) => {
+    expect(
+      droppedTables.length + addedColumns.length,
+      `${last.version} down'i taninan bir sekil icermiyor (DROP TABLE / ADD COLUMN). ` +
+        "Yeni bir migration sekli eklendiyse bu test de genisletilmeli."
+    ).toBeGreaterThan(0);
+
+    const tableExists = async (table: string) => {
       const { rows } = await db.query(
         `SELECT COUNT(*)::int AS c FROM pg_tables
           WHERE schemaname = $1 AND tablename = $2;`,
@@ -223,14 +238,38 @@ describe("geri alma (`-- +down`)", () => {
       return rows[0].c > 0;
     };
 
-    for (const table of dropped) {
-      expect(await exists(table), `${table} migration sonrasi olmaliydi`).toBe(true);
+    const columnExists = async (table: string, column: string) => {
+      const { rows } = await db.query(
+        `SELECT COUNT(*)::int AS c FROM information_schema.columns
+          WHERE table_schema = $1 AND table_name = $2 AND column_name = $3;`,
+        [db.schema, table, column]
+      );
+      return rows[0].c > 0;
+    };
+
+    // UP uygulanmis durumda beklenen hal.
+    for (const table of droppedTables) {
+      expect(await tableExists(table), `${table} migration sonrasi OLMALIYDI`).toBe(true);
+    }
+    for (const { table, column } of addedColumns) {
+      // Down bunu EKLIYORSA, up onu DUSURMUS olmali.
+      expect(
+        await columnExists(table, column),
+        `${table}.${column} migration sonrasi OLMAMALIYDI`
+      ).toBe(false);
     }
 
     await db.query(last.down!);
 
-    for (const table of dropped) {
-      expect(await exists(table), `${table} down sonrasi kalmamaliydi`).toBe(false);
+    // DOWN uygulandiktan sonra her sey tersine donmeli.
+    for (const table of droppedTables) {
+      expect(await tableExists(table), `${table} down sonrasi kalmamaliydi`).toBe(false);
+    }
+    for (const { table, column } of addedColumns) {
+      expect(
+        await columnExists(table, column),
+        `${table}.${column} down sonrasi GERI GELMELIYDI`
+      ).toBe(true);
     }
   });
 });

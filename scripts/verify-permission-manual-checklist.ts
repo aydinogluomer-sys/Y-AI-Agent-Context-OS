@@ -6,7 +6,26 @@
 import dotenv from "dotenv";
 import crypto from "crypto";
 
-dotenv.config({ override: true });
+/*
+ * P21/6 — `override: true` KALDIRILDI.
+ *
+ * `override: true`, `.env` dosyasini ACIK ortam degiskenlerinin
+ * USTUNE yaziyordu. Yani:
+ *
+ *   DATABASE_URL=... npm run db:migrate
+ *
+ * komutu SESSIZCE yok sayiliyor ve migration `.env`de yazan
+ * veritabanina uygulaniyordu. P21'de tam bu yasandi: migration
+ * yanlis veritabanina gitti ve sebebi bulunana kadar hatali tani
+ * konuldu.
+ *
+ * CI'da `.env` yok, bu yuzden orada zarar vermiyordu — ama CI'a bir
+ * `.env` dusmesi halinde `env:` bloklari sessizce ezilirdi.
+ *
+ * Dogru oncelik: ACIK ortam degiskeni dosyayi YENER. Bu dotenv'in
+ * varsayilanidir; ozel bir sey yapmamak yeterliydi.
+ */
+dotenv.config();
 
 // 1. Set environment variables before dynamically importing index.ts
 process.env.Y_API_AUTH_TOKEN = "configured-operator-secure-token-value-here";

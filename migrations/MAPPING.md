@@ -108,5 +108,6 @@ migrate edilmiş veritabanları yeniden çalıştırılmaz.
 | 0082 | `0082_evidence_chain.sql` | `2.9.0-evidence-chain` | yeni | var |
 | 0083 | `0083_retention_policy.sql` | `3.0.0-retention-policy` | yeni | var |
 | 0084 | `0084_worker_nonce_store.sql` | `3.1.0-worker-nonce-store` | yeni | var |
+| 0085 | `0085_drop_dead_chunk_secret_flag.sql` | `3.2.0-drop-dead-chunk-secret-flag` | yeni | var |
 
-Toplam: **84** migration (35 göç + 49 yeni).
+Toplam: **85** migration (35 göç + 50 yeni).
