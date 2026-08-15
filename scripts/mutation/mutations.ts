@@ -203,6 +203,14 @@ export const MUTATIONS: readonly Mutation[] = [
     why: "Cross-tenant kontrolu kalkarsa baska org'un proje id'siyle erisim acilir (IDOR)."
   },
   {
+    id: "retry-writes-too",
+    file: "apps/api/src/db-retry.ts",
+    find: "if (!isConnectionError(error) || !isReadOnlyStatement(sql)) throw error;",
+    replace: "if (!isConnectionError(error)) throw error;",
+    suite: "apps/api/src/db-retry.test.ts",
+    why: "Yazmalari da yeniden denemek SESSIZ CIFT KAYIT uretir: baglanti, ifade CALISTIKTAN sonra kopmus olabilir."
+  },
+  {
     id: "evidence-append-only",
     file: "migrations/0082_evidence_chain.sql",
     find: `RAISE EXCEPTION 'evidence_chain append-only bir kanit zinciridir: kayitlar degistirilemez ya da silinemez.';`,

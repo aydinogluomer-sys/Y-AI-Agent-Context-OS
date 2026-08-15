@@ -143,8 +143,11 @@ function runMutation(m: Mutation): Outcome {
       [
         resolve(ROOT, "node_modules", "vitest", "vitest.mjs"),
         "run",
-        "--config",
-        "vitest.integration.config.ts",
+        // Birim testleri entegrasyon config'iyle KOSMAZ (include kalibi
+        // yalnizca tests/ altini kapsar). Suit yoluna gore secilir.
+        ...(m.suite.startsWith("tests/")
+          ? ["--config", "vitest.integration.config.ts"]
+          : []),
         m.suite,
         "--reporter=dot"
       ],

@@ -11,6 +11,7 @@ import pg from "pg";
 import { loadApiConfiguration, inspectSafeConfig } from "./config";
 import { DatabaseConnector, MockDatabaseConnector, getSupabaseCaCert } from "./db";
 import { auditHelper, registerAuditPool } from "./audit";
+import { queryWithReadRetry } from "./db-retry";
 import { sysLogger } from "./logger";
 import { evaluateAuthorizationScope, redactSecretLeaks } from "@y/security";
 import { 
@@ -355,7 +356,11 @@ router.all(
  */
 async function queryDb(sql: string, params: unknown[] = []): Promise<any> {
   const pool = db.getPool();
-  return pool.query(sql, params);
+  // P21/5: baglanti koparsa SALT-OKUNUR sorgu bir kez yeniden denenir.
+  // Yazmalar YENIDEN DENENMEZ: ifade calisip yanit donerken baglanti
+  // koptuysa tekrar denemek IKINCI KEZ yazar. Sessiz cift kayit, dusen
+  // bir istekten kotudur. Gerekce: apps/api/src/db-retry.ts
+  return queryWithReadRetry((s, pr) => pool.query(s, pr), sql, params);
 }
 
 /**

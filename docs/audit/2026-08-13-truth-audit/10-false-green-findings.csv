@@ -1,7 +1,7 @@
 rule,severity,file,line,text
 permissive-fallback,P0,apps/api/src/db.ts,630,"if (process.env.ENABLE_MOCK_DB !== ""true"") {"
 permissive-fallback,P0,apps/api/src/db.ts,631,"throw new Error(""Mock database mode requires ENABLE_MOCK_DB=true."");"
-permissive-fallback,P0,apps/api/src/index.ts,91,"const isMockDbEnabled = process.env.ENABLE_MOCK_DB === ""true"" &&"
+permissive-fallback,P0,apps/api/src/index.ts,92,"const isMockDbEnabled = process.env.ENABLE_MOCK_DB === ""true"" &&"
 permissive-fallback,P0,apps/api/src/startup-policy.ts,7,"env.ALLOW_OFFLINE_API_BOOT === ""true"""
 simulation-generator,P0,apps/web/src/lib/api/ai.ts,207,export function createLocalAiSimulation(
 permissive-fallback,P0,scripts/run-validation-suite.ts,8,"process.env.DETERMINISTIC_TEST_MODE = ""true"";"
