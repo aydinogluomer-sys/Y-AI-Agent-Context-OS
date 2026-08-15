@@ -221,18 +221,39 @@ describe("senaryo 8 — process restart (kimlik süresi)", () => {
  * mock'un davranışını test etmek olurdu.
  */
 describe("canlı altyapı bekleyen senaryolar (P19)", () => {
+  /*
+   * [P19/T6] DORDU KAPANDI.
+   *
+   * `tests/integration/resilience.spec.ts` canli Postgres'e karsi
+   * dogruluyor: duplicate event (UNIQUE kisiti + append-only trigger),
+   * index interruption (lease dolunca devralma), baglanti kaybi (havuz
+   * toparlanmasi), esszamanli claim (SKIP LOCKED).
+   *
+   * Bunlari buradan SILMEDIM, `closedBy` ile isaretledim: bir senaryonun
+   * nerede dogrulandigini bilmek, listeden kaybolmasindan iyidir.
+   */
   const PENDING: ReadonlyArray<readonly [string, string]> = [
-    ["DB restart", "Gercek baglanti havuzu yeniden kurulumu; pg gerekiyor"],
-    ["provider timeout", "Gercek saglayici cagrisi; SDK ve ag gerekiyor (P11)"],
-    ["network error", "Gercek ag kesintisi; entegrasyon ortami gerekiyor"],
-    ["index interruption", "Yarida kesilen index isi; canli Postgres gerekiyor"],
-    ["duplicate event (DB kisiti)", "UNIQUE kisitinin gercekten uygulanmasi; canli Postgres"]
+    ["provider timeout", "Gercek saglayici cagrisi; SDK ve ag gerekiyor (P11)"]
   ];
+
+  const CLOSED_BY_INTEGRATION: ReadonlyArray<readonly [string, string]> = [
+    ["DB restart / baglanti kaybi", "tests/integration/resilience.spec.ts"],
+    ["network error", "tests/integration/resilience.spec.ts (pg_terminate_backend)"],
+    ["index interruption", "tests/integration/resilience.spec.ts"],
+    ["duplicate event (DB kisiti)", "tests/integration/resilience.spec.ts"]
+  ];
+
+  it("kapanan senaryolar NEREDE dogrulandigini bildiriyor", () => {
+    expect(CLOSED_BY_INTEGRATION).toHaveLength(4);
+    for (const [, where] of CLOSED_BY_INTEGRATION) {
+      expect(where).toContain("integration");
+    }
+  });
 
   it("doğrulanmayan senaryolar KAYITLI ve sayısı biliniyor", () => {
     // Sayinin kendisi bir iddia degil; amac listenin sessizce
     // kucultulememesi ve neyin eksik oldugunun okunabilir kalmasi.
-    expect(PENDING).toHaveLength(5);
+    expect(PENDING).toHaveLength(1);
     for (const [name, reason] of PENDING) {
       expect(name.length).toBeGreaterThan(3);
       expect(reason.length).toBeGreaterThan(20);
