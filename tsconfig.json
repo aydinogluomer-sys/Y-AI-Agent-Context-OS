@@ -31,6 +31,9 @@
       "@y/context": [
         "./packages/context/src/index.ts"
       ],
+      "@y/context/*": [
+        "./packages/context/src/*"
+      ],
       "@y/graph": [
         "./packages/graph/src/index.ts"
       ],

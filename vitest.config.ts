@@ -21,6 +21,7 @@ export default defineConfig({
       "@y/shared": path.resolve(root, "packages/shared/src/index.ts"),
       "@y/db": path.resolve(root, "packages/db/src/index.ts"),
       "@y/core": path.resolve(root, "packages/core/src/index.ts"),
+      "@y/context/": path.resolve(root, "packages/context/src") + "/",
       "@y/context": path.resolve(root, "packages/context/src/index.ts"),
       "@y/agents": path.resolve(root, "packages/agents/src/index.ts"),
       "@y/providers": path.resolve(root, "packages/providers/src/index.ts"),

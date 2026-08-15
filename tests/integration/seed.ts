@@ -138,13 +138,16 @@ export async function seedChunk(
     `INSERT INTO chunks
        (id, organization_id, snapshot_id, file_id, path, ordinal, content, content_hash,
         start_line, end_line, start_byte, end_byte, part_index, part_count,
-        estimated_tokens, universe_bucket, contains_secret, tsv, embedding, embedding_dim)
+        estimated_tokens, universe_bucket, contains_secret, embedding, embedding_dim)
      VALUES ($1,$2,$3,$4,$5,0,$6,$7,1,10,0,$8,0,1,
              $9,$10,$11,
-             -- FTS vektoru GERCEK to_tsvector ile: elle yazilmis bir tsv,
-             -- uretimdeki davranisi degil test yazarinin varsayimini olcerdi.
-             to_tsvector('english', $6),
              $12::vector, $13);`,
+    // `tsv` YAZILMAZ: 0064 onu GENERATED ALWAYS ... STORED yapiyor ve
+    // 'simple' konfigurasyonu kullaniyor (kok bulma kod aramasinda
+    // zararli: getUser -> getus).
+    //
+    // Elle bir tsv yazmak hem hata verir hem de - verse bile - uretimdeki
+    // davranisi degil test yazarinin varsayimini olcerdi.
     [
       chunk.id,
       tenant.organizationId,

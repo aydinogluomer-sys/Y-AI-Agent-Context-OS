@@ -72,6 +72,20 @@ function describeHits(hits: readonly { file: string; line: number; text: string 
   return hits.map((h) => `${h.file}:${h.line}  ${h.text.slice(0, 100)}`).join("\n");
 }
 
+/**
+ * [P19/T5] KAYNAK TARAMA TESTLERI ICIN AYRI ZAMAN ASIMI.
+ *
+ * Bu testler bir surec baslatiyor (`git ls-files`) ve ~700 dosya
+ * okuyor. Vitest'in 5 sn varsayilani BIRIM testleri icin; bu sinif
+ * icin degil. Docker calisirken makine yuklendiginde esik asildi ve
+ * test GERCEK bir bulgu olmadan kirildi.
+ *
+ * Zaman asimini yukseltmek yavasligi GIZLEMEZ: dosya listesi zaten
+ * bellekleniyor ve tarama bir kez yapiliyor. Burada kabul edilen sey,
+ * bu testlerin birim testi olmadigi.
+ */
+const SCAN_TIMEOUT_MS = 30_000;
+
 describe("P08 — uydurma pack alanları kaynak ağacında yok", () => {
   it("pack üreticileri silinmiş", () => {
     for (const needle of ["buildContext" + "Pack", "buildCompressed" + "ContextPack"]) {
@@ -111,7 +125,7 @@ describe("P08 — uydurma pack alanları kaynak ağacında yok", () => {
     const hits = findOccurrences("DEFAULT_TOKEN" + "_BUDGET");
     expect(hits, `Sabit butce sabiti geri gelmis:\n${describeHits(hits)}`).toEqual([]);
   });
-});
+}, SCAN_TIMEOUT_MS);
 
 describe("P08 — testin kendisi çalışıyor mu", () => {
   it("tarama gerçekten dosya okuyor", () => {
@@ -123,4 +137,4 @@ describe("P08 — testin kendisi çalışıyor mu", () => {
     // anlamsizdir.
     expect(findOccurrences("compileContext").length).toBeGreaterThan(0);
   });
-});
+}, SCAN_TIMEOUT_MS);

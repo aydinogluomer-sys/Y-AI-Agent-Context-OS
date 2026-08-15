@@ -91,6 +91,20 @@ function describeHits(hits: readonly { file: string; line: number; text: string 
   return hits.map((h) => `${h.file}:${h.line}  ${h.text.slice(0, 100)}`).join("\n");
 }
 
+/**
+ * [P19/T5] KAYNAK TARAMA TESTLERI ICIN AYRI ZAMAN ASIMI.
+ *
+ * Bu testler bir surec baslatiyor (`git ls-files`) ve ~700 dosya
+ * okuyor. Vitest'in 5 sn varsayilani BIRIM testleri icin; bu sinif
+ * icin degil. Docker calisirken makine yuklendiginde esik asildi ve
+ * test GERCEK bir bulgu olmadan kirildi.
+ *
+ * Zaman asimini yukseltmek yavasligi GIZLEMEZ: dosya listesi zaten
+ * bellekleniyor ve tarama bir kez yapiliyor. Burada kabul edilen sey,
+ * bu testlerin birim testi olmadigi.
+ */
+const SCAN_TIMEOUT_MS = 30_000;
+
 describe("P06 — sahte retrieval yolları kaynak ağacında yok", () => {
   it("sahte semantic arama fonksiyonu silinmiş", () => {
     // Bu fonksiyon keyword ortusmesi hesaplayip sonucu 30 ile carpip
@@ -124,7 +138,7 @@ describe("P06 — sahte retrieval yolları kaynak ağacında yok", () => {
     const hits = findOccurrences(needle);
     expect(hits, `Okunmayan yaklasiklik bayragi geri gelmis:\n${describeHits(hits)}`).toEqual([]);
   });
-});
+}, SCAN_TIMEOUT_MS);
 
 describe("P06 — testin kendisi çalışıyor mu", () => {
   it("tarama gerçekten dosya okuyor (boş küme üzerinde çalışmıyor)", () => {
@@ -150,4 +164,4 @@ describe("P06 — testin kendisi çalışıyor mu", () => {
     const hits = findOccurrences("LexicalRetriever");
     expect(hits.length).toBeGreaterThan(0);
   });
-});
+}, SCAN_TIMEOUT_MS);
