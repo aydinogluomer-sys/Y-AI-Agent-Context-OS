@@ -143,6 +143,12 @@ jobs:
         # Yerelde saniyeler surer ve o hata sinifini kapatir.
         run: pnpm run gate:ci-scripts
 
+      - name: "Gate — Route kapsam muhafizi"
+        # Muhafizin CALISTIGINI idor.spec.ts kanitliyor. Bu kapi farkli
+        # bir soruyu cevapliyor: muhafiz her yere TAKILI MI? Calisan ama
+        # bir route'a takilmamis muhafiz, o route'ta hicbir sey yapmaz.
+        run: pnpm run gate:route-scope
+
       - name: Database Migrations
 
         run: pnpm run db:migrate

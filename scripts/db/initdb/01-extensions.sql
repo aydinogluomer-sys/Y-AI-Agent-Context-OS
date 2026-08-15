@@ -1,17 +1,21 @@
--- P19 / T1 — Eklentiler ORTAMIN parcasi, testin yan etkisi degil.
+-- P19/T1 + P21/4 — Eklentiler ORTAMIN parcasi ve AYRI BIR SEMADA.
 --
--- Onceki hali: eklentiler yalnizca `createIntegrationDb` icinde
--- kuruluyordu. Yani soguk kalkistan sonra, HERHANGI bir test kosmadan
--- once, veritabaninda `vector` ve `pg_trgm` YOKTU.
+-- Onceki hali eklentileri `public` semasina kuruyordu ve her test
+-- semasinin search_path'i `<sema>, public` idi.
 --
--- Belirti: `npm run db:test:reset` sonrasi elle bir sorgu ya da
--- `verify:evidence-chain` calistirmak, eklentiye bagliysa patlardi.
--- Kurulum sirasina bagli bir ortam, sirayi bilmeyen icin bozuktur.
+-- P21/4'te bunun SEMA IZOLASYONUNU SIZDIRDIGI olculdu: fail-closed
+-- testi test semasindaki `projects` tablosunu DUSURDU ve sorgu hata
+-- vermek yerine `public.projects`e DUSTU. Sonuc 503 yerine 403 oldu —
+-- yani "depo erisilemez" ile "uyelik yok" birbirine karisti.
 --
--- Bu dosya `docker-entrypoint-initdb.d` icinde: konteyner ILK acilista
--- calistirir. `createIntegrationDb` icindeki `CREATE EXTENSION IF NOT
--- EXISTS` KALDIRILMADI - CI kendi Postgres servisini kullaniyor ve bu
--- init dizinini gormuyor. Iki yol da kapali olmali.
+-- `public`te tablo olmasinin sebebi `npm run db:migrate` (CI'da da ayni
+-- adim var): migration'lari public'e uyguluyor. Yani sizinti CI'da da
+-- gecerliydi.
+--
+-- Eklentiler artik `ext` semasinda ve test search_path'i `<sema>, ext`.
+-- `public` yolun DISINDA: bir test semasinda eksik olan tablo artik
+-- sessizce baska bir yere cozulmez, sorgu HATA VERIR.
 
-CREATE EXTENSION IF NOT EXISTS vector SCHEMA public;
-CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA public;
+CREATE SCHEMA IF NOT EXISTS ext;
+CREATE EXTENSION IF NOT EXISTS vector SCHEMA ext;
+CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA ext;

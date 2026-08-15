@@ -108,7 +108,13 @@ export async function createIntegrationDb(testFile: string): Promise<Integration
     connectionString: url,
     // Havuz duzeyinde search_path: yeni acilan her baglanti da ayni
     // semayi gorur.
-    options: `-c search_path=${schema},public`,
+    // `public` BILEREK YOK. Onceki hali `<sema>, public` idi ve
+    // izolasyonu sizdiriyordu: test semasinda olmayan bir tablo
+    // sessizce `public`teki ayni adli tabloya cozulyordu. P21/4'te
+    // fail-closed testi bunu yakaladi (503 yerine 403).
+    //
+    // `ext` yalnizca eklentileri tasir; tablo icermez.
+    options: `-c search_path=${schema},ext`,
     max: 4,
     // Baglanti kurulamiyorsa UZUN SURE BEKLEME: hizli ve acik hata,
     // yavas ve belirsiz hatadan iyidir.
@@ -148,8 +154,9 @@ export async function createIntegrationDb(testFile: string): Promise<Integration
    * `public` her semanin search_path'inde oldugu icin buraya kurmak
    * hepsini ayni anda cozer.
    */
-  await pool.query("CREATE EXTENSION IF NOT EXISTS vector SCHEMA public;");
-  await pool.query("CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA public;");
+  await pool.query("CREATE SCHEMA IF NOT EXISTS ext;");
+  await pool.query("CREATE EXTENSION IF NOT EXISTS vector SCHEMA ext;");
+  await pool.query("CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA ext;");
 
   const db: IntegrationDb = {
     pool,
@@ -166,7 +173,7 @@ export async function createIntegrationDb(testFile: string): Promise<Integration
             const client = await pool.connect();
             // Migration'lar bu semaya uygulanmali; runner search_path'i
             // kendisi ayarlamiyor.
-            await client.query(`SET search_path TO ${schema}, public;`);
+            await client.query(`SET search_path TO ${schema}, ext;`);
             return client as PoolClient & { release(): void };
           }
         },

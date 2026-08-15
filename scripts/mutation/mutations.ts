@@ -185,6 +185,24 @@ export const MUTATIONS: readonly Mutation[] = [
     why: "ADR-048: her gecis bir olaydir. Degistirilebilirse FSM gecmisi yeniden yazilabilir."
   },
   {
+    id: "authz-fail-open",
+    file: "apps/api/src/middleware/authz.ts",
+    find: "return { allowed: false, reason: \"POLICY_STORE_UNAVAILABLE\" };",
+    replace: "return { allowed: true, scope: { principal, projectId, orgId: principal.orgId, role: \"viewer\", resolvedFrom: \"project_membership\" } };",
+    suite: "tests/security/fail-closed.spec.ts",
+    threat: "T-01",
+    why: "Depo erisilemezken ALLOW donmek bir yetki sisteminin en tehlikeli hatasidir cunku SESSIZDIR: hicbir istek reddedilmez, sistem saglikli gorunur."
+  },
+  {
+    id: "authz-org-mismatch",
+    file: "apps/api/src/middleware/authz.ts",
+    find: "if (row.project_org_id !== principal.orgId) {",
+    replace: "if (false) {",
+    suite: "tests/security/idor.spec.ts",
+    threat: "T-01",
+    why: "Cross-tenant kontrolu kalkarsa baska org'un proje id'siyle erisim acilir (IDOR)."
+  },
+  {
     id: "evidence-append-only",
     file: "migrations/0082_evidence_chain.sql",
     find: `RAISE EXCEPTION 'evidence_chain append-only bir kanit zinciridir: kayitlar degistirilemez ya da silinemez.';`,
