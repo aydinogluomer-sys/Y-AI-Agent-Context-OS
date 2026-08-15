@@ -90,8 +90,6 @@ export interface IntegrationDb {
   query(sql: string, params?: unknown[]): Promise<{ rows: any[]; rowCount: number | null }>;
   /** Migration'ları bu şemaya uygular. */
   migrate(): Promise<{ applied: string[]; total: number }>;
-  /** Tüm tabloları boşaltır — şemayı düşürmeden. */
-  truncateAll(): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -175,18 +173,6 @@ export async function createIntegrationDb(testFile: string): Promise<Integration
         { migrationsDir: MIGRATIONS_DIR }
       );
       return { applied: result.applied, total: result.total };
-    },
-
-    async truncateAll() {
-      const { rows } = await pool.query<{ tablename: string }>(
-        "SELECT tablename FROM pg_tables WHERE schemaname = $1;",
-        [schema]
-      );
-      if (rows.length === 0) return;
-      const list = rows.map((r) => `${schema}.${r.tablename}`).join(", ");
-      // RESTART IDENTITY: dizi sayaclari da sifirlanir, yoksa id'ler
-      // testler arasinda kayar ve beklenen deger yazmak imkansizlasir.
-      await pool.query(`TRUNCATE ${list} RESTART IDENTITY CASCADE;`);
     },
 
     async close() {
