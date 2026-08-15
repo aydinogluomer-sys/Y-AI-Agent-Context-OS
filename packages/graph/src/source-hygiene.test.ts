@@ -63,6 +63,19 @@ function sourceFiles(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
+/**
+ * [P19] KAYNAK TARAMA TESTI ICIN AYRI ZAMAN ASIMI.
+ *
+ * Bu test tum dosya sistemini yuruyup her .ts/.tsx/.js dosyasini buffer
+ * olarak okuyor. Vitest'in 5 sn varsayilani BIRIM testleri icin; bu sinif
+ * icin degil.
+ *
+ * Docker calisirken makine yuklendiginde esik asildi ve test GERCEK bir
+ * bulgu olmadan kirildi - dort kosunun ucunde. p06/p08'e ayni tedaviyi
+ * uygulamis ama BU dosyayi atlamistim.
+ */
+const SCAN_TIMEOUT_MS = 30_000;
+
 describe("kaynak hijyeni — literal kontrol karakteri yok", () => {
   const files = sourceFiles(REPO);
 
@@ -74,9 +87,12 @@ describe("kaynak hijyeni — literal kontrol karakteri yok", () => {
     const offenders: string[] = [];
     for (const file of files) {
       const buf = readFileSync(file);
+      // ERKEN CIKIS: dosyalarin neredeyse tamaminda NUL yok. Her baytta
+      // gezmek yerine once VARLIGINI sor; sayma yalniz ihlal varsa.
+      if (buf.indexOf(0) === -1) continue;
       let count = 0;
       for (const byte of buf) if (byte === 0) count++;
-      if (count > 0) offenders.push(`${file.slice(REPO.length + 1)}: ${count} NUL`);
+      offenders.push(`${file.slice(REPO.length + 1)}: ${count} NUL`);
     }
     expect(
       offenders,
@@ -91,7 +107,7 @@ describe("kaynak hijyeni — literal kontrol karakteri yok", () => {
     expect(text.includes(NUL)).toBe(false);
     expect(text.split("\n").length).toBeGreaterThan(500);
   });
-});
+}, SCAN_TIMEOUT_MS);
 
 describe("ayıraç davranışı değişmedi", () => {
   it("kaçış dizisi literal NUL ile AYNI karakteri üretir", () => {
@@ -122,4 +138,4 @@ describe("ayıraç davranışı değişmedi", () => {
       expect(p.includes(NUL)).toBe(false);
     }
   });
-});
+}, SCAN_TIMEOUT_MS);

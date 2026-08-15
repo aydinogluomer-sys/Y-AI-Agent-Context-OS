@@ -21,7 +21,11 @@ jobs:
         image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgrespassword
+          # [P19] PAROLA YOK. CI servisi yalniz is konteynerinden
+          # erisilebilir; parola tutmak depoda gereksiz bir kimlik
+          # bilgisi birakir ve sir tarayicisi bunu HAKLI OLARAK bulgu
+          # sayar. Yerel docker-compose ile ayni karar.
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: y_vault
         ports:
           - 5432:5432
@@ -89,12 +93,12 @@ jobs:
       - name: Deterministic Validation Suite
         run: pnpm run test:deterministic
         env:
-          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/y_vault
+          DATABASE_URL: postgresql://postgres@localhost:5432/y_vault
 
       - name: Database Migrations
         run: pnpm run db:migrate
         env:
-          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/y_vault
+          DATABASE_URL: postgresql://postgres@localhost:5432/y_vault
 
       - name: "Gate — Entegrasyon testleri (CANLI Postgres)"
         # Bu kapi, sorgu SEKLINI degil SONUCUNU dogrular.
@@ -107,7 +111,7 @@ jobs:
         # DB yoksa test SESSIZCE ATLAMAZ, acikca hata verir (spec §37).
         run: pnpm run test:integration
         env:
-          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/y_vault
+          DATABASE_URL: postgresql://postgres@localhost:5432/y_vault
           WORKER_SIGNING_KEY: ci-integration-signing-key-32-chars-min
 
       - name: Install Playwright Browsers
