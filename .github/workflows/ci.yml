@@ -98,12 +98,53 @@ jobs:
       - name: Secret Leak Scan
         run: pnpm run secret-scan
 
-      - name: Deterministic Validation Suite
-        run: pnpm run test:deterministic
-        env:
-          DATABASE_URL: postgresql://postgres@localhost:5432/y_vault
+      # ---------------------------------------------------------------
+      # KALDIRILDI [P20/FAZ 2] — "Deterministic Validation Suite"
+      #
+      # Bu adim `pnpm run test:deterministic` cagiriyordu. O script
+      # ARTIK YOK: `legacy:test:deterministic` olarak yeniden
+      # adlandirilmis. Yani adim, adlandirmadan bu yana HER kosuda
+      # "Missing script" ile dusuyordu — ama CI'in kendisi hic
+      # kosturulmadigi icin kimse gormedi. OLU BIR KAPI.
+      #
+      # Adi duzeltmek yetmiyor. Suit uc ayri sebeple gecemez:
+      #
+      #   1. SEMA UYUMSUZLUGU. Stage 23/24/25/27 `projects` tablosuna
+      #      `organization_id` OLMADAN yaziyor. Migration
+      #      2.0.5-projects-organization-scope o kolonu NOT NULL yapti.
+      #      Ayni sekilde `audit_logs.actor_principal_id`. Bu
+      #      dogrulayicilar cok kiracilik ONCESI semaya gore yazilmis.
+      #
+      #   2. ORTAM UYUMSUZLUGU. `y_user` rolu ve pooler/TLS
+      #      yapilandirmasi bekliyor; ikisi de bu projede yok.
+      #
+      #   3. MOD CELISKISI. `deterministic` mod TANIMI GEREGI
+      #      veritabanisiz kosar (run-validation-suite.ts:40). Adim ise
+      #      ona DATABASE_URL veriyordu; DB'ye bagli asamalar calisiyor
+      #      ve patliyordu.
+      #
+      # `continue-on-error: true` ile yesile boyamak bu projede yasak
+      # olan seyin ta kendisi (spec 37): gecmeyen bir kapinin GECTI
+      # gorunmesi. Kapi ya gercekten gecer ya da orada olmaz.
+      #
+      # Kapsami zaten karsilanan yer: vitest suiti (1330 test), canli
+      # Postgres entegrasyon suiti (64 test) ve mutasyon kapisi.
+      # `scripts/run-validation-suite.ts` depoda KALIYOR; silinmedi.
+      #
+      # Geri getirmenin kosulu: legacy dogrulayicilarin guncel cok
+      # kiracili semaya gore yeniden yazilmasi. Kayit:
+      # docs/implementation.md FAZ 2.
+      # ---------------------------------------------------------------
+
+      - name: "Gate — CI script referanslari"
+        # Bu kapi P20'de eklendi cunku CI, ADI DEGISMIS bir script'i
+        # cagirmaya devam ediyordu ve adim aylarca "Missing script" ile
+        # dusuyordu. CI hic kosturulmadigi icin kimse gormedi.
+        # Yerelde saniyeler surer ve o hata sinifini kapatir.
+        run: pnpm run gate:ci-scripts
 
       - name: Database Migrations
+
         run: pnpm run db:migrate
         env:
           DATABASE_URL: postgresql://postgres@localhost:5432/y_vault

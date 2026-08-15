@@ -120,6 +120,22 @@ describe("T5 — Postgres FTS gerçek sonuç üretiyor", () => {
       containsSecret: true
     });
 
+    // SIRALAMA OLCUMU icin bilinen terim yogunlugu.
+    //
+    // `cascade` baska hicbir chunk'ta gecmez; boylece siralama testi
+    // yalniz bu iki chunk uzerinden olculur ve baska seed'ler sonucu
+    // kaydirmaz. Fark SAYIDA: bese karsi bir.
+    await seedChunk(db, tenant, {
+      id: "c_rank_high",
+      path: "src/rank/high.ts",
+      content: "cascade cascade cascade cascade cascade"
+    });
+    await seedChunk(db, tenant, {
+      id: "c_rank_low",
+      path: "src/rank/low.ts",
+      content: "cascade tek kez geciyor burada"
+    });
+
     lexical = new LexicalRetriever({
       query: (sql: string, params?: unknown[]) => db.query(sql, params)
     });
@@ -241,14 +257,39 @@ describe("T5 — Postgres FTS gerçek sonuç üretiyor", () => {
   });
 
   it("ts_rank_cd SIRALAMA üretiyor — hepsi aynı skor değil", async () => {
-    // Siralama olmadan retrieval "ilk N" doner ve alaka duzeyi
-    // rastgeledir.
-    const hits = await search("export function");
-    expect(hits.length).toBeGreaterThan(1);
-    // Skor `rawScores` icinde KANAL BAZINDA tutuluyor: tek bir toplam
-    // skordan sinyalleri geri cikarmak imkansiz (ADR-026).
+    /*
+     * ILK YAZIMIM ZAYIFTI. Testin adi "hepsi ayni skor degil" diyordu
+     * ama iddia soyleydi:
+     *
+     *     expect(Math.max(...ranks)).toBeGreaterThan(0);
+     *
+     * Bu, TUM skorlar birbirinin AYNI olsa da gecerdi. `ts_rank_cd` her
+     * belgeye sabit 0.5 dondurse test yine yesildi. "Siralama uretiliyor"
+     * demiyordu, "bir skor pozitif" diyordu.
+     *
+     * Siralama olmadan retrieval "ilk N"i doner ve alaka duzeyi
+     * rastgeledir — sessizce ise yaramaz bir sistem.
+     */
+    const hits = await search("cascade");
+    const byId = new Map(hits.map((h) => [h.chunkId, h.rawScores.lexical ?? 0]));
+
+    // 1. Ikisi de bulunmali: biri eksikse asagidaki karsilastirma
+    //    anlamsizlasir.
+    expect(byId.has("c_rank_high")).toBe(true);
+    expect(byId.has("c_rank_low")).toBe(true);
+
+    // 2. Skorlar FARKLI olmali — asil eksik olan iddia buydu.
+    expect(byId.get("c_rank_high")).not.toBe(byId.get("c_rank_low"));
+
+    // 3. Yon DOGRU olmali: terimi bes kez gecen, bir kez gecenden
+    //    yuksek. Ters isaretli bir formul "farkli skor" uretirdi ama
+    //    siralamayi bozardi.
+    expect(byId.get("c_rank_high")!).toBeGreaterThan(byId.get("c_rank_low")!);
+
+    // 4. Donen liste GERCEKTEN skora gore sirali olmali. Skor dogru
+    //    hesaplanip ORDER BY unutulursa 1-3 gecer, bu kirilir.
     const ranks = hits.map((h) => h.rawScores.lexical ?? 0);
-    expect(Math.max(...ranks)).toBeGreaterThan(0);
+    expect(ranks).toEqual([...ranks].sort((a, b) => b - a));
   });
 
   it("kullanılabilir terim yoksa BOŞ döner, HATA vermez", async () => {

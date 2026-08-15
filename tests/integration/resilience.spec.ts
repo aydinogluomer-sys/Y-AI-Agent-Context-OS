@@ -251,6 +251,19 @@ describe("T6 — bağlantı kaybı: havuz KENDİNİ TOPARLAR", () => {
      * koparilmasi ve havuzun yeniden baglanmasi. Docker'i testin icinden
      * yonetmek testi konteyner calisma zamanina baglar ve CI'da farkli
      * davranir.
+     *
+     * ILK YAZIMIM ZAYIFTI. Kesme sorgusu `pid <> pg_backend_pid()` ile
+     * KENDI oturumunu haric tutuyordu, sonra bir sorgu calistirip
+     * "yeniden baglandi" diyordu. Ama havuz `max: 4` — sorgu, hic
+     * dokunulmamis bir baglantiya dusmus olabilirdi. O zaman test
+     * yeniden baglanmayi degil "havuzda baska baglanti vardi"yi olcerdi.
+     *
+     * Bu surum hicbir baglantiyi hayatta birakmaz:
+     *   1. Ayri bir istemci alinir (kesici).
+     *   2. Kesicinin KENDISI haric her sey sonlandirilir.
+     *   3. Kesici havuza GERI VERILMEZ, IMHA EDILIR.
+     * Geriye kullanilabilir tek baglanti kalmaz; sonraki sorgu YENI bir
+     * baglanti acmak ZORUNDADIR ve bunu pid degisimiyle kanitlariz.
      */
     await queue.enqueue({
       jobType: "index",
@@ -261,20 +274,79 @@ describe("T6 — bağlantı kaybı: havuz KENDİNİ TOPARLAR", () => {
       payload: {}
     });
 
-    // Kendi baglantilarimizi kopar (kendi oturumumuz haric).
-    await db.query(
-      `SELECT pg_terminate_backend(pid) FROM pg_stat_activity
-        WHERE datname = current_database() AND pid <> pg_backend_pid();`
-    );
+    const killer = await db.pool.connect();
+    let livePids: number[];
+    try {
+      const killerPid = (await killer.query("SELECT pg_backend_pid() AS pid;")).rows[0].pid;
 
-    // Havuz yeni baglanti acmali ve VERI KAYBI OLMAMALI.
+      /*
+       * Havuzu IKINCI bir baglanti acmaya zorla.
+       *
+       * Ilk denemede `livePids` BOS cikti ve pozitif kontrol testi
+       * kirdi — dogru davranis. Sebep: havuzda o an tek baglanti vardi
+       * ve `pool.connect()` onu bana verdi; geriye sonlandirilacak
+       * baska baglanti kalmadi.
+       *
+       * Kesici cekilmisken bir sorgu calistirmak havuzu yeni bir
+       * baglanti acmaya zorlar; boylece sonlandirilacak GERCEK bir
+       * hedef olusur.
+       */
+      await db.query("SELECT 1;");
+
+      livePids = (
+        await killer.query(
+          `SELECT pid FROM pg_stat_activity
+            WHERE datname = current_database() AND pid <> $1;`,
+          [killerPid]
+        )
+      ).rows.map((r: { pid: number }) => Number(r.pid));
+
+      // POZITIF KONTROL: havuz gercekten baglanti tutuyor olmali.
+      // Tutmuyorsa "yeni pid" iddiasi bos yere gecerdi.
+      expect(livePids.length).toBeGreaterThan(0);
+
+      await killer.query(
+        `SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+          WHERE datname = current_database() AND pid <> $1;`,
+        [killerPid]
+      );
+      livePids.push(killerPid);
+    } finally {
+      // `release(err)` istemciyi havuzdan CIKARIR ve baglantiyi kapatir.
+      // Argumansiz `release()` onu havuza geri verirdi ve sonraki sorgu
+      // bu SAG baglantiya dusebilirdi — olcmek istedigimiz seyi yok eder.
+      killer.release(new Error("test: baglanti kasitli imha edildi"));
+    }
+
+    // 1. ILK sorgu HATA VERIR — havuz seffaf toparlanmiyor.
+    //
+    //    Bu, testi guclendirirken ORTAYA CIKAN bir bulgu. Onceki surum
+    //    hayatta kalan bir baglantiya dustugu icin bunu hic gormemisti.
+    //    node-postgres havuzu olmus bir istemciyi geri verebiliyor ve
+    //    sorguyu KENDILIGINDEN yeniden denemiyor.
+    //
+    //    Cagiran icin sonucu: DB yeniden baslatildiginda ucustaki sorgu
+    //    BASARISIZ OLUR. "Havuz kendini toparlar" ifadesi ancak SONRAKI
+    //    sorgu icin dogru. Yeniden deneme cagiranin sorumlulugunda.
+    await expect(
+      db.query("SELECT 1;")
+    ).rejects.toThrow(/terminating connection|Connection terminated|socket hang up/i);
+
+    // 2. SONRAKI sorgu calisir: olu istemci havuzdan atilmis ve YENI
+    //    baglanti acilmistir.
     const { rows } = await db.query(
-      "SELECT COUNT(*)::int AS c FROM jobs WHERE idempotency_key = $1;",
+      "SELECT COUNT(*)::int AS c, pg_backend_pid() AS pid FROM jobs WHERE idempotency_key = $1;",
       ["baglanti-once"]
     );
+
+    // 3. VERI KAYBI OLMAMALI.
     expect(rows[0].c).toBe(1);
 
-    // Kuyruk da calismaya devam etmeli.
+    // 4. Ve bu GERCEKTEN yeni bir baglanti olmali. Asil eksik iddia buydu:
+    //    eski pid'lerden biri donerse havuz hic yeniden baglanmamistir.
+    expect(livePids).not.toContain(Number(rows[0].pid));
+
+    // 5. Kuyruk da calismaya devam etmeli.
     const claimed = await queue.claim(credential(), ["index"]);
     expect(claimed).not.toBeNull();
   });
