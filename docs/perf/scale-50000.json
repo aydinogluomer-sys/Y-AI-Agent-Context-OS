@@ -1,0 +1,68 @@
+{
+  "measuredAt": "2026-08-15T22:40:56.448Z",
+  "fixture": {
+    "root": ".perf/repo-50k",
+    "fileCount": 50000
+  },
+  "machine": {
+    "cpuModel": "Intel(R) Core(TM) i5-8265U CPU @ 1.60GHz",
+    "cpuCount": 8,
+    "totalMemGb": 7.9,
+    "nodeVersion": "v26.3.0",
+    "platform": "win32-x64",
+    "postgres": "16.15 (Debian 16.15-1.pgdg12+2)"
+  },
+  "specTarget": null,
+  "specTargetReason": "Kaynak spec 41 olculecek siniflari sayiyor, esik vermiyor. Bu kosu ilk taban.",
+  "results": [
+    {
+      "name": "index.initial",
+      "unit": "ms",
+      "value": 379723
+    },
+    {
+      "name": "index.initial.perFile",
+      "unit": "ms/dosya",
+      "value": 7.594
+    },
+    {
+      "name": "index.idempotent",
+      "unit": "ms",
+      "value": 818
+    },
+    {
+      "name": "db.size",
+      "unit": "MB",
+      "value": 34.1
+    },
+    {
+      "name": "db.sizePerFile",
+      "unit": "KB/dosya",
+      "value": 0.7
+    },
+    {
+      "name": "query.fileByPath.median",
+      "unit": "ms",
+      "value": 1.38,
+      "note": "5 olcumun medyani; yayilim 1.31-3.16 ms"
+    }
+  ],
+  "notMeasured": [
+    {
+      "name": "chunking",
+      "reason": "ingest chunk uretmiyor; ayri bir index worker adimi ve o adim henuz surulmedi"
+    },
+    {
+      "name": "retrieval.fts",
+      "reason": "chunk olmadan tsv yok; FTS olcumu chunk uretimine bagli"
+    },
+    {
+      "name": "retrieval.semantic",
+      "reason": "embedding saglayicisi yok (Engel B)"
+    },
+    {
+      "name": "graph.traversal",
+      "reason": "graf dugumleri symbol cikarimindan turer; bu kosuda uretilmedi"
+    }
+  ]
+}

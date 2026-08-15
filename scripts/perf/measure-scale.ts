@@ -91,7 +91,10 @@ async function main(): Promise<void> {
   const results: ScaleResult[] = [];
 
   try {
-    db = await createIntegrationDb("scale-10k");
+        // Sema adi fixture'dan TURETILIR: sabit "scale-10k" birakmak, 50K
+    // olcumunun 10K semasini ve ciktisini ezmesi demekti.
+    const etiket = fixtureRoot.replace(/[^a-z0-9]+/gi, "_");
+    db = await createIntegrationDb(`scale_${etiket}`);
     const [, migrateMs] = await timed(() => db!.migrate());
     console.log(`migration : ${(migrateMs / 1000).toFixed(1)} sn`);
 
@@ -246,8 +249,12 @@ async function main(): Promise<void> {
         }
       ]
     };
-    writeFileSync("docs/perf/scale-10k.json", JSON.stringify(payload, null, 2) + "\n");
-    console.log("\nyazildi: docs/perf/scale-10k.json");
+    // Dosya adi OLCULEN DOSYA SAYISINDAN turer. Sabit bir ad birakmak,
+    // 50K olcumunun 10K sonucunu sessizce EZMESI demekti — ilk kosuda
+    // tam bu oldu.
+    const ciktiYolu = `docs/perf/scale-${fileCount}.json`;
+    writeFileSync(ciktiYolu, JSON.stringify(payload, null, 2) + "\n");
+    console.log(`\nyazildi: ${ciktiYolu}`);
     console.log(`OLCULMEYEN ${payload.notMeasured.length} kalem ciktida ADIYLA kayitli.`);
   } finally {
     await db?.close();

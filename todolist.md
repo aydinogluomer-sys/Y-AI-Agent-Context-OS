@@ -177,3 +177,34 @@ koruyor.
 Tarayıcı bunları **şekil** olarak eşleştiriyor, anlam olarak değil.
 Kuralı gevşetip sıfıra indirmek tam da yasak olan bastırma olurdu.
 Çırçır 5'te kilitli; yalnız düşebilir.
+
+---
+
+## 9 · T8 ölçek — 10K ve 50K ölçüldü, DOĞRUSAL DEĞİL
+
+| Metrik | 10K | 50K | Değişim |
+|---|---|---|---|
+| İlk index | 45.1 sn | **379.7 sn** | 5 kat dosya → **8.43 kat süre** |
+| Dosya başına | 4.51 ms | **7.59 ms** | **1.69 kat kötü** |
+| DB / dosya | 1.12 KB | 0.70 KB | sabit gider amorti oluyor |
+| Idempotent yeniden index | 111 ms | 818 ms | 7.4 kat |
+| Yol sorgusu (medyan) | 1.54 ms | 1.38 ms | değişmiyor (indeksli) |
+
+**Asıl bulgu:** indeksleme **süper-doğrusal**. Ölçek 5 katına çıkınca
+dosya başına maliyet %69 artıyor. Bu, tek bir ölçümle görülemezdi — T8'in
+var olma sebebi tam olarak buydu.
+
+Sorgu gecikmesi ölçekten etkilenmiyor: darboğaz **yazma yolunda**, okuma
+yolunda değil.
+
+### 100K koşulmadı
+
+Gerekçe: 50K'da ölçülen hıza göre 100K yaklaşık 25+ dakika sürerdi ve
+eğilim iki noktayla zaten kurulmuş durumda. **Tahmini bir sayı
+YAZILMADI** (ADR-032): ölçülmeyen ölçülmemiştir.
+
+### Hâlâ ölçülemeyenler
+
+`SnapshotService.ingest` yalnız `files` yazıyor, chunk üretmiyor.
+Dolayısıyla chunking, FTS ve traversal ölçek altında hâlâ ölçülemiyor —
+çıktı dosyalarında adıyla kayıtlı.
