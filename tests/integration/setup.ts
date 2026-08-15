@@ -158,6 +158,45 @@ export async function createIntegrationDb(testFile: string): Promise<Integration
   await pool.query("CREATE EXTENSION IF NOT EXISTS vector SCHEMA ext;");
   await pool.query("CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA ext;");
 
+  /*
+   * Eklentiler GERCEKTEN `ext` icinde mi?
+   *
+   * `CREATE EXTENSION IF NOT EXISTS ... SCHEMA ext`, eklenti BASKA bir
+   * semada zaten kuruluysa onu TASIMAZ; sessizce hicbir sey yapar.
+   * search_path'te `public` olmadigi icin sonuc su olur:
+   *
+   *     error: type "vector" does not exist
+   *
+   * Bu mesaj sebebi soylemez. CI #31/#32 tam bu yuzden dustu: `db:migrate`
+   * ayni veritabaninin `public` semasina `vector` kurmustu.
+   *
+   * Sessizce `public`i search_path'e geri eklemek COZUM DEGIL: izolasyon
+   * sizintisi geri gelirdi (P21/4). Dogrusu ACIKCA durmak.
+   */
+  const { rows: extRows } = await pool.query(
+    `SELECT e.extname, n.nspname
+       FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace
+      WHERE e.extname IN ('vector', 'pg_trgm');`
+  );
+  const yanlisYerde = extRows.filter((r: { nspname: string }) => r.nspname !== "ext");
+  if (yanlisYerde.length > 0) {
+    await pool.end();
+    throw new IntegrationDbUnavailableError(
+      `Eklentiler 'ext' semasinda degil: ` +
+        yanlisYerde.map((r: any) => `${r.extname} -> ${r.nspname}`).join(", ") +
+        `
+
+` +
+        `Bu veritabanina daha once 'db:migrate' uygulanmis olabilir; o adim ` +
+        `eklentileri 'public'e kurar.
+` +
+        `Entegrasyon testleri ADANMIS bir veritabani ister (yerel: y_test, ` +
+        `CI: y_integration).
+` +
+        `Cozum: 'npm run db:test:reset' ya da temiz bir DATABASE_URL.`
+    );
+  }
+
   const db: IntegrationDb = {
     pool,
     schema,

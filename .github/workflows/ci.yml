@@ -155,6 +155,21 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres@localhost:5432/y_vault
 
+      - name: Entegrasyon veritabanini olustur
+        # AYRI VERITABANI - `y_vault` DEGIL.
+        #
+        # `db:migrate` adimi migration'lari y_vault/public'e uygular ve
+        # `vector` eklentisini oraya kurar. Entegrasyon testleri ise her
+        # dosyaya izole bir sema verir ve search_path'i `<sema>, ext`
+        # olarak ayarlar (P21/4: `public` bilerek yolun disinda).
+        #
+        # Ayni veritabanini paylasirlarsa: eklenti zaten public'te
+        # oldugu icin `CREATE EXTENSION ... SCHEMA ext` onu TASIMAZ,
+        # test semasi `vector` tipini cozemez ve migration patlar.
+        # CI #31/#32 tam bu sebeple dustu; yerelde `db:test:reset`
+        # public'i temizledigi icin gorunmemisti.
+        run: psql "postgresql://postgres@localhost:5432/postgres" -c 'CREATE DATABASE y_integration;'
+
       - name: "Gate — Entegrasyon testleri (CANLI Postgres)"
         # Bu kapi, sorgu SEKLINI degil SONUCUNU dogrular.
         #
@@ -166,7 +181,7 @@ jobs:
         # DB yoksa test SESSIZCE ATLAMAZ, acikca hata verir (spec §37).
         run: pnpm run test:integration
         env:
-          DATABASE_URL: postgresql://postgres@localhost:5432/y_vault
+          DATABASE_URL: postgresql://postgres@localhost:5432/y_integration
           WORKER_SIGNING_KEY: ci-integration-signing-key-32-chars-min
 
       - name: Install Playwright Browsers
