@@ -59,6 +59,25 @@ async function seedTwoTenants(db: IntegrationDb): Promise<void> {
    */
   await seedGraphEdge(db, SNAPSHOT_A, ORG_B, "e_bridge_org", "a2", "b2");
   await seedGraphEdge(db, SNAPSHOT_B, ORG_A, "e_bridge_snap", "a2", "b1");
+
+  /*
+   * AYNI SNAPSHOT'TA, BASKA ORG'A AIT DUGUM.
+   *
+   * Bu dugum mutasyon testi sayesinde eklendi. Ilk yazimda "baska
+   * tenant'in dugumu SEED olarak verilse bile sonuc bos" testi vardi ve
+   * geciyordu — ama seed teriminden ORG PREDIKATINI kaldirdigimda test
+   * KIRILMADI.
+   *
+   * Sebep: seed olarak `b1`/`b2` veriliyordu, onlar SNAPSHOT_B'de.
+   * Sorgu SNAPSHOT_A ile yapildigi icin onlari zaten SNAPSHOT predikati
+   * disliyordu. Org predikati gereksizdi; test onu hic olcmuyordu.
+   *
+   * `x_cross` SNAPSHOT_A'da ama ORG_B'ye ait. Bileşik FK olmadigi icin
+   * bu kombinasyon yazilabilir — ve tam bu yuzden org predikatinin
+   * BAGIMSIZ olarak tasiyici olmasi gerekir: saldirgan snapshot_id'yi
+   * etkileyebilirse (IDOR), geriye kalan tek savunma odur.
+   */
+  await seedGraphNode(db, { ...a, organizationId: ORG_B }, "x_cross");
 }
 
 describe("T-02 — traversal başka tenant'a GEÇMEZ", () => {
@@ -136,6 +155,43 @@ describe("T-02 — traversal başka tenant'a GEÇMEZ", () => {
     });
 
     expect(result.nodes).toEqual([]);
+  });
+
+  /*
+   * Yukaridaki test TEK BASINA yetmiyor: `b1`/`b2` SNAPSHOT_B'de oldugu
+   * icin onlari snapshot predikati de disliyor. Mutasyonla olctum —
+   * seed teriminden org predikatini kaldirdim ve test KIRILMADI.
+   *
+   * Asagidaki cift, org predikatinin TEK BASINA belirleyici oldugu
+   * durumu kurar: `x_cross` ayni snapshot'ta, farkli org'da.
+   */
+  it("AYNI snapshot'ta başka org'un düğümü SEED verilse de sonuç boş", async () => {
+    const result = await traversal.traverse({
+      snapshotId: SNAPSHOT_A,
+      organizationId: ORG_A,
+      seeds: ["x_cross"],
+      direction: "forward",
+      maxDepth: 5
+    });
+
+    // Snapshot predikati burada AYIRT ETMIYOR (x_cross SNAPSHOT_A'da).
+    // Geriye kalan tek savunma org predikati.
+    expect(result.nodes).toEqual([]);
+  });
+
+  it("KONTROL: x_cross kendi org'undan SORGULANINCA bulunur", async () => {
+    // Bu kontrol olmadan ustteki test, `x_cross` hic eklenmemis olsa da
+    // gecerdi — bos sonuc "izolasyon calisiyor" gibi gorunur. Dugumun
+    // GERCEKTEN var ve bulunabilir oldugunu kanitlar.
+    const result = await traversal.traverse({
+      snapshotId: SNAPSHOT_A,
+      organizationId: ORG_B,
+      seeds: ["x_cross"],
+      direction: "forward",
+      maxDepth: 5
+    });
+
+    expect(result.nodes.map((n) => n.nodeIdentifier)).toEqual(["x_cross"]);
   });
 
   it("ters yönde de sızıntı yok", async () => {

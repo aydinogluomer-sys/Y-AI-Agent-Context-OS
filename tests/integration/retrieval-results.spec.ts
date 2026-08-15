@@ -106,6 +106,20 @@ describe("T5 — Postgres FTS gerçek sonuç üretiyor", () => {
       content: "export const getUserById = 'temiz icerik';"
     });
 
+    // SIR TASIYAN DOSYA — firewall'dan BAGIMSIZ ikinci savunma.
+    //
+    // Yol bilerek ALLOW icinde ve DENY disinda: `src/config/**`. Boylece
+    // bu chunk'i firewall predikati DISLAMAZ ve geriye tek belirleyici
+    // olarak `contains_secret` filtresi kalir. Aksi hâlde test, DENY
+    // hatasinin aynisini tekrarlardi: iki savunmadan yalnizca birini
+    // olcup otekini olctugunu sanmak.
+    await seedChunk(db, tenant, {
+      id: "c_apikeys",
+      path: "src/config/apikeys.ts",
+      content: "export function loadRotationKey() { return process.env.KEY; }",
+      containsSecret: true
+    });
+
     lexical = new LexicalRetriever({
       query: (sql: string, params?: unknown[]) => db.query(sql, params)
     });
@@ -187,6 +201,33 @@ describe("T5 — Postgres FTS gerçek sonuç üretiyor", () => {
     expect(ids).toContain("c_allowed_sibling");
   });
 
+  /*
+   * `contains_secret` — firewall'dan AYRI bir savunma katmani.
+   *
+   * Firewall yola bakar (ADR-027). Sir tarayicisi ICERIGE bakar ve
+   * sonucunu `files.contains_secret` olarak birakir (classify.ts). Bir
+   * dosya ALLOW yolunda olup yine de sir tasiyabilir — `src/config/`
+   * altindaki bir anahtar gibi. Iki katman da gerekli.
+   *
+   * Bu cift mutasyonla eklendi: lexical filtreyi kaldirdigimda hicbir
+   * test kirilmadi.
+   */
+  it("excludeSecrets ile sır taşıyan dosyanın chunk'ı DÖNMEZ", async () => {
+    const hits = await search("loadRotationKey", { excludeSecrets: true });
+
+    expect(hits.map((h) => h.chunkId)).not.toContain("c_apikeys");
+    expect(hits.map((h) => h.content).join(" ")).not.toContain("process.env.KEY");
+  });
+
+  it("KONTROL: excludeSecrets olmadan AYNI chunk bulunur", async () => {
+    // Bu kontrol olmadan ustteki test, chunk hic indekslenmemis olsa da
+    // gecerdi. Chunk'in GERCEKTEN aranabilir oldugunu ve onu disarida
+    // birakanin FILTRE oldugunu kanitlar.
+    const hits = await search("loadRotationKey");
+
+    expect(hits.map((h) => h.chunkId)).toContain("c_apikeys");
+  });
+
   it("başka tenant'ın chunk'ı dönmez", async () => {
     const other = await seedTenant(db, "org_other", "snap_other");
     await seedChunk(db, other, {
@@ -252,13 +293,23 @@ describe("T5 — pgvector gerçek mesafe hesabı", () => {
       path: "src/noembed.ts",
       content: "embeddingsiz"
     });
+    // SIR TASIYAN chunk — yolu ALLOW icinde, DENY disinda; ayrica sorgu
+    // vektorune YAKIN. Boylece firewall onu DISLAMAZ ve siralamada ust
+    // sirada olurdu: geriye tek belirleyici olarak contains_secret kalir.
+    await seedChunk(db, tenant, {
+      id: "c_vec_secret",
+      path: "src/config/vaultkeys.ts",
+      content: "sirli",
+      containsSecret: true,
+      embedding: unitVector(0)
+    });
   });
 
   afterAll(async () => {
     await db?.close();
   });
 
-  const search = (queryVector: number[]) =>
+  const search = (queryVector: number[], extra: Record<string, unknown> = {}) =>
     new SemanticRetriever(
       { query: (sql: string, params?: unknown[]) => db.query(sql, params) },
       stubEmbedder(queryVector)
@@ -266,8 +317,28 @@ describe("T5 — pgvector gerçek mesafe hesabı", () => {
       query: "sorgu",
       snapshotId: SNAP,
       organizationId: ORG,
-      universe: UNIVERSE
+      universe: UNIVERSE,
+      ...extra
     } as never);
+
+  /*
+   * Semantic kanalin contains_secret filtresi.
+   *
+   * Lexical kanalda bu filtreyi mutasyonla yokladim ve korumasiz cikti;
+   * ayni predikat semantic'te de var. Bir kanali kapatip otekini acik
+   * birakmak yaygin bir asimetri — ikisi de ayri ayri olculmeli.
+   */
+  it("excludeSecrets ile sır taşıyan chunk DÖNMEZ", async () => {
+    const hits = await search(unitVector(0), { excludeSecrets: true });
+    expect(hits.map((h) => h.chunkId)).not.toContain("c_vec_secret");
+  });
+
+  it("KONTROL: excludeSecrets olmadan AYNI chunk bulunur", async () => {
+    // Chunk sorgu vektorune yakin oldugu icin normalde MUTLAKA doner.
+    // Donmuyorsa ustteki test yanlis sebeple geciyor demektir.
+    const hits = await search(unitVector(0));
+    expect(hits.map((h) => h.chunkId)).toContain("c_vec_secret");
+  });
 
   it("POZİTİF KONTROL: semantic arama sonuç döndürüyor", async () => {
     expect((await search(unitVector(0))).length).toBeGreaterThan(0);

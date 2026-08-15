@@ -194,3 +194,89 @@ describe("T-18 — zincir veritabanından okunduğunda da SAĞLAM", () => {
     expect(verifyChain(await readChain(db)).valid).toBe(true);
   });
 });
+
+/*
+ * APPEND-ONLY TRIGGER — ONLEME katmani.
+ *
+ * Yukaridaki testler TESPIT'i olcuyor: zincir bozulursa `verifyChain`
+ * yakaliyor. Ama hepsi zinciri BELLEKTE bozuyor — veritabanina hic
+ * UPDATE/DELETE denemiyor. Yani trigger'in kendisi hic sinanmamisti.
+ *
+ * Mutasyon bunu ortaya cikardi: 0082'deki `RAISE EXCEPTION` satirini
+ * `RETURN COALESCE(NEW, OLD)` ile degistirdim — trigger izin verir hale
+ * geldi ve hicbir test kirilmadi.
+ *
+ * Ustteki `beforeEach` yorumunda "trigger UPDATE/DELETE'i engelliyor
+ * OLABILIR" yaziyordu. Dogrulanmamis bir varsayim, testin icine yazilmis.
+ * Bu blok o "olabilir"i kaldirir.
+ */
+describe("T-18 — append-only trigger YAZMAYI ENGELLER", () => {
+  let db: IntegrationDb;
+  let tenant: TenantFixture;
+
+  beforeAll(async () => {
+    db = await createIntegrationDb("evidence-chain-trigger.spec.ts");
+    await db.migrate();
+    tenant = await seedTenant(db, ORG);
+  });
+
+  afterAll(async () => {
+    await db?.close();
+  });
+
+  beforeEach(async () => {
+    await db.query("TRUNCATE evidence_chain;");
+    await seedChain(db, tenant);
+  });
+
+  it("POZİTİF KONTROL: yeni kayıt EKLENEBİLİR", async () => {
+    // Bu kontrol olmadan asagidaki iki test, tablo tamamen yazilamaz
+    // olsa da gecerdi. Append-only "hic yazilamaz" DEGIL: ekleme
+    // serbest, degistirme yasak.
+    const before = (await readChain(db)).length;
+    await insert(
+      db,
+      tenant,
+      prepareEntry({
+        id: "ev_appended",
+        runId: null,
+        kind: "context.compiled",
+        payload: { eklendi: true },
+        sequence: 4,
+        previousHash: (await readChain(db))[2].entryHash,
+        createdAt: new Date().toISOString()
+      })
+    );
+    expect((await readChain(db)).length).toBe(before + 1);
+  });
+
+  it("UPDATE reddedilir ve veri DEĞİŞMEZ", async () => {
+    const before = await readChain(db);
+    const target = before[1];
+
+    await expect(
+      db.query("UPDATE evidence_chain SET kind = $1 WHERE id = $2;", [
+        "tampered",
+        target.id
+      ])
+    ).rejects.toThrow(/append-only/i);
+
+    // Hata firlatmasi tek basina yetmez: UPDATE'in HICBIR SEYI
+    // degistirmedigini de gostermek gerekir. Sifir satir eslesen bir
+    // UPDATE de hata firlatmazdi — bu kontrol o karisikligi keser.
+    const after = await readChain(db);
+    expect(after.map((e) => e.kind)).toEqual(before.map((e) => e.kind));
+  });
+
+  it("DELETE reddedilir ve kayıt YERİNDE KALIR", async () => {
+    const before = await readChain(db);
+
+    await expect(
+      db.query("DELETE FROM evidence_chain WHERE id = $1;", [before[1].id])
+    ).rejects.toThrow(/append-only/i);
+
+    const after = await readChain(db);
+    expect(after.length).toBe(before.length);
+    expect(after.map((e) => e.id)).toEqual(before.map((e) => e.id));
+  });
+});

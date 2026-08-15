@@ -120,9 +120,21 @@ export async function seedChunk(
 ): Promise<void> {
   const fileId = `file_${chunk.id}`;
 
+  /*
+   * `contains_secret` DOSYAYA yazilir, chunk'a degil.
+   *
+   * Uretimde tek doğruluk kaynagi `files.contains_secret`: secret-scanner
+   * dosya duzeyinde tarar ve snapshot-service oraya yazar (classify.ts).
+   * Her uc retrieval kanali da `f.contains_secret` okur.
+   *
+   * Ilk yazimda bu bayrak yalnizca `chunks`'a yaziliyordu — yani uretimin
+   * HIC OKUMADIGI bir kolona. Mutasyon testi bunu ortaya cikardi: lexical
+   * filtreyi kaldirdim ve hicbir test kirilmadi, cunku hicbir fixture
+   * dosyayi sirli isaretlememisti.
+   */
   await db.query(
-    `INSERT INTO files (id, organization_id, snapshot_id, path, content_hash, size_bytes)
-     VALUES ($1,$2,$3,$4,$5,$6)
+    `INSERT INTO files (id, organization_id, snapshot_id, path, content_hash, size_bytes, contains_secret)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
        ON CONFLICT (id) DO NOTHING;`,
     [
       fileId,
@@ -130,7 +142,8 @@ export async function seedChunk(
       tenant.snapshotId,
       chunk.path,
       "b".repeat(64),
-      chunk.content.length
+      chunk.content.length,
+      chunk.containsSecret ?? false
     ]
   );
 

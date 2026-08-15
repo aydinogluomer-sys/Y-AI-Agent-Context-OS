@@ -1,0 +1,78 @@
+feat(p20): sistematik mutasyon kapisi - 4 YANLIS YESIL bulundu ve kapatildi
+
+FAZ 1 / 5. Plan: docs/implementation.md
+
+NEDEN
+
+P19'da dokuz is "kapandi" diye raporlandi. Dordunu elle mutasyonla
+yokladim; birinde test kirilmadi (DENY). Elle yapilan denetim
+tekrarlanmaz ve regresyonu yakalamaz: yarin biri org predikatini
+kaldirirsa hicbir kapi otmez.
+
+Bu commit mutasyonu bildirime donusturuyor: 11 guvenlik predikati icin
+"kaldir -> suit kirilmali" kapisi.
+
+DORT YANLIS YESIL
+
+Kapiyi ilk kez kostururken 10 mutasyonun 3'u HAYATTA KALDI. Semantic
+kanali sonradan ekledim, o da hayatta kaldi. Toplam dort:
+
+1. traversal-org-seed
+   "baska tenant'in dugumu SEED verilse bile sonuc bos" testi VARDI ve
+   geciyordu. Ama seed olarak b1/b2 veriliyordu ve onlar SNAPSHOT_B'de;
+   sorgu SNAPSHOT_A ile yapildigi icin onlari zaten SNAPSHOT predikati
+   disliyordu. Org predikati gereksizdi.
+   -> `x_cross` eklendi: AYNI snapshot'ta, BASKA org'da. Artik org
+      predikati tek belirleyici. Kontrol grubu da eklendi.
+
+2. firewall-secret-filter
+   Fixture `contains_secret`'i CHUNKS tablosuna yaziyordu. Uretim o
+   kolonu HIC OKUMUYOR: uc retrieval kanali da `files.contains_secret`
+   okur (classify.ts, snapshot-service.ts). Yani hicbir fixture dosyayi
+   sirli isaretlememisti; filtre hic tetiklenmemisti.
+   -> seedChunk artik DOSYAYA yaziyor. Sirli chunk ALLOW yoluna kondu
+      (`src/config/`) ki firewall onu dislamasin ve tek belirleyici
+      filtre olsun.
+
+3. semantic-secret-filter
+   Ayni predikat semantic kanalda da var ve o da korumasizdi. Bir kanali
+   kapatip otekini acik birakmak yaygin bir asimetri.
+   -> pgvector blogu icin ayri sirli chunk + kontrol.
+
+4. evidence-append-only
+   Zincir testlerinin hepsi bozmayi BELLEKTE yapiyordu; veritabanina hic
+   UPDATE/DELETE denenmemisti. Trigger hic sinanmamis.
+   Ustelik beforeEach yorumunda "trigger engelliyor OLABILIR" yaziyordu
+   - dogrulanmamis varsayim, testin icine yazilmis.
+   -> Gercek UPDATE/DELETE denemesi + "veri DEGISMEDI" kontrolu +
+      "ekleme SERBEST" pozitif kontrolu.
+
+HARNESS'IN KENDI GUVENLIGI
+
+Arac uretim kodunu diske yazar. Bozuk kod birakmasi, yakalamaya calistigi
+hatadan beterdir:
+
+  - kirli calisma agacinda KOSMAZ
+  - geri yukleme SHA-256 ile dogrulanir; uymuyorsa surec HEMEN durur
+  - SIGINT/SIGTERM/uncaughtException'da da geri yukler
+  - `find` metni TAM BIR KEZ eslesmeli (kayitlarin curumesini engeller)
+
+POZITIF KONTROL HARNESS'IN KENDI REGRESYONUNU YAKALADI
+
+`--self-test` davranisi degistirmeyen bir mutasyon uygular ve HAYATTA
+KALMASINI bekler. shell:true'yu kaldirip npx.cmd'ye gecince self-test
+BASARISIZ oldu: Node, CVE-2024-27980'den sonra .cmd dosyalarini shell'siz
+spawn etmeyi reddediyor. vitest artik dogrudan node ile cagriliyor.
+
+Her seye "yakalandi" diyen bir harness kendisi yanlis yesildir.
+
+OLCUM
+
+  gate:mutation        11/11 YAKALANDI
+  gate:mutation --self-test  HAYATTA KALDI (beklenen)
+  test:integration     64 passed (6 dosya, +9)
+  vitest               1330 passed | 4 skipped
+  typecheck            loose 0 + strict 0
+  drift                8/8 - secret-scan 0 yeni
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
