@@ -13,7 +13,12 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15
+        # [P19/T1] pgvector ZORUNLU: postgres:15 eklentiyi ICERMEZ ve
+        # entegrasyon testleri `CREATE EXTENSION vector` ile patlardi.
+        # Yerel docker-compose ile AYNI imaj: CI ile gelistirici
+        # makinesinin farkli Postgres surumu calistirmasi, yalniz
+        # birinde ortaya cikan hatalar uretir.
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgrespassword
@@ -90,6 +95,20 @@ jobs:
         run: pnpm run db:migrate
         env:
           DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/y_vault
+
+      - name: "Gate — Entegrasyon testleri (CANLI Postgres)"
+        # Bu kapi, sorgu SEKLINI degil SONUCUNU dogrular.
+        #
+        # Yerel kosuda iki gercek uretim hatasi bu kapiyla ayni
+        # testlerden cikti: migration 0051 hic uygulanmamisti ve graph
+        # traversal recursive CTE tip uyusmazligi yuzunden hic
+        # calismamisti. Ikisini de birim testleri kaciriyordu.
+        #
+        # DB yoksa test SESSIZCE ATLAMAZ, acikca hata verir (spec §37).
+        run: pnpm run test:integration
+        env:
+          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/y_vault
+          WORKER_SIGNING_KEY: ci-integration-signing-key-32-chars-min
 
       - name: Install Playwright Browsers
         run: pnpm run test:e2e:install

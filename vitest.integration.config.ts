@@ -18,8 +18,15 @@ import { config as loadEnv } from "dotenv";
 
 const root = path.resolve(__dirname);
 
-// .env.test ONCE yuklenir: DATABASE_URL yoksa setup.ts varsayilana duser
-// ve testler yanlis veritabanina baglanabilir.
+/*
+ * .env.test yuklenir ama MEVCUT ortam degiskenlerini EZMEZ (dotenv
+ * varsayilani, `override` verilmedi).
+ *
+ * Bu davranis CI icin zorunlu: workflow kendi DATABASE_URL'ini veriyor
+ * (farkli host, parola ve veritabani adi). `.env.test` onu ezseydi CI
+ * yerel bir konteynere baglanmaya calisir ve hata mesaji da yaniltici
+ * olurdu.
+ */
 loadEnv({ path: path.join(root, ".env.test") });
 
 export default defineConfig({
