@@ -39,6 +39,7 @@
  */
 
 import { createHmac, timingSafeEqual, randomUUID } from "crypto";
+import type { NonceStore } from "./nonce-store";
 
 export interface WorkerIdentity {
   readonly workerId: string;
@@ -145,6 +146,23 @@ export interface VerifyOptions {
   readonly now?: Date;
   /** Saat kayması toleransı. Varsayılan 30 sn. */
   readonly clockSkewSeconds?: number;
+  /**
+   * [P19/T7] Kullanılmış nonce deposu (T-14).
+   *
+   * Verilmezse tekrar koruması UYGULANMAZ ve sonuç `replayChecked: false`
+   * taşır. Zorunlu yapmak, deposu olmayan her çağrı yerini (birim
+   * testleri, süreç içi doğrulama) veritabanına bağlardı; ama opsiyonel
+   * olmasının sessiz bir zaafa dönüşmemesi için çağıran korumanın
+   * uygulanıp uygulanmadığını **bilebilir**.
+   */
+  readonly nonceStore?: NonceStore;
+}
+
+/** Doğrulama sonucu — tekrar korumasının uygulanıp uygulanmadığıyla. */
+export interface VerifiedWorker {
+  readonly identity: WorkerIdentity;
+  /** Nonce deposu verildi ve nonce tüketildi mi? */
+  readonly replayChecked: boolean;
 }
 
 /**
@@ -210,4 +228,36 @@ export function verifyWorkerCredential(
   }
 
   return identity;
+}
+
+/**
+ * [P19/T7] Tekrar korumalı doğrulama (T-14).
+ *
+ * İmza, süre ve yetki kontrolleri senkron sürümle **aynıdır**; tek fark
+ * nonce'un tüketilmesi. Ayrı bir fonksiyon olmasının sebebi, depo
+ * erişiminin asenkron olması: senkron sürümü async yapmak 20+ çağrı
+ * yerini değiştirirdi.
+ *
+ * Nonce **en son** tüketilir. Önce tüketip sonra süre kontrolü yapmak,
+ * süresi dolmuş bir token'ın nonce'unu boş yere harcardı — ve daha
+ * kötüsü, saldırgan geçersiz token'larla depoyu şişirebilirdi.
+ */
+export async function verifyWorkerCredentialWithReplayCheck(
+  credential: string | undefined | null,
+  signingKey: string,
+  options: VerifyOptions = {}
+): Promise<VerifiedWorker> {
+  const identity = verifyWorkerCredential(credential, signingKey, options);
+
+  if (!options.nonceStore) {
+    return { identity, replayChecked: false };
+  }
+
+  await options.nonceStore.consume({
+    nonce: identity.nonce,
+    workerId: identity.workerId,
+    expiresAt: new Date(identity.expiresAt)
+  });
+
+  return { identity, replayChecked: true };
 }

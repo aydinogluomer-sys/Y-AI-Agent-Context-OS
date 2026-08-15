@@ -75,4 +75,5 @@ runs,2.8.0-runs,29,15,true,true,4,10,KEEP
 run_events,2.8.1-run-events,20,8,false,false,5,2,KEEP + ALTER (needs organization_id)
 jobs,2.8.2-jobs,25,21,true,true,8,15,KEEP
 evidence_chain,2.9.0-evidence-chain,30,9,false,true,3,0,READ-ONLY (never written) -> investigate
-retention_policies,3.0.0-retention-policy,25,7,false,false,0,0,"DEAD (0 read, 0 write) -> DROP"
+retention_policies,3.0.0-retention-policy,27,7,false,false,0,0,"DEAD (0 read, 0 write) -> DROP"
+used_worker_nonces,3.1.0-worker-nonce-store,31,4,false,false,1,2,KEEP + ALTER (needs organization_id)

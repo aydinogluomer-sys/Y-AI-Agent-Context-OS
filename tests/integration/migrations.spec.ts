@@ -196,23 +196,41 @@ describe("geri alma (`-- +down`)", () => {
   });
 
   it("en son migration'ın down'ı GERÇEKTEN geri alır", async () => {
-    // 0083 retention politikasinin down'i yazildi ama HIC CALISTIRILMADI.
-    // Yazilmis ama denenmemis bir geri alma, en cok ihtiyac duyuldugu
-    // anda patlar.
+    /*
+     * Yazilmis ama denenmemis bir geri alma, en cok ihtiyac duyuldugu
+     * anda patlar.
+     *
+     * Hedef tablo SABIT YAZILMAZ, son migration'in `-- +down` metninden
+     * TURETILIR. Ilk yazimimda `retention_policies` sabitti ve bir sonraki
+     * migration eklenince test kirildi — sabit yazmak, her migration'da
+     * testi guncellemeyi gerektirir ve o guncelleme unutulur.
+     */
     const all = loadMigrations(MIGRATIONS_DIR);
     const last = all[all.length - 1];
     expect(last.down, `${last.version} down bolumu yok`).toBeTruthy();
 
-    const exists = async () => {
+    const dropped = [...last.down!.matchAll(/DROP TABLE IF EXISTS ([a-z_]+)/gi)].map(
+      (m) => m[1]
+    );
+    expect(dropped.length, `${last.version} down'inda DROP TABLE yok`).toBeGreaterThan(0);
+
+    const exists = async (table: string) => {
       const { rows } = await db.query(
-        "SELECT COUNT(*)::int AS c FROM pg_tables WHERE schemaname = $1 AND tablename = 'retention_policies';",
-        [db.schema]
+        `SELECT COUNT(*)::int AS c FROM pg_tables
+          WHERE schemaname = $1 AND tablename = $2;`,
+        [db.schema, table]
       );
       return rows[0].c > 0;
     };
 
-    expect(await exists()).toBe(true);
+    for (const table of dropped) {
+      expect(await exists(table), `${table} migration sonrasi olmaliydi`).toBe(true);
+    }
+
     await db.query(last.down!);
-    expect(await exists()).toBe(false);
+
+    for (const table of dropped) {
+      expect(await exists(table), `${table} down sonrasi kalmamaliydi`).toBe(false);
+    }
   });
 });

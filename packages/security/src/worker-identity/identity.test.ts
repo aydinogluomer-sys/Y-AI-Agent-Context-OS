@@ -4,8 +4,10 @@ import {
   verifyWorkerCredential,
   WorkerIdentityError,
   MissingSigningKeyError,
-  MAX_TTL_SECONDS
+  MAX_TTL_SECONDS,
+  verifyWorkerCredentialWithReplayCheck
 } from "./identity";
+import { InMemoryNonceStore, NonceReplayError } from "./nonce-store";
 
 const KEY = "unit-test-signing-key-at-least-32-chars!!";
 const OTHER_KEY = "a-different-signing-key-also-32-chars-ok!";
@@ -162,14 +164,62 @@ describe("tekrar saldırısı yüzeyi (T-14)", () => {
     expect(a.nonce).not.toBe(b.nonce);
   });
 
-  it("KAYIT: nonce tek başına tekrarı ENGELLEMEZ", () => {
-    // Nonce benzersizdir ama kuyruk onu SAKLAMIYOR; ayni token TTL
-    // suresince tekrar kullanilabilir. Bunu kapatmak, kullanilmis
-    // nonce'lari tutan bir depo gerektirir (canli Postgres, P19).
-    //
-    // Bu test o sinirii KAYIT ALTINA ALIR ki "T-14 kapandi" sanilmasin.
+  it("SENKRON dogrulama tekrari engellemez — bu BILINCLI", () => {
+    /*
+     * [P19/T7] T-14 KAPANDI ama BU fonksiyonda degil.
+     *
+     * `verifyWorkerCredential` senkron kalir ve nonce'u TUKETMEZ. Tekrar
+     * korumasi `verifyWorkerCredentialWithReplayCheck` icinde ve bir
+     * depo gerektirir (canli Postgres).
+     *
+     * Ayrimin sebebi: depo erisimi asenkron. Senkron surumu async yapmak
+     * 20+ cagri yerini degistirirdi ve cogu (birim testleri, surec ici
+     * dogrulama) depo tasimiyor.
+     *
+     * Bu test o ayrimi KAYIT ALTINA ALIR: senkron surumun tekrari
+     * engellememesi bir kusur degil, sinirin kendisi.
+     */
     const token = credential();
     expect(() => verifyWorkerCredential(token, KEY)).not.toThrow();
     expect(() => verifyWorkerCredential(token, KEY)).not.toThrow();
+  });
+
+  it("depoyla dogrulama tekrari ENGELLER", async () => {
+    // Gercek koruma. Canli Postgres surumu:
+    // tests/security/replay.spec.ts
+    const store = new InMemoryNonceStore();
+    const token = credential();
+
+    const first = await verifyWorkerCredentialWithReplayCheck(token, KEY, {
+      nonceStore: store
+    });
+    expect(first.replayChecked).toBe(true);
+
+    await expect(
+      verifyWorkerCredentialWithReplayCheck(token, KEY, { nonceStore: store })
+    ).rejects.toThrow(NonceReplayError);
+  });
+
+  it("bellek ici depo TEK SURECTE calisir — sinir adinda yazili", async () => {
+    // Y birden cok API ornegi ve worker calistirdiginda, bir ornekte
+    // kullanilmis nonce digerinde hala gecerli gorunur. Uretimde
+    // PostgresNonceStore kullanilir.
+    const store = new InMemoryNonceStore();
+    await store.consume({
+      nonce: "n1",
+      workerId: "w",
+      expiresAt: new Date(Date.now() + 60_000)
+    });
+    expect(store.size()).toBe(1);
+
+    // Ikinci bir "surec" (ayri ornek) ayni nonce'u kabul eder.
+    const otherProcess = new InMemoryNonceStore();
+    await expect(
+      otherProcess.consume({
+        nonce: "n1",
+        workerId: "w",
+        expiresAt: new Date(Date.now() + 60_000)
+      })
+    ).resolves.toBeUndefined();
   });
 });

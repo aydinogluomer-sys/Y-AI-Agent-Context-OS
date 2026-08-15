@@ -66,12 +66,24 @@ export {
   WorkerIdentityError,
   MissingSigningKeyError,
   MAX_TTL_SECONDS,
+  verifyWorkerCredentialWithReplayCheck,
   type WorkerIdentity,
   type WorkerCredential,
   type WorkerIdentityRejection,
   type IssueOptions,
-  type VerifyOptions
+  type VerifyOptions,
+  type VerifiedWorker
 } from "./worker-identity/identity";
+
+// P19/T7 — T-14 tekrar saldirisi: kullanilmis nonce deposu.
+export {
+  PostgresNonceStore,
+  InMemoryNonceStore,
+  NonceReplayError,
+  type NonceStore,
+  type NonceRecord,
+  type NonceStoreDb
+} from "./worker-identity/nonce-store";
 
 // P17 / T-05 · ADR-063 — Repository icerigi DATA'dir.
 // Azaltim YAPISALDIR: repo icerigi tip duzeyinde talimattan ayrilir ve

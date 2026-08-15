@@ -107,5 +107,6 @@ migrate edilmiş veritabanları yeniden çalıştırılmaz.
 | 0081 | `0081_jobs.sql` | `2.8.2-jobs` | yeni | var |
 | 0082 | `0082_evidence_chain.sql` | `2.9.0-evidence-chain` | yeni | var |
 | 0083 | `0083_retention_policy.sql` | `3.0.0-retention-policy` | yeni | var |
+| 0084 | `0084_worker_nonce_store.sql` | `3.1.0-worker-nonce-store` | yeni | var |
 
-Toplam: **83** migration (35 göç + 48 yeni).
+Toplam: **84** migration (35 göç + 49 yeni).
