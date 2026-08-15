@@ -9,7 +9,7 @@
  * Güvenlik kapsamı: T-22 (command injection), T-23 (SSRF).
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -38,6 +38,37 @@ const gitAvailable: boolean = (() => {
 let repoDir: string;
 let firstSha = "";
 let secondSha = "";
+
+/*
+ * P21/2 — ZAMAN SINIRLARI ACIKCA BUYUTULDU.
+ *
+ * Bu dosya tam suit icinde KARARSIZDI: yedi kosudan biri
+ * `FAIL packages/core/src/git/git.test.ts [ ... ]` biciminde dustu —
+ * bu bicim testin ICINDEKI bir assertion'i degil, hook ya da toplama
+ * asamasindaki bir hatayi gosterir. Tek basina kosarken 55/55 geciyor.
+ *
+ * Kok sebep DOGRUDAN GOZLENEMEDI: hatadan sonra alti art arda tam suit
+ * kosusu temiz gecti ve hata bir daha uretilemedi. Asagisi bu yuzden
+ * bir TAHMIN uzerine kurulu ve oyle isaretleniyor.
+ *
+ * En olasi sebep: `beforeAll` SEKIZ ayri `git` sureci baslatir
+ * (init, uc config, add, commit, rev-parse, ...). Vitest varsayilan
+ * hook siniri 10 sn. Bu dosya TEK BASINA 4.4 sn suruyor; tam suitte
+ * 59 dosya paralel kosuyor ve bazilari kendileri surec baslatiyor.
+ * Yuk altinda 10 sn'yi asmak makul.
+ *
+ * Surec baslatan bir test BIRIM TESTI DEGILDIR ve birim testi
+ * sinirlariyla olculmemelidir. Ayni gerekce p06/p08/source-hygiene
+ * testlerinde de uygulandi.
+ *
+ * SINIRI BUYUTMEK BIR COZUM DEGIL BIR OLCUMDUR: gercekten asili kalan
+ * bir git sureci bu sureyi de asar ve test yine kirilir. Kararsizlik
+ * devam ederse bu not yanlistir ve kok sebep baska yerdedir.
+ */
+// `vi.setConfig` DOSYA KAPSAMLIDIR: hem hook'lari hem 55 testin
+// tamamini kapsar. Tek tek `it(..., timeout)` yazmak ayni seyi 55 kez
+// tekrarlamak ve birini unutmak demekti.
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 
 beforeAll(() => {
   if (!gitAvailable) return;
