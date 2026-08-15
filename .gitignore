@@ -6,6 +6,15 @@ coverage/
 *.log
 .env
 .env.*
+
+# [P19/T1] .env.test ISTISNA: entegrasyon testi yapilandirmasi GITE GIRER.
+#
+# Icindeki tek "sir" yerel konteynere ait (127.0.0.1:5433) ve disaridan
+# erisilemez. Gite girmemesi, CI'in ve baska gelistiricilerin
+# `test:integration` calistiramamasi demek olurdu.
+#
+# Uretim sirlari ASLA burada olmaz - secret manager'dan gelir (ADR-073).
+!.env.test
 !.env.example
 .antigravity/
 scratch/

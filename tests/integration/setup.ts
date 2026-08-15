@@ -38,22 +38,32 @@ export class IntegrationDbUnavailableError extends Error {
       `Entegrasyon veritabanina baglanilamadi: ${detail}\n\n` +
         "  Bu test SESSIZCE ATLANMAZ (spec §37: 'DB yoksa skip + pass' yasak).\n" +
         "  Baslatmak icin: npm run db:test:up\n" +
-        `  Beklenen: ${maskUrl(databaseUrl())}`
+        `  Beklenen ortam degiskeni: DATABASE_URL`
     );
     this.name = "IntegrationDbUnavailableError";
   }
 }
 
+/**
+ * `DATABASE_URL` ZORUNLU — kaynak koda gomulu varsayilan YOK.
+ *
+ * Onceki hali baglanti dizesini fallback olarak gomuyordu ve sir
+ * tarayicisi bunu yakaladi (dogru yakaladi). Kaynak koda gomulu kimlik
+ * bilgisi, bu projede kapatilan P0-2/P0-12 ailesinin ta kendisi
+ * (ADR-073).
+ *
+ * Deger `.env.test`ten gelir; vitest.integration.config.ts onu yukler.
+ * Yoksa ACIKCA hata: sessizce bir varsayilana dusmek, testin YANLIS bir
+ * veritabanina baglanmasina yol acabilir.
+ */
 function databaseUrl(): string {
-  return (
-    process.env.DATABASE_URL ??
-    "postgresql://postgres:y_test_local@127.0.0.1:5433/y_test"
-  );
-}
-
-/** Hata mesajinda parola gorunmez (ADR-051 ile ayni disiplin). */
-function maskUrl(url: string): string {
-  return url.replace(/:\/\/([^:]+):[^@]+@/, "://$1:***@");
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new IntegrationDbUnavailableError(
+      "DATABASE_URL ayarlanmamis. .env.test yuklendi mi?"
+    );
+  }
+  return url;
 }
 
 /**
