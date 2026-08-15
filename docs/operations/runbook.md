@@ -69,7 +69,6 @@ regresyonun gerçek olduğunu doğrulayın — `perf:record` bütçeyi gevşetir
 
 | Prosedür | Neden |
 |---|---|
-| Yedekten geri yükleme **tatbikatı** | Canlı ortam gerekiyor (Y-P18-009) |
 | Ölçek testi (10K–100K dosya) | Canlı Postgres |
 | Dayanıklılık senaryoları (DB restart, ağ kesintisi) | Canlı altyapı — 5 senaryo kayıtlı, bkz. `resilience.test.ts` |
 | Alarm entegrasyonu | Toplayıcı seçilmedi |

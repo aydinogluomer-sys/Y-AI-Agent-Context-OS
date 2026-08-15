@@ -75,6 +75,20 @@ export {
   type VerifiedWorker
 } from "./worker-identity/identity";
 
+// P14 — Kanit hash zinciri (T-18 event forgery).
+// Barrel'da EKSIKTI: `verify:evidence-chain` script'i yazilirken ortaya
+// cikti. Yalniz paket ici kullanilan bir modul, disaridan dogrulanamaz.
+export {
+  verifyChain,
+  prepareEntry,
+  computeEntryHash,
+  canonicalize,
+  EvidenceChainError,
+  type EvidenceEntry,
+  type AppendInput,
+  type VerificationResult
+} from "./evidence/chain";
+
 // P19/T7 — T-14 tekrar saldirisi: kullanilmis nonce deposu.
 export {
   PostgresNonceStore,

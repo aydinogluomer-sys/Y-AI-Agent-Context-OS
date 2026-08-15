@@ -44,6 +44,7 @@
     "db:test:down": "docker compose down -v",
     "db:test:reset": "docker compose down -v && docker compose up -d --wait",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "verify:evidence-chain": "tsx scripts/db/verify-evidence-chain.ts",
     "perf:fixture": "tsx scripts/perf/generate-fixture-repo.ts --preset small --out .perf/small",
     "perf": "tsx scripts/perf/measure.ts --fixture .perf/small",
     "perf:record": "tsx scripts/perf/measure.ts --fixture .perf/small --record",
