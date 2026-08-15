@@ -19,3 +19,24 @@
 CREATE SCHEMA IF NOT EXISTS ext;
 CREATE EXTENSION IF NOT EXISTS vector SCHEMA ext;
 CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA ext;
+
+-- VERITABANI DUZEYINDE search_path: `public` YANINDA `ext`.
+--
+-- Eklentileri `ext`e tasimak entegrasyon testlerinin izolasyonunu
+-- duzeltti ama UYGULAMAYI kirdi: `server.ts` migration'lari `public`e
+-- uyguluyor ve `CREATE EXTENSION IF NOT EXISTS vector` eklenti BASKA
+-- semada zaten kurulu oldugu icin hicbir sey yapmiyor. Sonuc:
+--
+--   FATAL Startup Error: type "vector" does not exist
+--
+-- Bu satir varsayilan yolu genisletir: acikca search_path VERMEYEN her
+-- baglanti (uygulama, psql, migrate) `ext`i de gorur.
+--
+-- IZOLASYON BOZULMAZ: entegrasyon havuzu search_path'i `-c` ile ACIKCA
+-- `<sema>, ext` yapiyor ve bu varsayilani EZER. Yani testler `public`i
+-- gormemeye devam eder.
+DO $$
+BEGIN
+  EXECUTE format('ALTER DATABASE %I SET search_path = %L, public, ext', current_database(), '$user');
+END
+$$;
