@@ -241,3 +241,68 @@ izolasyonu yerine truncate de kullanılıyor" diye yanlış bilgi verir.
 - Mutasyon kapısı kirli ağaçta koşmaz; geri yükleme bayt bazında doğrulanır.
 - Ölçülemeyen alan uydurulmaz (ADR-032).
 - Bütçe ölçüme uydurulmaz; aşım kaydedilir.
+
+---
+
+# SONUÇ — ne oldu
+
+Plan uygulandı. Aşağısı **tahmin değil, olan**.
+
+## Beş yanlış yeşil bulundu
+
+Planda "en az birinin hayatta kalmasını bekliyorum" yazmıştım. **Beş** çıktı.
+
+| # | Nerede | Neden geçiyordu |
+|---|---|---|
+| 1 | `traversal-org-seed` | Seed olarak verilen düğümler başka *snapshot*'taydı; onları snapshot predikatı zaten dışlıyordu. Org predikatı hiç ölçülmüyordu. |
+| 2 | `firewall-secret-filter` | Fixture `contains_secret`'i **chunks**'a yazıyordu; üretim **files**'ı okuyor. Hiçbir dosya sırlı işaretlenmemişti. |
+| 3 | `semantic-secret-filter` | Aynı predikat ikinci kanalda da korumasızdı. |
+| 4 | `evidence-append-only` | Zincir testleri bozmayı **bellekte** yapıyordu; DB'ye hiç UPDATE/DELETE denenmemişti. |
+| 5 | `lexical-order-by` | Chunk kimlikleri alfabetik olarak skor sırasıyla **aynı** yöne düşüyordu; `ORDER BY` kaldırılınca sonuç değişmiyordu. |
+
+5 numara özellikle önemli: o test **bu planın 3a maddesinde yeni güçlendirdiğim** testti. Güçlendirdiğim hâli de yanlış yeşildi. Mutasyon olmadan görülemezdi.
+
+## Harness kendi regresyonunu yakaladı
+
+`--self-test`, `shell:true` kaldırılıp `npx.cmd`'ye geçilince **başarısız** oldu: Node, CVE-2024-27980'den sonra `.cmd` dosyalarını shell'siz spawn etmiyor. Pozitif kontrol olmasaydı kapı sessizce "her şey yakalandı" derdi.
+
+## CI ilk kez koştu — ve iki ölü şey buldu
+
+| Bulgu | Ayrıntı |
+|---|---|
+| `pnpm-lock.yaml` bayat | **İlk commit'ten beri** güncellenmemiş. Bağımlılıklar npm ile eklenmiş; npm `pnpm-lock.yaml`'ı güncellemez. `--frozen-lockfile` her koşuda düşüyordu. |
+| Ölü CI adımı | `test:deterministic` → `legacy:test:deterministic` olarak yeniden adlandırılmış; CI eski adı çağırıyordu. Adım "Missing script" ile düşüyordu. |
+
+İkinci bulgu için adı düzeltmek yetmedi: legacy süit çok kiracılık **öncesi** şemaya göre yazılmış (`projects.organization_id` NOT NULL, `audit_logs.actor_principal_id` NOT NULL), `y_user` rolü bekliyor, ve `deterministic` modu tanımı gereği veritabanısız koşuyor — adım ise ona `DATABASE_URL` veriyordu. Adım kaldırıldı, gerekçesi `ci.yml`'e yazıldı; `run-validation-suite.ts` depoda kaldı.
+
+**Yeni kapı:** `gate:ci-scripts` — workflow'lardaki her `run:` satırını `package.json` ile karşılaştırır. Örneği değil sınıfı kapatır.
+
+## T8 — erteleme gerekçesi gerçekten yanlıştı
+
+İki koşu: **52.1 sn** ve **45.1 sn** → ~%14 yayılım. Mikro-benchmark'ların %60'ı değil.
+
+| Ölçüm | Değer |
+|---|---|
+| İlk index (10K dosya) | 45.1 sn · 4.51 ms/dosya |
+| Idempotent yeniden index | 111 ms (~400 kat) |
+| DB boyutu | 10.9 MB · 1.12 KB/dosya |
+| Yol sorgusu (medyan) | 1.54 ms |
+
+Spec §41 sayısal eşik vermiyor ("Targetlar plan içerisinde netleştirilsin"), bu yüzden sonuç bir bütçeyi geçmiyor ya da kalmıyor: **ilk taban**. Ölçülemeyen dört kalem çıktıda adıyla kayıtlı (ADR-032).
+
+## Kapanış ölçümü
+
+```
+gate:mutation      12/12 YAKALANDI  (+ self-test HAYATTA KALDI)
+test:integration   64 passed (6 dosya)
+vitest             1330 passed | 4 skipped (59 dosya)
+typecheck          loose 0 + strict 0
+drift              8/8 · secret-scan 0 yeni
+CI                 #24, #25 YEŞİL — entegrasyon kapısı Actions'ta gerçekten koştu
+```
+
+## Bu turun dersi
+
+Üç turdur aynı: **yazılı olan çalışmayabilir.** Bu turda dördüncü ve beşinci kez tekrarlandı — CI'ın kendisi ve benim "güçlendirilmiş" testim.
+
+Bir kapının var olması, çalıştığı anlamına gelmiyor. Bir testin geçmesi, doğruladığı anlamına gelmiyor.
