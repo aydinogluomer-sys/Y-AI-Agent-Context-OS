@@ -20,7 +20,13 @@ services:
     container_name: y-test-postgres
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: y_test_local
+      # PAROLA YOK ve bu bilincli: konteyner YALNIZ 127.0.0.1'e bagli
+      # (asagidaki ports satiri). Erisilemeyen bir servis icin parola
+      # tutmak, depoda gereksiz bir kimlik bilgisi birakir - ve sir
+      # tarayicisi bunu HAKLI OLARAK bulgu sayar.
+      #
+      # URETIMDE ASLA: bu ayar yalniz bu compose dosyasinda.
+      POSTGRES_HOST_AUTH_METHOD: trust
       POSTGRES_DB: y_test
       # Test veritabaninda fsync kapali: dayaniklilik gerekmiyor, hiz
       # gerekiyor. URETIMDE ASLA. Bu ayar yalniz bu compose dosyasinda.
@@ -38,7 +44,9 @@ services:
       - -c
       - max_connections=200
     ports:
-      - "5433:5432"
+      # 127.0.0.1'e BAGLI: varsayilan (0.0.0.0) konteyneri ag uzerinden
+      # erisilebilir yapar ve trust auth'u gercek bir riske cevirirdi.
+      - "127.0.0.1:5433:5432"
     healthcheck:
       # `pg_isready` YETMEZ: port aciliyor ama initdb bitmemis olabilir.
       # Gercek bir sorgu, veritabaninin KABUL ETTIGINI kanitlar.

@@ -186,16 +186,35 @@ export function buildTraversalSql(direction: TraversalSpec["direction"]): string
         ? "e.source"
         : "CASE WHEN e.source = frontier.node_identifier THEN e.target ELSE e.source END";
 
+  /*
+   * [P19/T5] TUM KIMLIK SUTUNLARI `text`'e CAST EDILIR.
+   *
+   * `graph_nodes.node_identifier` VARCHAR(1055), `graph_edges.source` ve
+   * `.target` ise VARCHAR(255). PostgreSQL bir recursive CTE'de anchor ve
+   * recursive terimlerin sutun tiplerini BIREBIR eslestirmek zorunda:
+   *
+   *   recursive query "frontier" column 1 has type character varying(1055)
+   *   in non-recursive term but type character varying overall
+   *
+   * Yani bu sorgu HICBIR ZAMAN calismamisti. Birim testi yalniz SQL
+   * METNINI kontrol ettigi icin (org predicate'i var mi, LIMIT var mi)
+   * hatayi goremedi — ilk gercek Postgres kosusu (T5) yakaladi.
+   *
+   * `::text` cast'i uzunluk kisitini kaldirir ve iki tarafi ayni tipe
+   * getirir. Sutun uzunluklarini esitlemek de bir secenekti; cast
+   * tercih edildi cunku sema degisikligi gerektirmez ve gelecekte bir
+   * sutun uzunlugu degistiginde sorgu yine calisir.
+   */
   return `
 WITH RECURSIVE frontier AS (
   SELECT
-    n.node_identifier,
-    n.node_identifier AS via_seed,
+    n.node_identifier::text AS node_identifier,
+    n.node_identifier::text AS via_seed,
     0                 AS depth,
     NULL::text        AS edge_source,
     NULL::text        AS edge_kind,
     NULL::real        AS edge_confidence,
-    ARRAY[n.node_identifier] AS visited,
+    ARRAY[n.node_identifier::text] AS visited,
     FALSE             AS fan_out_truncated
   FROM graph_nodes n
   WHERE n.snapshot_id = $1
@@ -205,19 +224,19 @@ WITH RECURSIVE frontier AS (
   UNION ALL
 
   SELECT
-    step.next_node,
+    step.next_node::text,
     frontier.via_seed,
     frontier.depth + 1,
     step.edge_source,
     step.edge_kind,
     step.edge_confidence,
-    frontier.visited || step.next_node,
+    frontier.visited || step.next_node::text,
     step.rank > $7
   FROM frontier
   CROSS JOIN LATERAL (
     SELECT
-      ${nextNode}                     AS next_node,
-      frontier.node_identifier        AS edge_source,
+      (${nextNode})::text             AS next_node,
+      frontier.node_identifier::text  AS edge_source,
       e.edge_kind                     AS edge_kind,
       e.confidence                    AS edge_confidence,
       ROW_NUMBER() OVER (ORDER BY e.confidence DESC NULLS LAST, e.id) AS rank
@@ -248,7 +267,8 @@ SELECT
   n.path
 FROM frontier f
 LEFT JOIN graph_nodes n
-  ON n.snapshot_id = $1 AND n.organization_id = $2 AND n.node_identifier = f.node_identifier
+  ON n.snapshot_id = $1 AND n.organization_id = $2
+ AND n.node_identifier::text = f.node_identifier
 ORDER BY f.depth, f.node_identifier
 LIMIT $8;`.trim();
 }

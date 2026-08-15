@@ -30,13 +30,26 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
  * değişikliği kaçırırdı — bu testin pozitif kontrolü tam olarak bunu
  * yakaladı.
  */
+/**
+ * [P19/T5] Git cagrisi BELLEKLENIR.
+ *
+ * Her test `trackedSourceFiles()` cagirip `git ls-files`'i yeniden
+ * calistiriyordu. Windows'ta surec baslatma pahali; Docker calisirken
+ * makine yuklendiginde testler 5 sn esigini asti.
+ *
+ * Dosya listesi bir test kosusu icinde degismez.
+ */
+let cachedTrackedFiles: string[] | null = null;
+
 function trackedSourceFiles(): string[] {
+  if (cachedTrackedFiles) return cachedTrackedFiles;
+
   const output = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "*.ts", "*.tsx"], {
     cwd: REPO_ROOT,
     encoding: "utf-8",
     maxBuffer: 32 * 1024 * 1024
   });
-  return output
+  cachedTrackedFiles = output
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
@@ -47,6 +60,7 @@ function trackedSourceFiles(): string[] {
     // gelmesi degildir. Kural silinirse koruma zayiflar; bu yuzden
     // asagida ayri bir test onun VARLIGINI dogruluyor.
     .filter((file) => !file.endsWith("scripts/audit/scan-false-green.ts"));
+  return cachedTrackedFiles;
 }
 
 function findOccurrences(needle: string): { file: string; line: number; text: string }[] {
