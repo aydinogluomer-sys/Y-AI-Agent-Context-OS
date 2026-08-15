@@ -19,7 +19,7 @@ uygulandığı anlamına gelmez; her satırın *Durum* sütunu koddan doğrulan�
 | # | Tehdit | Azaltım | Durum | Kanıt |
 |---|---|---|---|---|
 | T-01 | IDOR | `requireProjectScope` + DB membership | Uygulandı | `apps/api/src/middleware/authz.ts` |
-| T-02 | Cross-tenant | Her sorguda org predikatı; traversal'da **iki terimde de** | Uygulandı | `packages/graph/src/traversal.ts` |
+| T-02 | Cross-tenant | Her sorguda org predikatı; traversal'da **iki terimde de** | **Doğrulandı** | `tests/security/tenant-isolation.spec.ts` — canlı DB, köprü kenar saldırısı |
 | T-03 | Path traversal | `PathGuard` realpath containment | Uygulandı | `packages/security/src/path-guard/` (48 test) |
 | T-04 | Symlink escape | realpath + `lstat` | Uygulandı | aynı |
 | T-05 | Prompt injection | Repo içeriği **DATA**; tip düzeyinde kanal ayrımı | Kısmen | `packages/security/src/trust/boundary.ts` — adapter teslimi P11 bekliyor |
@@ -31,9 +31,9 @@ uygulandığı anlamına gelmez; her satırın *Durum* sütunu koddan doğrulan�
 | T-11 | Approval bypass | Mutation intercept backend'de | Uygulandı | `packages/security/src/change-firewall/` (46 test) |
 | T-12 | JWT confusion | `jose` + sabit algoritma + JWKS `kid` | Uygulandı | `apps/api/src/middleware/authn.ts` (24 test) |
 | T-13 | JWKS attacks | URI allow-list, TLS, TTL'li cache | Kısmen | aynı — canlı IdP bekliyor |
-| T-14 | Replay | `jti` + idempotency key + nonce | Kısmen | Nonce üretiliyor ama **saklanmıyor**; kullanılmış nonce deposu P19 |
+| T-14 | Replay | `jti` + idempotency key + **kullanılmış nonce deposu** | **Doğrulandı** | `tests/security/replay.spec.ts` — canlı DB, eşzamanlı TOCTOU testi |
 | T-15 | Worker impersonation | HMAC imzalı kimlik; **imzasız = DENY** | Uygulandı | `packages/security/src/worker-identity/` (16 test) |
-| T-16 | Artifact poisoning | CAS hash doğrulaması + yazan principal | Kısmen | Canlı Postgres bekliyor |
+| T-16 | Artifact poisoning | CAS hash doğrulaması + yazan principal | Kısmen | Zincir doğrulandı; artifact yazımı `adapter.start()` bekliyor |
 | T-17 | CAS tampering | `content_hash` yeniden hesaplama + append-only | Kısmen | aynı |
 | T-18 | Event forgery | Hash chain + append-only trigger | Uygulandı | `packages/security/src/evidence/chain.ts` (30 test) |
 | T-19 | Audit actor spoofing | Actor **daima** doğrulanmış principal'dan | Uygulandı | `apps/api/src/domain/identity/evaluation-subject.ts` |
@@ -47,14 +47,24 @@ uygulandığı anlamına gelmez; her satırın *Durum* sütunu koddan doğrulan�
 
 Bu bölüm, kapanmış **görünen** ama kapanmamış olanları sayar.
 
-- **T-14 (replay).** Worker kimliği benzersiz `nonce` taşır ama kuyruk onu
-  saklamaz; aynı token TTL süresince (≤1 saat) tekrar kullanılabilir.
-  Kapanma koşulu: kullanılmış nonce deposu (canlı Postgres).
+- **T-14 (replay) KAPANDI.** Kullanılmış nonce deposu eklendi (migration
+  0084). Nonce birincil anahtar olduğu için ikinci kullanım veritabanı
+  tarafından reddedilir — "önce bak, yoksa yaz" yaklaşımının TOCTOU açığı
+  yok. Eşzamanlı üç doğrulamadan tam olarak biri geçiyor.
+
+  **Kalan sınır:** `verifyWorkerCredential` (senkron) nonce tüketmez;
+  koruma `verifyWorkerCredentialWithReplayCheck` içinde ve depo gerektirir.
+  Depo verilmezse sonuç `replayChecked: false` taşır — sessiz değil.
 - **T-05 (prompt injection).** Kanal ayrımı tip düzeyinde uygulanıyor. Ancak
   enjeksiyon **tespiti** bir kapı değildir ve olamaz: kalıp listesi
   eksiksiz olamaz. "Gözlem yok" hiçbir zaman "güvenli" demek değildir.
 - **T-16/T-17 (CAS).** Hash doğrulaması yazılı; sonucu canlı Postgres
   olmadan doğrulanamaz.
-- Master planın adlandırdığı 18 `tests/security/*.spec.ts` dosyasının
-  **hiçbiri yok**; çoğu canlı Postgres gerektirdiği için P19'a ertelendi.
-  Yukarıdaki azaltımların testleri birim/sözleşme seviyesindedir.
+- Master planın adlandırdığı 18 güvenlik spec'inin **üçü yazıldı** ve
+  canlı Postgres'e karşı çalışıyor: `tenant-isolation`, `replay`,
+  `evidence-chain`. Kalan 15'i `adapter.start()` ya da HTTP yüzeyi
+  gerektiriyor.
+
+- **Zincirin tamamı yeniden yazılırsa** doğrulama geçer. Bu sınır hem
+  `chain.test.ts`'te hem `verify:evidence-chain` çıktısında yazılı;
+  kapatmak dış bir çıpa gerektirir (imzalı zaman damgası / harici depo).

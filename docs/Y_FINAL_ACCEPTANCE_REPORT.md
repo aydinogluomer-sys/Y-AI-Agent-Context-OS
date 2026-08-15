@@ -13,11 +13,11 @@ belgeye de uygulanır: bir madde tamam değilse **TAMAM DEĞİL** yazar.
 
 | Ölçüm | Değer | Kaynak |
 |---|---|---|
-| Birim/sözleşme testi | **1327 passed, 4 skipped** | `vitest run` |
-| Test dosyası | 59 | `vitest run` |
+| Birim/sözleşme testi | **1330 passed, 4 skipped** | `vitest run` |
+| Test dosyası | 59 + **6 entegrasyon** | `vitest run` · `test:integration` |
 | Typecheck | **0 hata** (loose + strict) | `npm run typecheck` |
 | Build | **OK** | `npm run build` |
-| Migration | **83** (35 göç + 48 yeni) | `migrations/*.sql` |
+| Migration | **84** — fresh + upgrade **canlı DB'de doğrulandı** | `test:integration` |
 | Envanter drift | **8/8 kontrol geçti** | `npm run gate:drift` |
 | Sır taraması | **0 yeni bulgu** (70 kabul edilmiş) | `npm run secret-scan` |
 | False-green çırçır | **43 toplam / 39 P0** (taban kilitli; P00'da 135) | `npm run gate:false-green` |
@@ -278,6 +278,48 @@ kapı ancak bundan büyük regresyonları yakalar (`budgets.json` →
 | 5 dayanıklılık senaryosu | Canlı altyapı — `resilience.test.ts` içinde kayıtlı |
 | Yedekten geri yükleme tatbikatı | Canlı ortam |
 | Retention otomasyonu | Politika tanımlı ve **kapalı**; silme açık operatör eylemi |
+
+---
+
+## 5.3 P19 — Canlı Postgres (T1–T9)
+
+Denetimin "Engel A" sınıfı kaldırıldı. `docker-compose.yml` **yoktu**;
+eklenmesi altı spec bölümünü aynı anda açtı.
+
+### İKİ ÜRETİM HATASI — ikisi de ilk gerçek koşuda çıktı
+
+| Hata | Sonuç |
+|---|---|
+| **Migration 0051 hiç uygulanmamış** | `0020` tabloyu `path_redacted` ile kuruyor, `0051` olmayan `r.actor`/`r.file_path` okuyor. PostgreSQL kolonu ayrıştırma anında çözer — tablo boş olsa bile patlar. **83 migration'ın hiçbiri gerçek bir veritabanına uygulanmamıştı.** |
+| **Graph traversal hiç çalışmamış** | Recursive CTE'de `varchar(1055)` ve `varchar(255)` birleştirilemiyor. **P05'in tüm traversal özelliği hiçbir zaman çalışmadı.** Birim testi yalnız SQL metnini kontrol ettiği için geçiyordu. |
+
+Bu ikisi denetimin tezini doğruladı: *sorgu şeklini doğrulamak, sonucunu
+doğrulamak değildir.*
+
+### Kapananlar
+
+| # | İş | Sonuç |
+|---|---|---|
+| T1 | Docker Postgres + pgvector | PostgreSQL 16.15 · pgvector 0.8.6 |
+| T2 | Entegrasyon altyapısı | Şema izolasyonu; DB yoksa **açıkça hata** (sessiz skip yasak) |
+| T3 | Migration fresh + upgrade + `-- +down` | 9 test |
+| T4 | T-02 cross-tenant | 8 test — iki ayrı köprü kenar saldırısı, üç yön, döngü |
+| T5 | FTS + pgvector **sonuç** | 20 test — firewall ön-filtresi iki kanalda da kanıtlandı |
+| T6 | Dayanıklılık | 9 test — 5 kayıtlı senaryodan 4'ü kapandı |
+| T7 | T-14 nonce deposu | 8 test — TOCTOU'suz, migration 0084 |
+| T9 | Backup tatbikatı + `verify:evidence-chain` | Ölçüldü: restore **1130 ms**, zincir sağlam; kırık zincirde exit 1 |
+| CI | Entegrasyon kapısı | `postgres:15` → `pgvector/pgvector:pg16` |
+
+**55 entegrasyon testi** canlı Postgres'e karşı çalışıyor.
+
+### P19'da yapılMAYANLAR
+
+| İş | Neden |
+|---|---|
+| 15 güvenlik spec'i | `adapter.start()` ya da HTTP yüzeyi gerektiriyor |
+| Ölçek testi (10K–100K) — **T8** | Fixture üreteci hazır; ölçüm adanmış makine ister (bu makinede yayılım %60) |
+| §55 Golden E2E 30 adım | 18–27. adımlar SDK'ya bağlı |
+| provider timeout senaryosu | SDK'ya bağlı; `resilience.test.ts`'te kayıtlı |
 
 ---
 
