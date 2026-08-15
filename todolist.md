@@ -149,3 +149,31 @@ repo kökü). Paketlenmiş `dist/server/server.js` için bu repo kökünün bir
 çalıştırılmamış. Yukarı doğru arama ile düzeltildi.
 
 **Kabul:** `#root` dolar; `test.fail()` kaydı silinir.
+
+---
+
+## 8 · Çırçır — KAPANDI (43 → 5)
+
+Bulguların **37'si** `scripts/validate-*` ailesindeydi. Bu süit:
+
+- CI'da **yok** (P20/Faz 2'de ölü adım olarak kaldırıldı)
+- üretim kodu tarafından **import edilmiyor**
+- güncel şemayla **çalışamıyor** (çok kiracılık öncesi varsayımlar)
+- baseline'ın kendi gerekçesi "P19'da tamamen silinecek" diyor
+
+25 dosya ve 11 npm script silindi. Bu **bastırma değil**: desen gizlenmedi,
+onu üreten ve hiçbir sinyal vermeyen kod ortadan kalktı. Git geçmişi
+koruyor.
+
+### Kalan 5 — bilerek bırakıldı
+
+| Yer | Neden yanlış yeşil DEĞİL |
+|---|---|
+| `db.ts:630-631` | Mock bağlayıcı, bayrak yoksa **`throw` ediyor**; üretimde tamamen yasak. Fail-closed'ın kendisi. |
+| `index.ts:92` | Mock DB kapısı: üç koşulun üçü de sağlanmadan açılmıyor. |
+| `startup-policy.ts:7` | `mayContinueAfterDatabaseFailure` yalnız **üretim-dışı** ve **açık izinle** `true`. |
+| `ai.ts:207` | UI simülasyon üreteci; adı açık, üretim yoluna bağlı değil. |
+
+Tarayıcı bunları **şekil** olarak eşleştiriyor, anlam olarak değil.
+Kuralı gevşetip sıfıra indirmek tam da yasak olan bastırma olurdu.
+Çırçır 5'te kilitli; yalnız düşebilir.

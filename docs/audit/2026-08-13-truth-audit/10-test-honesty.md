@@ -7,26 +7,26 @@
 
 | Ölçüt | Değer |
 |---|---|
-| Taranan dosya | 288 |
-| Toplam bulgu | **43** |
-| P0 (release blocker) | **39** |
-| P1 (production-critical) | **4** |
+| Taranan dosya | 263 |
+| Toplam bulgu | **5** |
+| P0 (release blocker) | **5** |
+| P1 (production-critical) | **0** |
 
 ## Kural bazlı dağılım
 
 | Kural | Şiddet | Bulgu | Açıklama |
 |---|---|---:|---|
 | `assert-true` | P0 | 0 | assert("...", true) — koşulsuz geçen sahte assertion |
-| `skip-then-pass` | P0 | 28 | DB/bağımlılık yoksa atla ve yine de PASS say |
+| `skip-then-pass` | P0 | 0 | DB/bağımlılık yoksa atla ve yine de PASS say |
 | `fabricated-hash` | P0 | 0 | Math.random() ile üretilip hash gibi sunulan değer |
 | `settimeout-success` | P0 | 0 | setTimeout/delay sonrası koşulsuz başarı durumu |
 | `fallback-success` | P0 | 0 | Sağlayıcı/servis hatasında sahte başarıya düşme |
 | `simulation-generator` | P0 | 1 | Uydurma çıktı üreten fonksiyon |
-| `hardcoded-metric` | P1 | 4 | Ölçülmeden yazılmış metrik/confidence literal'i |
+| `hardcoded-metric` | P1 | 0 | Ölçülmeden yazılmış metrik/confidence literal'i |
 | `literal-run-count` | P0 | 0 | Run sonucunda hesaplanmadan yazılmış sayaç |
 | `fabricated-diff` | P1 | 0 | Git'e bakılmadan üretilmiş diff/author kaydı |
 | `embedded-secret` | P0 | 0 | Kaynak kodda gömülü / parçalanmış sır |
-| `permissive-fallback` | P0 | 10 | Hata durumunda izin veren güvenlik fallback'i |
+| `permissive-fallback` | P0 | 4 | Hata durumunda izin veren güvenlik fallback'i |
 | `unconditional-flag` | P1 | 0 | Doğrulanmadan true yazılan güvenlik bayrağı |
 | `stub-dependency` | P1 | 0 | Gerçek analiz yerine stub bağımlılık kaydı |
 | `weak-e2e-assertion` | P1 | 0 | toBeLessThan(400/500) — 401/404 dahi geçiren E2E iddiası |
@@ -36,25 +36,10 @@
 
 | Dosya | Bulgu |
 |---|---:|
-| `scripts/validate-vault.ts` | 9 |
-| `scripts/validate-segment-20-26.ts` | 7 |
-| `scripts/validate-segment-15-18.ts` | 4 |
 | `apps/api/src/db.ts` | 2 |
-| `scripts/validate-phase-3-startup.ts` | 2 |
-| `scripts/validate-segment-1-10.ts` | 2 |
-| `scripts/validate-segment-11-14.ts` | 2 |
-| `scripts/validate-segment-19-21.ts` | 2 |
-| `scripts/validate-stage-27.ts` | 2 |
-| `scripts/validate-stage-35.ts` | 2 |
 | `apps/api/src/index.ts` | 1 |
 | `apps/api/src/startup-policy.ts` | 1 |
 | `apps/web/src/lib/api/ai.ts` | 1 |
-| `scripts/run-validation-suite.ts` | 1 |
-| `scripts/validate-phase-5-evidence-integrity.ts` | 1 |
-| `scripts/validate-stage-30.ts` | 1 |
-| `scripts/validate-stage-31.ts` | 1 |
-| `scripts/validate-stage-32.ts` | 1 |
-| `scripts/validate-stage-33.ts` | 1 |
 
 ## Yorum
 
