@@ -20,11 +20,27 @@ import type { AllowedContextUniverse } from "@y/shared";
 const ORG = "org_r";
 const SNAP = "snap_r";
 
-/** Universe: `src/**` ALLOW, `secrets/**` DENY. */
+/**
+ * Universe: `src/**` ALLOW, **`src/secrets/**` DENY**.
+ *
+ * DENY yolu ALLOW'un ICINDE ve bu KRITIK.
+ *
+ * Ilk yazimimda DENY `secrets/**` idi, ALLOW ise `src/**`. O kurulumda
+ * DENY chunk'ini zaten ALLOW kurali disliyordu — DENY hic devreye
+ * girmiyordu. Testi mutasyonla yokladim: DENY listesini TAMAMEN
+ * bosalttim ve **hicbir test kirilmadi**. Yani test ALLOW'u dogruluyordu,
+ * DENY'i degil.
+ *
+ * Derlenen predikatin uc yani var:
+ *   path LIKE ANY(allow) AND path ~ ANY(allow) AND NOT (path ~ ANY(blocked))
+ *
+ * DENY'in ETKISINI olcmek icin ucuncu yanin TEK BASINA belirleyici oldugu
+ * bir yol gerekir — yani ALLOW'u gecen ama DENY'a takilan bir yol.
+ */
 const UNIVERSE: AllowedContextUniverse = {
   allow: ["src/**"],
   approval: [],
-  deny: ["secrets/**"],
+  deny: ["src/secrets/**"],
   policyVersion: 1,
   // Universe hash'i determinizm girdisi (ADR-030) ve manifest'e yazilir.
   // Testte sabit: degeri onemli degil, VARLIGI zorunlu.
@@ -72,11 +88,22 @@ describe("T5 — Postgres FTS gerçek sonuç üretiyor", () => {
       path: "src/payments/retry.ts",
       content: "export function retryPayment(order) { return charge(order); }"
     });
+    // ALLOW'u GECEN ama DENY'a takilan yol: `src/**` icinde,
+    // `src/secrets/**` altinda.
     await seedChunk(db, tenant, {
       id: "c_secret",
-      path: "secrets/prod.ts",
+      path: "src/secrets/prod.ts",
       content: "export const getUserById = 'leaked token here';",
       universeBucket: "deny"
+    });
+
+    // KONTROL GRUBU: ayni dizinin DISINDA, ALLOW icinde kalan bir chunk.
+    // DENY testinin "her seyi disliyor" gibi bir hatayla gecmedigini
+    // gosterir.
+    await seedChunk(db, tenant, {
+      id: "c_allowed_sibling",
+      path: "src/secretsmith/ok.ts",
+      content: "export const getUserById = 'temiz icerik';"
     });
 
     lexical = new LexicalRetriever({
@@ -149,9 +176,15 @@ describe("T5 — Postgres FTS gerçek sonuç üretiyor", () => {
     // `c_secret` aranan terimi ICERIYOR ama `secrets/**` DENY kapsaminda.
     // ADR-027: DENY icerigi hicbir asamada okunmaz.
     const hits = await search("getUserById");
-    expect(hits.map((h) => h.chunkId)).not.toContain("c_secret");
+    const ids = hits.map((h) => h.chunkId);
+
+    expect(ids).not.toContain("c_secret");
     // Icerigi de donmemeli.
     expect(hits.map((h) => h.content).join(" ")).not.toContain("leaked token");
+
+    // KONTROL GRUBU: `src/secretsmith/ok.ts` ALLOW icinde ve DENY disinda.
+    // Donmezse test "her seyi disliyor" hatasiyla gecmis olurdu.
+    expect(ids).toContain("c_allowed_sibling");
   });
 
   it("başka tenant'ın chunk'ı dönmez", async () => {
@@ -205,9 +238,10 @@ describe("T5 — pgvector gerçek mesafe hesabı", () => {
       content: "uzak",
       embedding: unitVector(1)
     });
+    // ALLOW'u gecen ama DENY'a takilan yol (bkz. UNIVERSE notu).
     await seedChunk(db, tenant, {
       id: "c_deny",
-      path: "secrets/deny.ts",
+      path: "src/secrets/deny.ts",
       content: "gizli",
       universeBucket: "deny",
       embedding: unitVector(0)

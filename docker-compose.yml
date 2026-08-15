@@ -61,3 +61,11 @@ services:
     # ile suite'te calisan test farkli sonuc verir.
     tmpfs:
       - /var/lib/postgresql/data
+    volumes:
+      # [P19/T1] Eklentiler ILK acilista kurulur.
+      #
+      # Oncesinde yalniz `createIntegrationDb` kuruyordu; yani soguk
+      # kalkistan sonra hicbir test kosmadan once `vector` ve `pg_trgm`
+      # YOKTU. Kurulum sirasina bagli bir ortam, sirayi bilmeyen icin
+      # bozuktur.
+      - ./scripts/db/initdb:/docker-entrypoint-initdb.d:ro
