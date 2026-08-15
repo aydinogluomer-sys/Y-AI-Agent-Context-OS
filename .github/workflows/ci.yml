@@ -166,5 +166,17 @@ jobs:
       - name: Install Playwright Browsers
         run: pnpm run test:e2e:install
 
+      - name: "Gate — E2E duman testleri (URETIM PAKETI)"
+        # Bu adim P21/1'de eklendi. Onceki CI Playwright TARAYICILARINI
+        # KURUYOR ama testleri HIC KOSMUYORDU: `test:e2e:install` vardi,
+        # `test:e2e` yoktu. Tarayicilar bosuna kuruluyordu.
+        #
+        # `test:e2e` once `build` calistirir ve testler URETIM paketine
+        # karsi kosar, dev sunucusuna degil: vite dev modulleri istek
+        # aninda derler ve CI'da onbellek her zaman soguktur.
+        run: pnpm run test:e2e
+        env:
+          DATABASE_URL: postgresql://postgres@localhost:5432/y_vault
+
       - name: Build Web & API Packages
         run: pnpm run build

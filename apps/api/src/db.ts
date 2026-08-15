@@ -1,3 +1,4 @@
+import * as fsSync from "fs";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -17,13 +18,52 @@ const { Pool } = pg;
  * P01 / ADR-003 — Migration'lar artık `migrations/NNNN_*.sql` dosyalarında.
  * Bu sabit, repo kökündeki dizini gösterir (apps/api/src -> ../../../migrations).
  */
-const MIGRATIONS_DIR = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-  "..",
-  "migrations"
-);
+/**
+ * Migration dizinini YUKARI DOGRU ARAYARAK bulur.
+ *
+ * Onceki hali `import.meta.url`den uc seviye yukari cikiyordu
+ * (`apps/api/src` -> repo koku). Kaynaktan kosarken dogru.
+ *
+ * URETIM PAKETINDE YANLIS: `vite build --ssr` her seyi tek bir
+ * `dist/server/server.js` dosyasina toplar. Oradan uc seviye yukari
+ * cikmak repo kokunun BIR USTUNE duser ve sunucu
+ * "Migration dizini bulunamadi" ile olur. Yani `npm run start` —
+ * belgelenmis uretim giris noktasi — hic calismiyordu. e2e testlerini
+ * gercek pakete baglarken ortaya cikti.
+ *
+ * Cozum modul dizininden baslayip icinde `.sql` bulunan bir
+ * `migrations/` dizini gorene kadar yukari cikmak. Hem kaynak hem paket
+ * duzeninde calisir ve derleme ciktisinin konumuna bagli degildir.
+ *
+ * `.sql` sarti onemli: adi `migrations` olan RASTGELE bir dizini kabul
+ * etmek, sessizce BOS bir migration kumesiyle kosmak demekti.
+ */
+function resolveMigrationsDir(): string {
+  const fromEnv = process.env.MIGRATIONS_DIR;
+  if (fromEnv) return path.resolve(fromEnv);
+
+  let dir = path.dirname(fileURLToPath(import.meta.url));
+  // Alti seviye: hem `apps/api/src` hem `dist/server` icin fazlasiyla yeter.
+  for (let depth = 0; depth < 6; depth++) {
+    const candidate = path.join(dir, "migrations");
+    if (
+      fsSync.existsSync(candidate) &&
+      fsSync.readdirSync(candidate).some((f) => f.endsWith(".sql"))
+    ) {
+      return candidate;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+
+  throw new Error(
+    "migrations/ dizini bulunamadi. Modul konumundan yukari dogru arandi. " +
+      "MIGRATIONS_DIR ortam degiskeniyle acikca belirtilebilir."
+  );
+}
+
+const MIGRATIONS_DIR = resolveMigrationsDir();
 
 export const LATEST_SCHEMA_VERSION = "1.3.4-artifact-cas-mvp";
 
