@@ -195,7 +195,17 @@ jobs:
         # `test:e2e` once `build` calistirir ve testler URETIM paketine
         # karsi kosar, dev sunucusuna degil: vite dev modulleri istek
         # aninda derler ve CI'da onbellek her zaman soguktur.
-        run: pnpm run test:e2e
+        # Hata halinde ciktinin SONU annotation olarak basilir.
+        # Actions loglari API'den kimlik ister; annotation'lar public
+        # depoda okunabilir. Aksi halde CI kirmizi olur ama SEBEBI
+        # gorunmez - teshis edilemeyen bir kapi, kapi degildir.
+        run: |
+          set -o pipefail
+          pnpm run test:e2e 2>&1 | tee e2e.log || {
+            echo "::error::E2E: $(tail -c 900 e2e.log | tr '
+' ' ' | tr -d '')"
+            exit 1
+          }
         env:
           DATABASE_URL: postgresql://postgres@localhost:5432/y_vault
 
