@@ -38,11 +38,26 @@ export default defineConfig(() => {
     build: {
       rollupOptions: {
         output: {
+          /*
+           * PAKET SINIRINDA eslestir, alt dize arama.
+           *
+           * Onceki hali `id.includes('react')` kullaniyordu ve
+           * `lucide-react` kurali HIC CALISMIYORDU: 'react' alt dizesi
+           * ondan once eslesiyordu, `icon-vendor` chunk'i uretilmiyordu
+           * bile. Duzeltmeden sonra chunk ortaya cikti.
+           *
+           * NOT: bu duzeltme uretim paketindeki
+           * "Cannot read properties of null (reading 'useState')"
+           * hatasini COZMEDI. Chunk'lari tamamen kaldirip tek bundle
+           * uretmek de cozmedi — yani sebep chunk bolmesi DEGIL.
+           * Kalan kusur tests/e2e/smoke.spec.ts icinde kayitli.
+           */
           manualChunks(id) {
             if (!id.includes('node_modules')) return undefined;
-            if (id.includes('react') || id.includes('scheduler')) return 'react-vendor';
-            if (id.includes('motion')) return 'motion-vendor';
-            if (id.includes('lucide-react')) return 'icon-vendor';
+            const paket = id.split('node_modules/').pop() ?? '';
+            if (/^(react|react-dom|scheduler)\//.test(paket)) return 'react-vendor';
+            if (/^(framer-motion|motion)\//.test(paket)) return 'motion-vendor';
+            if (/^lucide-react\//.test(paket)) return 'icon-vendor';
             return 'vendor';
           },
         },

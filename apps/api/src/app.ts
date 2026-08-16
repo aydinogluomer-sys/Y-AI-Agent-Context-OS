@@ -73,15 +73,47 @@ export function createApp(options: AppOptions): Express {
     })
   );
 
+  /*
+   * CORS — `Origin` VARLIGI cross-origin DEMEK DEGILDIR.
+   *
+   * Onceki hali "same-origin isteklerde Origin yoktur" varsayiyordu ve
+   * yalnizca `!origin` durumunu geciriyordu. Bu varsayim YANLIS:
+   * `<script type="module">` ve `fetch()` AYNI KOKENDE bile `Origin`
+   * gonderir (sec-fetch-mode: cors).
+   *
+   * Sonuc: uretim paketi ACILMIYORDU. `index.html` modul script'ini
+   * yukluyor, tarayici `Origin: http://localhost:3000` gonderiyor,
+   * allow-list bos oldugu icin istek REDDEDILIYOR ve /assets/*.js
+   * HTTP 500 + JSON hata donuyordu. React hic monte olmuyordu.
+   *
+   * Teshisi zorlastiran sey: `curl` ve HTTP istemcileri `Origin`
+   * GONDERMEZ, o yuzden ayni yollar 200 donuyordu. Ayni URL, ayni
+   * sunucu, ayni an: HTTP istemcisi 200, Chromium 500.
+   *
+   * Duzeltme: Origin'in host'u istegin kendi host'uyla ayniysa GECER.
+   * Bu bir gevsetme DEGIL: same-origin istekler zaten tarayici
+   * modelinde serbesttir; CORS CROSS-origin erisimi denetler. Ayrica
+   * kendi host'umuzu taklit eden bir Origin, Origin'siz bir istegin
+   * zaten alabilecegi seyden fazlasini alamaz.
+   */
   app.use(
-    cors({
-      origin(origin, callback) {
-        // Same-origin istekleri (origin yok) ve allow-list'tekiler geçer.
-        if (!origin || corsOrigins.includes(origin)) return callback(null, true);
-        return callback(new Error("CORS_ORIGIN_NOT_ALLOWED"));
-      },
-      credentials: true,
-      maxAge: 600
+    cors((req, callback) => {
+      const origin = req.headers.origin;
+      const ayarlar = { credentials: true, maxAge: 600 };
+
+      if (!origin) return callback(null, { ...ayarlar, origin: true });
+
+      let ayniKoken = false;
+      try {
+        ayniKoken = new URL(origin).host === req.headers.host;
+      } catch {
+        ayniKoken = false; // ayristirilamayan Origin guvenilmez sayilir
+      }
+
+      if (ayniKoken || corsOrigins.includes(origin)) {
+        return callback(null, { ...ayarlar, origin: true });
+      }
+      return callback(new Error("CORS_ORIGIN_NOT_ALLOWED"));
     })
   );
 

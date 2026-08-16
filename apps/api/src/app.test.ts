@@ -134,6 +134,53 @@ describe("createApp — CORS allow-list", () => {
       .set("Origin", "https://evil.example.com");
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
+
+  /*
+   * SAME-ORIGIN — bu testler bir URETIM HATASINI kapatiyor.
+   *
+   * Onceki CORS yapilandirmasi "same-origin isteklerde Origin yoktur"
+   * varsayiyordu ve yalnizca `!origin` durumunu geciriyordu. Varsayim
+   * YANLIS: `<script type="module">` ve `fetch()` AYNI KOKENDE bile
+   * `Origin` gonderir.
+   *
+   * Sonuc: uretim paketi ACILMIYORDU. Tarayici modul script'i isterken
+   * `Origin` gonderiyor, allow-list bos oldugu icin /assets/*.js HTTP
+   * 500 + JSON hata donuyordu.
+   *
+   * Teshisi zorlastiran sey: curl ve HTTP istemcileri `Origin`
+   * GONDERMEZ, o yuzden ayni yollar 200 donuyordu. Ayni URL, ayni
+   * sunucu, ayni an: HTTP istemcisi 200, Chromium 500.
+   */
+  it("same-origin istek (Origin == Host) allow-list BOS olsa da geçer", async () => {
+    const res = await request(buildTestApp({ corsOrigins: [] }))
+      .get("/api/ping")
+      .set("Origin", "http://127.0.0.1:1234")
+      .set("Host", "127.0.0.1:1234");
+    expect(res.status).toBe(200);
+  });
+
+  it("Origin YOKSA geçer (klasik gezinme)", async () => {
+    const res = await request(buildTestApp({ corsOrigins: [] })).get("/api/ping");
+    expect(res.status).toBe(200);
+  });
+
+  it("KONTROL: farklı host'tan gelen Origin allow-list boşken REDDEDİLİR", async () => {
+    // Bu kontrol olmadan ustteki test, muhafiz HER Origin'i gecirse de
+    // gecerdi — ve o zaman CORS hic calismiyor olurdu.
+    const res = await request(buildTestApp({ corsOrigins: [] }))
+      .get("/api/ping")
+      .set("Origin", "http://evil.example")
+      .set("Host", "127.0.0.1:1234");
+    expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("ayrıştırılamayan Origin REDDEDİLİR", async () => {
+    const res = await request(buildTestApp({ corsOrigins: [] }))
+      .get("/api/ping")
+      .set("Origin", "bu-bir-url-degil")
+      .set("Host", "127.0.0.1:1234");
+    expect(res.status).toBeGreaterThanOrEqual(400);
+  });
 });
 
 describe("installErrorHandler", () => {

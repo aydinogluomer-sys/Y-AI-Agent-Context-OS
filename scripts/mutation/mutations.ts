@@ -211,6 +211,14 @@ export const MUTATIONS: readonly Mutation[] = [
     why: "Yazmalari da yeniden denemek SESSIZ CIFT KAYIT uretir: baglanti, ifade CALISTIKTAN sonra kopmus olabilir."
   },
   {
+    id: "cors-same-origin",
+    file: "apps/api/src/app.ts",
+    find: "if (ayniKoken || corsOrigins.includes(origin)) {",
+    replace: "if (corsOrigins.includes(origin)) {",
+    suite: "apps/api/src/app.test.ts",
+    why: "Same-origin gecisi kaldirilirsa uygulama KENDI modul script'lerini reddeder: <script type=module> ayni kokende bile Origin gonderir. Uretim paketi acilmaz."
+  },
+  {
     id: "evidence-append-only",
     file: "migrations/0082_evidence_chain.sql",
     find: `RAISE EXCEPTION 'evidence_chain append-only bir kanit zinciridir: kayitlar degistirilemez ya da silinemez.';`,
